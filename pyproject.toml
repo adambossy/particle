@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "language-translation"
+version = "0.1.0"
+description = ""
+authors = ["Adam Bossy <adambossy@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+cloc = "^0.2.5"
+tree-sitter-swift = { git = "https://github.com/alex-pinkus/tree-sitter-swift.git" }
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
