@@ -5,6 +5,7 @@ from typing import Dict, List, Set
 
 import click
 import tree_sitter_python
+from graphviz import Digraph
 from tree_sitter import Language, Node, Parser
 
 # Define paths for both Swift and Python language libraries
@@ -385,6 +386,72 @@ class CallGraphAnalyzer:
 
         return result
 
+    def visualize_graph(self, output_file: str = "call_graph", view: bool = True):
+        """Create a visual representation of the call graph using graphviz.
+
+        Args:
+            output_file: Name of the output file (without extension)
+            view: Whether to automatically open the generated graph
+        """
+        # Create a new directed graph
+        dot = Digraph(comment="Call Graph")
+        dot.attr(rankdir="TB")  # Top to bottom layout
+
+        # Track processed nodes to avoid duplicates
+        processed: Set[str] = set()
+
+        # Helper function to add nodes and edges recursively
+        def add_node_and_edges(namespace: str, processed: Set[str]):
+            # if namespace in processed:
+            #     return
+
+            func_info = self.functions.get(namespace)
+            if not func_info:
+                return
+
+            # Add the current node
+            node_label = f"{func_info.name}\n({'.'.join(namespace.split('.')[:-1])})"
+            dot.node(namespace, node_label)
+            processed.add(namespace)
+
+            # Add edges for each function call
+            for called_func in func_info.calls:
+                # Add the called function node if it hasn't been processed
+                if called_func not in processed:
+                    called_info = self.functions.get(called_func)
+                    # print(f"called_info: {called_info}")
+                    if called_info:
+                        called_label = f"{called_info.name}\n({'.'.join(called_func.split('.')[:-1])})"
+                        dot.node(called_func, called_label)
+                        processed.add(called_func)
+
+                # Add the edge
+                dot.edge(namespace, called_func)
+
+                # Recursively process the called function
+                add_node_and_edges(called_func, processed)
+
+        # Start with root nodes (functions that aren't called by others)
+        root_nodes = {
+            name for name, info in self.functions.items() if not info.called_by
+        }
+
+        # Process each root node
+        for root in root_nodes:
+            add_node_and_edges(root, processed)
+
+        # Set graph attributes for better visualization
+        dot.attr("node", shape="box", style="rounded")
+        dot.attr("edge", arrowsize="0.5")
+
+        # Save the graph
+        try:
+            dot.render(output_file, view=view, cleanup=True)
+            print(f"Graph saved as {output_file}.pdf")
+        except Exception as e:
+            print(f"Failed to generate graph: {e}")
+            print("Make sure Graphviz is installed on your system.")
+
 
 @click.command()
 @click.option(
@@ -417,7 +484,14 @@ def main(project_path, files, language):
         files=files if files else None,
     )
     analyzer.analyze()
+
+    analyzer.print_ast(analyzer.tree.root_node, 0)
     analyzer.print_call_graph()
+
+    print("Generating graph...")
+    analyzer.visualize_graph()
+
+    print("Done.")
 
 
 if __name__ == "__main__":
