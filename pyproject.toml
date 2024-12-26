@@ -12,6 +12,7 @@ tree-sitter-swift = { git = "https://github.com/alex-pinkus/tree-sitter-swift.gi
 tree-sitter = "^0.23.2"
 tree-sitter-python = "^0.23.6"
 click = "^8.1.8"
+pytest = "^8.3.4"
 
 
 [build-system]
