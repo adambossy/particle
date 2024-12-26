@@ -386,13 +386,21 @@ class CallGraphAnalyzer:
 
         return result
 
-    def visualize_graph(self, output_file: str = "call_graph", view: bool = True):
+    def visualize_graph(self, output_file: str = None, view: bool = True):
         """Create a visual representation of the call graph using graphviz.
 
         Args:
             output_file: Name of the output file (without extension)
             view: Whether to automatically open the generated graph
         """
+        # Determine the output file name based on project_path or files
+        if not output_file:
+            if self.project_path:
+                output_file = self.project_path.name
+            elif self.files:
+                file_names = [f.stem[:20] for f in self.files]
+                output_file = "_".join(file_names)
+
         # Create a new directed graph
         dot = Digraph(comment="Call Graph")
         dot.attr(rankdir="TB")  # Top to bottom layout
