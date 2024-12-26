@@ -34,12 +34,33 @@ def process_shopping_cart():
     cart.add_item(10.99)
     return cart
 """
-        # Initialize the analyzer
-        cls.analyzer = CallGraphAnalyzer(language="python")
-        cls.analyzer.code = cls.sample_code.encode("utf-8")
+        # Create a temporary file with the sample code
+        cls.temp_file = Path("shopping_cart.py")
+        cls.temp_file.write_text(cls.sample_code)
+
+        # Initialize and analyze
+        cls.analyzer = CallGraphAnalyzer(language="python", files=[str(cls.temp_file)])
+        cls.analyzer.analyze()
 
         # Parse the code to get the AST
-        cls.tree = cls.analyzer.parser.parse(cls.analyzer.code)
+        cls.tree = cls.analyzer.tree
+
+    @classmethod
+    def tearDownClass(cls):
+        # Clean up temporary file
+        if cls.temp_file.exists():
+            cls.temp_file.unlink()
+
+    def _find_nodes(self, root: Node, type_name: str) -> list[Node]:
+        """Helper method to find all nodes of given type in the AST"""
+        nodes = []
+        if root.type == type_name:
+            nodes.append(root)
+
+        for child in root.children:
+            nodes.extend(self._find_nodes(child, type_name))
+
+        return nodes
 
     def _find_node(self, root: Node, type_name: str) -> Node:
         """Helper method to find first node of given type in the AST"""
@@ -52,6 +73,10 @@ def process_shopping_cart():
                 return result
 
         return None
+
+    def _get_function_node(self, full_name: str) -> Node:
+        """Get the function node for a given full name"""
+        return self.analyzer.functions.get(full_name).node
 
 
 class TestGetSymbolName(TestCallGraphAnalyzerBase):
@@ -96,6 +121,45 @@ class TestGetSymbolName(TestCallGraphAnalyzerBase):
 
         result = self.analyzer._get_symbol_name(string_node)
         self.assertEqual(result, '"${amount:.2f}"')
+
+
+class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
+    """Test cases for the _resolve_attribute_call method"""
+
+    def setUp(self):
+        """Set up the namespace context for each test"""
+        self.analyzer.current_namespace = ["shopping_cart", "ShoppingCart", "add_item"]
+        self.analyzer.current_class = "ShoppingCart"
+
+    def test_resolve_self_method_call(self):
+        """Test resolving a method call on self (self.calculate_total())"""
+        # Find the self.calculate_total() call in add_item method
+        add_item_node = self._get_function_node("shopping_cart.ShoppingCart.add_item")
+        call_nodes = self._find_nodes(add_item_node, "call")
+        attribute_node = call_nodes[1].children[0]  # The self.calculate_total part
+
+        result = self.analyzer._resolve_attribute_call(attribute_node)
+        self.assertEqual(result, "shopping_cart.ShoppingCart.calculate_total")
+
+    def test_resolve_instance_method_call(self):
+        """Test resolving a method call on an instance (cart.add_item())"""
+        # Find the cart.add_item() call in process_shopping_cart
+        process_func = self._get_function_node("shopping_cart.process_shopping_cart")
+        call_nodes = self._find_nodes(process_func, "call")
+        attribute_node = call_nodes[1].children[0]  # The cart.add_item part
+
+        result = self.analyzer._resolve_attribute_call(attribute_node)
+        self.assertEqual(result, "cart.add_item")
+
+    def test_resolve_builtin_method_call(self):
+        """Test resolving a method call on a built-in type (self.items.append())"""
+        # Find the self.items.append() call in add_item method
+        class_node = self._get_function_node("shopping_cart.ShoppingCart.add_item")
+        append_call = self._find_nodes(class_node, "call")
+        attribute_node = append_call[0].children[0]  # The self.items.append part
+
+        result = self.analyzer._resolve_attribute_call(attribute_node)
+        self.assertEqual(result, "self.items.append")
 
 
 if __name__ == "__main__":

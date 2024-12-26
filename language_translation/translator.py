@@ -29,6 +29,7 @@ class FunctionInfo:
     called_by: Set[str]  # Set of fully qualified function names that call this function
     start_point: tuple  # Line, column where function starts
     end_point: tuple  # Line, column where function ends
+    node: Node  # AST node that was used to create this function
 
 
 class CallGraphAnalyzer:
@@ -53,6 +54,8 @@ class CallGraphAnalyzer:
             []
         )  # Track current namespace during traversal
         self.current_class = None  # Track current class during traversal
+        self.tree = None  # Store the current AST
+        self.code = None  # Store the current file's code
 
     def analyze(self):
         """Analyze either the project directory or specific files."""
@@ -103,6 +106,7 @@ class CallGraphAnalyzer:
             called_by=set(),
             start_point=node.start_point,
             end_point=node.end_point,
+            node=node,
         )
 
     def _process_class_definition(self, node: Node):
@@ -218,8 +222,24 @@ class CallGraphAnalyzer:
         """Parse a single file and return its AST."""
         with open(file_path, "rb") as f:
             self.code = f.read()  # Store code for _get_symbol_name
-        tree = self.parser.parse(self.code)
-        return tree.root_node
+        self.tree = self.parser.parse(self.code)  # Store the tree
+        return self.tree.root_node
+
+    def print_ast(self, node: Node, level: int = 0):
+        """Recursively print the AST in a readable format."""
+        node_type = str(node.type)
+        indent = self._get_indent(level)
+        print(f"{indent}{node_type}")
+        self._print_children(node, level)
+
+    def _get_indent(self, level: int) -> str:
+        """Generate the appropriate indentation for the current level."""
+        return "  " * level
+
+    def _print_children(self, node: Node, level: int):
+        """Print all children nodes recursively."""
+        for child in node.children:
+            self.print_ast(child, level + 1)
 
     def print_call_graph(self):
         """Print the generated call graph."""
