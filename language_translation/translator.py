@@ -1,4 +1,4 @@
-from collections import defaultdict
+import builtins
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Set
@@ -99,6 +99,16 @@ class CallGraphAnalyzer:
         self.current_namespace.append(func_name)
 
         full_name = ".".join(self.current_namespace)
+        function_info = self._get_or_create_function_info(func_name, full_name, node)
+        function_info.start_point = node.start_point
+        function_info.end_point = node.end_point
+
+    def _get_or_create_function_info(
+        self, func_name: str, full_name: str, node: Node
+    ) -> FunctionInfo:
+        if full_name in self.functions:
+            return self.functions[full_name]
+
         self.functions[full_name] = FunctionInfo(
             name=func_name,
             namespace=full_name,
@@ -108,6 +118,8 @@ class CallGraphAnalyzer:
             end_point=node.end_point,
             node=node,
         )
+
+        return self.functions[full_name]
 
     def _process_class_definition(self, node: Node):
         """Process a class definition node."""
@@ -124,16 +136,16 @@ class CallGraphAnalyzer:
         if caller_namespace not in self.functions:
             return  # Skip if we're not in a function
 
-        callee = self._resolve_call(node)
+        callee, full_callee = self._resolve_call(node)
         if callee:
-            self.functions[caller_namespace].calls.add(callee)
-            if callee in self.functions:
-                self.functions[callee].called_by.add(caller_namespace)
+            self.functions[caller_namespace].calls.add(full_callee)
+            callee_info = self._get_or_create_function_info(callee, full_callee, node)
+            callee_info.called_by.add(caller_namespace)
 
-    def _resolve_call(self, node: Node) -> str:
+    def _resolve_call(self, node: Node) -> tuple[str, str]:
         """Resolve the full namespace of a function call."""
         if node.type != "call":
-            return None
+            return None, None
 
         # Get the function being called (first child of call node)
         func = node.children[0]
@@ -145,20 +157,30 @@ class CallGraphAnalyzer:
         elif func.type == "call":
             return self._resolve_nested_call(func)
 
-        return None
+        return None, None
 
-    def _resolve_simple_call(self, func_node: Node) -> str:
+    def _resolve_simple_call(self, func_node: Node) -> tuple[str, str]:
         """Handle simple function calls like my_function()"""
         func_name = self._get_symbol_name(func_node)
 
         # Check if it's a built-in function
-        if hasattr(__builtins__, func_name):
-            return f"builtins.{func_name}"
+        if func_name in dir(builtins):
+            return func_name, f"builtins.{func_name}"
 
-        # Return full namespace path
-        return f"{'.'.join(self.current_namespace[:-1])}.{func_name}"
+        # Imperfect way of grabbing the class name for class instantiations
+        candidate_class_names = [
+            node_name.split(".")[-2]
+            for node_name in self.functions.keys()
+            if len(node_name.split(".")) > 1
+        ]
+        if func_name in candidate_class_names:
+            class_name = func_name
+            return "__init__", f"{self.current_namespace[0]}.{class_name}.__init__"
 
-    def _resolve_attribute_call(self, func_node: Node) -> str:
+        # Handle module.function() calls
+        return func_name, f"{self.current_namespace[0]}.{func_name}"
+
+    def _resolve_attribute_call(self, func_node: Node) -> tuple[str, str]:
         """Handle attribute-based calls like obj.method() or module.function()"""
         obj = func_node.children[0]
         method = func_node.children[2]
@@ -168,27 +190,73 @@ class CallGraphAnalyzer:
 
         # Handle self.method() calls
         if obj_name == "self" and self.current_class:
-            return f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
+            return method_name, f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
 
         # Handle class.static_method() calls
         if self.current_class and obj_name == self.current_class:
-            return f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
+            return method_name, f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
 
         # Handle module.function() calls
         if obj_name in self.current_namespace:
-            return f"{obj_name}.{method_name}"
+            return method_name, f"{obj_name}.{method_name}"
 
-        # Handle instance.method() calls
-        # This is a basic implementation - could be enhanced with type inference
-        return f"{obj_name}.{method_name}"
+        # Handle instance.method() calls by trying to determine the object's type
+        obj_type = self._infer_object_type(obj_name)
+        if obj_type:
+            return method_name, f"{obj_type}.{method_name}"
 
-    def _resolve_nested_call(self, func_node: Node) -> str:
+        # Fallback: return just obj_name.method_name
+        return method_name, f"{obj_name}.{method_name}"
+
+    def _infer_object_type(self, obj_name: str) -> str:
+        """Attempt to infer the type of an object from the current context.
+
+        This looks for:
+        1. Variable assignments like: obj = ClassName()
+        2. Function parameters with type hints
+        3. Variable annotations
+
+        Returns the fully qualified class name if found, None otherwise.
+        """
+        # Look for assignment in the current function's scope
+        if self.current_namespace:
+            current_func = self.functions.get(".".join(self.current_namespace))
+            if current_func and current_func.node:
+                # Search for assignment statements
+                assignments = self._find_nodes(current_func.node, "assignment")
+                for assign in assignments:
+                    # Check if left side matches our object name
+                    left_side = assign.children[0]
+                    if (
+                        left_side.type == "identifier"
+                        and self._get_symbol_name(left_side) == obj_name
+                    ):
+                        # Look at right side for class instantiation
+                        right_side = assign.children[2]
+                        if right_side.type == "call":
+                            class_name = self._get_symbol_name(right_side.children[0])
+                            # Check if it's in current namespace
+                            current_module = self.current_namespace[0]
+                            return f"{current_module}.{class_name}"
+
+        return None
+
+    def _find_nodes(self, root: Node, type_name: str) -> list[Node]:
+        """Find all nodes of a given type in the AST subtree."""
+        nodes = []
+        if root.type == type_name:
+            nodes.append(root)
+        for child in root.children:
+            nodes.extend(self._find_nodes(child, type_name))
+        return nodes
+
+    def _resolve_nested_call(self, func_node: Node) -> tuple[str, str]:
         """Handle nested calls like get_object().method()"""
         # For nested calls, we focus on the final method being called
         # This is a simplified implementation
         if func_node.children and func_node.children[-1].type == "attribute":
             return self._resolve_attribute_call(func_node.children[-1])
-        return None
+        return None, None
 
     def _is_builtin_type(self, type_name: str) -> bool:
         """Check if a type is a Python built-in type."""
@@ -210,7 +278,23 @@ class CallGraphAnalyzer:
         for child in node.children:
             if child.type == "identifier":
                 return child
+
         return None
+
+        # This handles cases like self.calculate_total() but not self.items.append(
+        # because of the extra attribute present
+        # return self._find_identifier_recursive(node)[1]
+
+    # def _find_identifier_recursive(self, node: Node) -> List[Node]:
+    #     """Find the identifier node in a definition."""
+    #     if node.type == "identifier":
+    #         return [node]
+
+    #     identifiers = []
+    #     for child in node.children:
+    #         identifiers.extend(self._find_identifier_recursive(child))
+
+    #     return identifiers
 
     def _get_symbol_name(self, node: Node) -> str:
         """Get the text content of a node."""

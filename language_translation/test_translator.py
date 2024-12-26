@@ -178,7 +178,8 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
         attribute_node = call_nodes[1].children[0]  # The self.calculate_total part
 
         result = self.analyzer._resolve_attribute_call(attribute_node)
-        self.assertEqual(result, "shopping_cart.ShoppingCart.calculate_total")
+        self.assertEqual(result[0], "calculate_total")
+        self.assertEqual(result[1], "shopping_cart.ShoppingCart.calculate_total")
 
     def test_resolve_instance_method_call(self):
         """Test resolving a method call on an instance (cart.add_item())"""
@@ -187,8 +188,11 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
         call_nodes = self._find_nodes(process_func, "call")
         attribute_node = call_nodes[1].children[0]  # The cart.add_item part
 
+        self.analyzer.current_namespace = ["shopping_cart", "process_shopping_cart"]
+
         result = self.analyzer._resolve_attribute_call(attribute_node)
-        self.assertEqual(result, "cart.add_item")
+        self.assertEqual(result[0], "add_item")
+        self.assertEqual(result[1], "shopping_cart.ShoppingCart.add_item")
 
     def test_resolve_builtin_method_call(self):
         """Test resolving a method call on a built-in type (self.items.append())"""
@@ -198,7 +202,8 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
         attribute_node = append_call[0].children[0]  # The self.items.append part
 
         result = self.analyzer._resolve_attribute_call(attribute_node)
-        self.assertEqual(result, "self.items.append")
+        self.assertEqual(result[0], "append")
+        self.assertEqual(result[1], "self.items.append")
 
 
 class TestGetLeafNodes(TestCallGraphAnalyzerBase):
@@ -214,6 +219,8 @@ class TestGetLeafNodes(TestCallGraphAnalyzerBase):
         # In our sample code, format_price and calculate_total are leaf nodes
         # as they don't call any other functions
         expected_leaves = {
+            "self.items.append",
+            "builtins.sum",
             "shopping_cart.ShoppingCart.__init__",
             "shopping_cart.format_price",
         }
