@@ -263,7 +263,7 @@ class CallGraphAnalyzer:
         for file_path in self.project_path.rglob(f"*{extension}"):
             print(f"\nAnalyzing file: {file_path}")
             ast = self.parse_file(str(file_path))
-            self.print_ast(ast)
+            self.build_call_graph(ast)
 
     def get_leaf_nodes(self) -> List[FunctionInfo]:
         """Return all FunctionInfo objects that don't call any other functions."""
