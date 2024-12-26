@@ -17,7 +17,7 @@ LANGUAGES: Dict[str, Language] = {
 LANGUAGE_EXTENSIONS = {"python": ".py", "swift": ".swift"}
 
 
-class Translator:
+class CallGraphAnalyzer:
     def __init__(
         self, language: str, project_path: str = None, files: list[str] = None
     ):
@@ -109,12 +109,12 @@ def main(project_path, files, language):
     if project_path and files:
         raise click.UsageError("Cannot use both --project-path and --files together")
 
-    translator = Translator(
+    analyzer = CallGraphAnalyzer(
         language=language,
         project_path=project_path if project_path else None,
         files=files if files else None,
     )
-    translator.analyze()
+    analyzer.analyze()
 
 
 if __name__ == "__main__":
