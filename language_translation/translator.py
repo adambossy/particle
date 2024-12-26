@@ -92,7 +92,7 @@ class CallGraphAnalyzer:
 
     def _process_function_definition(self, node: Node):
         """Process a function definition node."""
-        func_name = self._get_node_text(self._find_identifier(node))
+        func_name = self._get_symbol_name(self._find_identifier(node))
         self.current_namespace.append(func_name)
 
         full_name = ".".join(self.current_namespace)
@@ -107,7 +107,7 @@ class CallGraphAnalyzer:
 
     def _process_class_definition(self, node: Node):
         """Process a class definition node."""
-        class_name = self._get_node_text(self._find_identifier(node))
+        class_name = self._get_symbol_name(self._find_identifier(node))
         self.current_namespace.append(class_name)
         self.current_class = class_name
 
@@ -145,7 +145,7 @@ class CallGraphAnalyzer:
 
     def _resolve_simple_call(self, func_node: Node) -> str:
         """Handle simple function calls like my_function()"""
-        func_name = self._get_node_text(func_node)
+        func_name = self._get_symbol_name(func_node)
 
         # Check if it's a built-in function
         if hasattr(__builtins__, func_name):
@@ -159,8 +159,8 @@ class CallGraphAnalyzer:
         obj = func_node.children[0]
         method = func_node.children[2]
 
-        obj_name = self._get_node_text(obj)
-        method_name = self._get_node_text(method)
+        obj_name = self._get_symbol_name(obj)
+        method_name = self._get_symbol_name(method)
 
         # Handle self.method() calls
         if obj_name == "self" and self.current_class:
@@ -208,7 +208,7 @@ class CallGraphAnalyzer:
                 return child
         return None
 
-    def _get_node_text(self, node: Node) -> str:
+    def _get_symbol_name(self, node: Node) -> str:
         """Get the text content of a node."""
         if not node:
             return ""
@@ -217,7 +217,7 @@ class CallGraphAnalyzer:
     def parse_file(self, file_path: str) -> Node:
         """Parse a single file and return its AST."""
         with open(file_path, "rb") as f:
-            self.code = f.read()  # Store code for _get_node_text
+            self.code = f.read()  # Store code for _get_symbol_name
         tree = self.parser.parse(self.code)
         return tree.root_node
 

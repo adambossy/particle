@@ -54,47 +54,47 @@ def process_shopping_cart():
         return None
 
 
-class TestGetNodeText(TestCallGraphAnalyzerBase):
-    """Test cases for the _get_node_text method"""
+class TestGetSymbolName(TestCallGraphAnalyzerBase):
+    """Test cases for the _get_symbol_name method"""
 
-    def test_get_node_text_function_name(self):
+    def test_get_symbol_name_function_name(self):
         """Test getting function name text from AST"""
         # Find the format_price function node
         function_node = self._find_node(self.tree.root_node, "function_definition")
         identifier_node = self._find_node(function_node, "identifier")
 
-        result = self.analyzer._get_node_text(identifier_node)
+        result = self.analyzer._get_symbol_name(identifier_node)
         self.assertEqual(result, "format_price")
 
-    def test_get_node_text_class_name(self):
+    def test_get_symbol_name_class_name(self):
         """Test getting class name text from AST"""
         class_node = self._find_node(self.tree.root_node, "class_definition")
         identifier_node = self._find_node(class_node, "identifier")
 
-        result = self.analyzer._get_node_text(identifier_node)
+        result = self.analyzer._get_symbol_name(identifier_node)
         self.assertEqual(result, "ShoppingCart")
 
-    def test_get_node_text_method_name(self):
+    def test_get_symbol_name_method_name(self):
         """Test getting method name text from AST"""
         class_node = self._find_node(self.tree.root_node, "class_definition")
         method_node = self._find_node(class_node, "function_definition")
         identifier_node = self._find_node(method_node, "identifier")
 
-        result = self.analyzer._get_node_text(identifier_node)
+        result = self.analyzer._get_symbol_name(identifier_node)
         self.assertEqual(result, "__init__")
 
-    def test_get_node_text_empty_node(self):
+    def test_get_symbol_name_empty_node(self):
         """Test getting text from None node"""
-        result = self.analyzer._get_node_text(None)
+        result = self.analyzer._get_symbol_name(None)
         self.assertEqual(result, "")
 
-    def test_get_node_text_string_literal(self):
+    def test_get_symbol_name_string_literal(self):
         """Test getting text from string literal node"""
         # Find the string literal in format_price function
         function_node = self._find_node(self.tree.root_node, "function_definition")
         string_node = self._find_node(function_node, "string")
 
-        result = self.analyzer._get_node_text(string_node)
+        result = self.analyzer._get_symbol_name(string_node)
         self.assertEqual(result, '"${amount:.2f}"')
 
 
