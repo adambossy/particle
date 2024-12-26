@@ -6,3 +6,5 @@ repos
 swift/build
 swift/swift-syntax
 swift/tree-sitter*
+
+*.pdf
