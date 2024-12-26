@@ -73,9 +73,9 @@ class CallGraphAnalyzer:
             print(f"\nAnalyzing file: {file_path}")
             self.current_namespace = [Path(file_path).stem]  # Start with module name
             ast = self.parse_file(str(file_path))
-            self.build_call_graph(ast)
+            self.collect_functions(ast)
 
-    def build_call_graph(self, node: Node):
+    def collect_functions(self, node: Node):
         """Build the call graph by traversing the AST."""
         if node.type == "function_definition":
             self._process_function_definition(node)
@@ -85,7 +85,7 @@ class CallGraphAnalyzer:
             self._process_function_call(node)
 
         for child in node.children:
-            self.build_call_graph(child)
+            self.collect_functions(child)
 
         # Pop namespace when leaving class or function
         if node.type in ("function_definition", "class_definition"):
@@ -263,7 +263,7 @@ class CallGraphAnalyzer:
         for file_path in self.project_path.rglob(f"*{extension}"):
             print(f"\nAnalyzing file: {file_path}")
             ast = self.parse_file(str(file_path))
-            self.build_call_graph(ast)
+            self.collect_functions(ast)
 
     def get_leaf_nodes(self) -> List[FunctionInfo]:
         """Return all FunctionInfo objects that don't call any other functions."""
