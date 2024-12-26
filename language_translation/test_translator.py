@@ -248,5 +248,70 @@ class EmptyClass:
                 temp_file.unlink()
 
 
+class TestGetNodesAtLevel(TestCallGraphAnalyzerBase):
+    """Test cases for the get_nodes_at_level method"""
+
+    def test_get_nodes_level_0(self):
+        """Test getting leaf nodes (level 0)"""
+        nodes = self.analyzer.get_nodes_at_level(0)
+        node_names = {node.namespace for node in nodes}
+
+        # Level 0 should match leaf nodes
+        expected_nodes = {
+            "self.items.append",
+            "builtins.sum",
+            "shopping_cart.ShoppingCart.__init__",
+            "shopping_cart.format_price",
+        }
+
+        self.assertEqual(node_names, expected_nodes)
+
+    def test_get_nodes_level_1(self):
+        """Test getting nodes that only call leaf nodes (level 1)"""
+        nodes = self.analyzer.get_nodes_at_level(1)
+        node_names = {node.namespace for node in nodes}
+
+        # calculate_total calls format_price (level 0)
+        expected_nodes = {
+            "shopping_cart.ShoppingCart.calculate_total",
+        }
+
+        self.assertEqual(node_names, expected_nodes)
+
+    def test_get_nodes_level_2(self):
+        """Test getting nodes that call level 1 nodes (level 2)"""
+        nodes = self.analyzer.get_nodes_at_level(2)
+        node_names = {node.namespace for node in nodes}
+
+        # add_item calls calculate_total (level 1)
+        expected_nodes = {
+            "shopping_cart.ShoppingCart.add_item",
+        }
+
+        self.assertEqual(node_names, expected_nodes)
+
+    def test_get_nodes_level_3(self):
+        """Test getting nodes that call level 2 nodes (level 3)"""
+        nodes = self.analyzer.get_nodes_at_level(3)
+        node_names = {node.namespace for node in nodes}
+
+        # process_shopping_cart calls add_item (level 2)
+        expected_nodes = {
+            "shopping_cart.process_shopping_cart",
+        }
+
+        self.assertEqual(node_names, expected_nodes)
+
+    def test_get_nodes_invalid_level(self):
+        """Test getting nodes at an invalid level"""
+        # Test negative level
+        nodes = self.analyzer.get_nodes_at_level(-1)
+        self.assertEqual(len(nodes), 0)
+
+        # Test level beyond max depth
+        nodes = self.analyzer.get_nodes_at_level(10)
+        self.assertEqual(len(nodes), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

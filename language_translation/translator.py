@@ -353,6 +353,38 @@ class CallGraphAnalyzer:
         """Return all FunctionInfo objects that don't call any other functions."""
         return [info for info in self.functions.values() if not info.calls]
 
+    def get_nodes_at_level(self, level: int) -> List[FunctionInfo]:
+        """Return all FunctionInfo objects at a specific level in the call tree.
+        Level 0 represents leaf nodes (functions that don't call others).
+        Level 1 represents functions that only call leaf nodes.
+        Level 2 represents functions that call level 1 nodes, and so on.
+        """
+        if level < 0:
+            return []
+
+        # For level 0, return leaf nodes
+        if level == 0:
+            return self.get_leaf_nodes()
+
+        all_prev_level_nodes = set()
+        for level in range(level):
+            all_prev_level_nodes.update(
+                {node.namespace for node in self.get_nodes_at_level(level)}
+            )
+
+        # For other levels, find nodes that only call nodes from previous levels
+        result = []
+        for func in self.functions.values():
+            # Skip if already found in previous levels
+            if any(func.namespace in nodes for nodes in [all_prev_level_nodes]):
+                continue
+
+            # Check if all calls are to previous level nodes
+            if func.calls and all(call in all_prev_level_nodes for call in func.calls):
+                result.append(func)
+
+        return result
+
 
 @click.command()
 @click.option(
