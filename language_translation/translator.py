@@ -58,37 +58,11 @@ class Translator:
 
     def print_ast(self, node: Node, level: int = 0):
         """Recursively print the AST in a readable format."""
-        node_info = self._format_node_info(node)
+        node_type = str(node.type)
         indent = self._get_indent(level)
-        print(f"{indent}{node_info}")
+        print(f"{indent}{node_type}")
 
         self._print_children(node, level)
-
-    def _format_node_info(self, node: Node) -> str:
-        """Format the node information including type, field name, and text content."""
-        node_info = self._get_node_type(node)
-        node_info = self._add_field_name(node, node_info)
-        node_info = self._add_node_text(node, node_info)
-        return node_info
-
-    def _get_node_type(self, node: Node) -> str:
-        """Get the basic node type."""
-        return f"{node.type}"
-
-    def _add_field_name(self, node: Node, node_info: str) -> str:
-        """Add field name to node info if it exists."""
-        # Check if the node has a field name using the correct method or attribute
-        field_name = getattr(node, "field_name", None)
-        if field_name:
-            return f"{field_name}: {node_info}"
-        return node_info
-
-    def _add_node_text(self, node: Node, node_info: str) -> str:
-        """Add node text content if it exists and is not empty."""
-        text = node.text.decode("utf-8") if node.text else ""
-        if text and len(text.strip()) > 0:
-            return f"{node_info} [{text.strip()}]"
-        return node_info
 
     def _get_indent(self, level: int) -> str:
         """Generate the appropriate indentation for the current level."""
