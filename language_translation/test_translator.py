@@ -201,5 +201,45 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
         self.assertEqual(result, "self.items.append")
 
 
+class TestGetLeafNodes(TestCallGraphAnalyzerBase):
+    """Test cases for the get_leaf_nodes method"""
+
+    def test_get_leaf_nodes(self):
+        """Test identifying functions that don't call other functions"""
+        leaf_nodes = self.analyzer.get_leaf_nodes()
+
+        # Convert to set of names for easier comparison
+        leaf_names = {node.namespace for node in leaf_nodes}
+
+        # In our sample code, format_price and calculate_total are leaf nodes
+        # as they don't call any other functions
+        expected_leaves = {
+            "shopping_cart.ShoppingCart.__init__",
+            "shopping_cart.format_price",
+        }
+
+        self.assertEqual(leaf_names, expected_leaves)
+
+    def test_get_leaf_nodes_empty_code(self):
+        """Test get_leaf_nodes with empty code"""
+        # Create a new analyzer with empty code
+        empty_code = """
+class EmptyClass:
+    pass
+"""
+        temp_file = Path("empty.py")
+        temp_file.write_text(empty_code)
+
+        try:
+            analyzer = CallGraphAnalyzer(language="python", files=[str(temp_file)])
+            analyzer.analyze()
+
+            leaf_nodes = analyzer.get_leaf_nodes()
+            self.assertEqual(len(leaf_nodes), 0)
+        finally:
+            if temp_file.exists():
+                temp_file.unlink()
+
+
 if __name__ == "__main__":
     unittest.main()

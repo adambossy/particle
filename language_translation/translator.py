@@ -265,6 +265,10 @@ class CallGraphAnalyzer:
             ast = self.parse_file(str(file_path))
             self.print_ast(ast)
 
+    def get_leaf_nodes(self) -> List[FunctionInfo]:
+        """Return all FunctionInfo objects that don't call any other functions."""
+        return [info for info in self.functions.values() if not info.calls]
+
 
 @click.command()
 @click.option(
