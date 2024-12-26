@@ -123,6 +123,45 @@ class TestGetSymbolName(TestCallGraphAnalyzerBase):
         self.assertEqual(result, '"${amount:.2f}"')
 
 
+class TestFindIdentifier(TestCallGraphAnalyzerBase):
+    """Test cases for the _find_identifier method"""
+
+    def test_find_identifier_in_function(self):
+        """Test finding identifier in function definition"""
+        function_node = self._get_function_node("shopping_cart.format_price")
+        identifier = self.analyzer._find_identifier(function_node)
+
+        self.assertIsNotNone(identifier)
+        self.assertEqual(identifier.type, "identifier")
+        self.assertEqual(self.analyzer._get_symbol_name(identifier), "format_price")
+
+    def test_find_identifier_in_class(self):
+        """Test finding identifier in class definition"""
+        class_node = self._find_node(self.tree.root_node, "class_definition")
+        identifier = self.analyzer._find_identifier(class_node)
+
+        self.assertIsNotNone(identifier)
+        self.assertEqual(identifier.type, "identifier")
+        self.assertEqual(self.analyzer._get_symbol_name(identifier), "ShoppingCart")
+
+    def test_find_identifier_in_method(self):
+        """Test finding identifier in method definition"""
+        method_node = self._get_function_node("shopping_cart.ShoppingCart.__init__")
+        identifier = self.analyzer._find_identifier(method_node)
+
+        self.assertIsNotNone(identifier)
+        self.assertEqual(identifier.type, "identifier")
+        self.assertEqual(self.analyzer._get_symbol_name(identifier), "__init__")
+
+    def test_find_identifier_in_invalid_node(self):
+        """Test finding identifier in node that shouldn't have one"""
+        # Find a string literal node which shouldn't have an identifier
+        string_node = self._find_node(self.tree.root_node, "string")
+        identifier = self.analyzer._find_identifier(string_node)
+
+        self.assertIsNone(identifier)
+
+
 class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
     """Test cases for the _resolve_attribute_call method"""
 
