@@ -35,6 +35,16 @@ class FunctionInfo:
     file: str  # Path to the file containing this function
 
 
+@dataclass
+class ClassInfo:
+    """Store information about a class"""
+
+    name: str
+    namespace: str  # Full namespace path
+    node: Node  # AST node that was used to create this class
+    file: str  # Path to the file containing this class
+
+
 class CallGraphAnalyzer:
     def __init__(
         self, language: str, project_path: str = None, files: list[str] = None
@@ -61,6 +71,7 @@ class CallGraphAnalyzer:
         self.code = None  # Store the current file's code
         self.imports = {}  # Maps local names to full module paths
         self.current_file = None  # Track the current file being analyzed
+        self.classes: Dict[str, ClassInfo] = {}  # Maps full_name -> ClassInfo
 
     def analyze(self):
         """Analyze either the project directory or specific files."""
@@ -181,6 +192,23 @@ class CallGraphAnalyzer:
     def _process_class_definition(self, node: Node):
         """Process a class definition node."""
         class_name = self._get_symbol_name(self._find_identifier(node))
+
+        # Create full name using current namespace
+        full_name = (
+            f"{self.current_namespace[0]}.{class_name}"
+            if self.current_namespace
+            else class_name
+        )
+
+        # Store class info
+        self.classes[full_name] = ClassInfo(
+            name=class_name,
+            namespace=full_name,
+            node=node,
+            file=self.current_file,
+        )
+
+        # Continue with existing namespace tracking
         self.current_namespace.append(class_name)
         self.current_class = class_name
 
