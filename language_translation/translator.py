@@ -58,6 +58,7 @@ class CallGraphAnalyzer:
         self.current_class = None  # Track current class during traversa
         self.tree = None  # Store the current AST
         self.code = None  # Store the current file's code
+        self.imports = {}  # Maps local names to full module paths
 
     def analyze(self):
         """Analyze either the project directory or specific files."""
@@ -88,7 +89,12 @@ class CallGraphAnalyzer:
 
     def collect_functions(self, node: Node):
         """Build the call graph by traversing the AST."""
-        if node.type == "function_definition":
+        # Add import handling
+        if node.type == "import_statement":
+            self._process_import_statement(node)
+        elif node.type == "import_from_statement":
+            self._process_import_from_statement(node)
+        elif node.type == "function_definition":
             # Skip test functions
             if self._is_test_function(node):
                 print(
@@ -202,6 +208,10 @@ class CallGraphAnalyzer:
         """Handle simple function calls like my_function()"""
         func_name = self._get_symbol_name(func_node)
 
+        # Check if it's a call to an imported module
+        if func_name in self.imports:
+            return f"{self.imports[func_name]}"
+
         # Check if it's a built-in function
         if func_name in dir(builtins):
             return func_name, f"builtins.{func_name}"
@@ -225,13 +235,19 @@ class CallGraphAnalyzer:
         method = func_node.children[2]
 
         obj_name = self._get_symbol_name(obj)
+        obj_tokens = obj_name.split(".")
         method_name = self._get_symbol_name(method)
+
+        # Handle calls on imported modules
+        if obj_name in self.imports:
+            base_module = self.imports[obj_name]
+            return method_name, f"{base_module}.{method_name}"
 
         # Handle self.method() calls
         if obj_name == "self" and self.current_class:
             return method_name, f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
 
-        # Handle self.insrance.method() calls
+        # Handle self.instance.method() calls
         if obj_name.startswith("self") and self.current_class:
             obj_type = self._infer_object_type(obj_name)
             if obj_type:
@@ -548,6 +564,53 @@ class CallGraphAnalyzer:
         # Save the graph
         dot.render(output_file, view=view, cleanup=True)
         print(f"Graph saved as {output_file}.pdf")
+
+    def _process_import_statement(self, node: Node):
+        """Process a simple import statement like 'import foo' or 'import foo as bar'."""
+        for child in node.children:
+            if child.type == "dotted_name":
+                module_path = self._get_symbol_name(child)
+                alias = module_path  # Default alias is the module path itself
+
+                # Check for 'as' alias
+                next_sibling = child.next_sibling
+                if next_sibling and next_sibling.type == "as":
+                    alias_node = next_sibling.next_sibling
+                    if alias_node:
+                        alias = self._get_symbol_name(alias_node)
+
+                self.imports[alias] = module_path
+
+    def _process_import_from_statement(self, node: Node):
+        """Process from-import statements like 'from foo import bar' or 'from foo import bar as baz'."""
+        # Get the module path (after 'from')
+        module_node = None
+        for child in node.children:
+            if child.type == "dotted_name":
+                module_node = child
+                break
+
+        if not module_node:
+            return
+
+        module_path = self._get_symbol_name(module_node)
+
+        # Process imported names
+        for child in node.children:
+            if child.type == "import_statement":
+                for import_child in child.children:
+                    if import_child.type == "dotted_name":
+                        name = self._get_symbol_name(import_child)
+                        alias = name  # Default alias is the name itself
+
+                        # Check for 'as' alias
+                        next_sibling = import_child.next_sibling
+                        if next_sibling and next_sibling.type == "as":
+                            alias_node = next_sibling.next_sibling
+                            if alias_node:
+                                alias = self._get_symbol_name(alias_node)
+
+                        self.imports[alias] = f"{module_path}.{name}"
 
 
 @click.command()
