@@ -364,7 +364,6 @@ class CallGraphAnalyzer:
 
         # Add to output lines and print to stdout
         output_lines.append(line)
-        print(line)
 
         # Recursively process children
         for child in node.children:
@@ -414,9 +413,6 @@ class CallGraphAnalyzer:
                 output_lines.append("  Called by:")
                 for caller in sorted(info.called_by):
                     output_lines.append(f"    ← {caller}")
-
-        # Print to stdout
-        print("\n".join(output_lines))
 
         # Write to log file
         with open(log_path, "w") as f:
