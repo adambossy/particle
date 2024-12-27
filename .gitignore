@@ -8,3 +8,4 @@ swift/swift-syntax
 swift/tree-sitter*
 
 *.pdf
+language_translation/logs/*
