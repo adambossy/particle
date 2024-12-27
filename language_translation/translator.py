@@ -348,38 +348,68 @@ class CallGraphAnalyzer:
         self.tree = self.parser.parse(self.code)  # Store the tree
         return self.tree.root_node
 
-    def print_ast(self, node: Node, level: int = 0):
-        """Recursively print the AST in a readable format."""
+    def print_ast(
+        self,
+        node: Node,
+        level: int = 0,
+        output_file: str = None,
+        output_lines: list = None,
+    ):
+        """Recursively print the AST in a readable format and save to log file."""
+        # Initialize output_lines list on first call
+        if output_lines is None:
+            output_lines = ["Abstract Syntax Tree:"]
+            log_path = self._get_log_path(output_file, "ast")
+            is_root_call = True
+        else:
+            is_root_call = False
+
         node_type = str(node.type)
         indent = self._get_indent(level)
-        print(f"{indent}{node_type}")
-        self._print_children(node, level)
+        line = f"{indent}{node_type}"
+
+        # Add to output lines and print to stdout
+        output_lines.append(line)
+        print(line)
+
+        # Recursively process children
+        for child in node.children:
+            self.print_ast(child, level + 1, output_file, output_lines)
+
+        # Write to log file if this is the root call
+        if is_root_call:
+            log_path = self._get_log_path(output_file, "ast")
+            with open(log_path, "w") as f:
+                f.write("\n".join(output_lines))
+            print(f"\nAST log saved to: {log_path}")
 
     def _get_indent(self, level: int) -> str:
         """Generate the appropriate indentation for the current level."""
         return "  " * level
 
-    def _print_children(self, node: Node, level: int):
-        """Print all children nodes recursively."""
-        for child in node.children:
-            self.print_ast(child, level + 1)
+    def _get_log_path(
+        self, output_file: str = None, log_type: str = "call_graph"
+    ) -> Path:
+        """Generate the log file path with timestamp.
 
-    def _get_log_path(self, output_file: str = None) -> Path:
-        """Generate the log file path with timestamp."""
+        Args:
+            output_file: Base name for the output directory
+            log_type: Type of log file ("call_graph" or "ast")
+        """
         output_file = self._output_file_slug(output_file)
         timestamp = datetime.now().strftime(
             "%Y-%m-%d_%I:%M_%p"
-        )  # e.g. 2024-03-20_02_30_PM
+        )  # e.g. 2024-03-20_02:30_PM
         log_dir = Path("logs") / f"{output_file}_{timestamp}"
         log_dir.mkdir(parents=True, exist_ok=True)
-        return log_dir / "call_graph.log"
+        return log_dir / f"{log_type}.log"
 
     def print_call_graph(self, output_file: str = None):
         """Print the generated call graph to both stdout and a log file."""
-        log_path = self._get_log_path(output_file)
+        log_path = self._get_log_path(output_file, "call_graph")
 
         # Create a list to store the output lines
-        output_lines = ["\nCall Graph Analysis:"]
+        output_lines = ["Call Graph Analysis:"]
         for full_name, info in self.functions.items():
             output_lines.append(f"\nFunction: {full_name}")
             if info.calls:
