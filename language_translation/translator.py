@@ -231,6 +231,15 @@ class CallGraphAnalyzer:
         if obj_name == "self" and self.current_class:
             return method_name, f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
 
+        # Handle self.insrance.method() calls
+        if obj_name.startswith("self") and self.current_class:
+            obj_type = self._infer_object_type(obj_name)
+            if obj_type:
+                return method_name, f"{obj_type}.{method_name}"
+            else:
+                # Default to builtins
+                return method_name, f"builtins.{method_name}"
+
         # Handle class.static_method() calls
         if self.current_class and obj_name == self.current_class:
             return method_name, f"{'.'.join(self.current_namespace[:-1])}.{method_name}"

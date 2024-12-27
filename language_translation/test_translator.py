@@ -203,7 +203,7 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
 
         result = self.analyzer._resolve_attribute_call(attribute_node)
         self.assertEqual(result[0], "append")
-        self.assertEqual(result[1], "self.items.append")
+        self.assertEqual(result[1], "builtins.append")
 
 
 class TestGetLeafNodes(TestCallGraphAnalyzerBase):
@@ -219,7 +219,7 @@ class TestGetLeafNodes(TestCallGraphAnalyzerBase):
         # In our sample code, format_price and calculate_total are leaf nodes
         # as they don't call any other functions
         expected_leaves = {
-            "self.items.append",
+            "builtins.append",
             "builtins.sum",
             "shopping_cart.ShoppingCart.__init__",
             "shopping_cart.format_price",
@@ -258,7 +258,7 @@ class TestGetNodesAtLevel(TestCallGraphAnalyzerBase):
 
         # Level 0 should match leaf nodes
         expected_nodes = {
-            "self.items.append",
+            "builtins.append",
             "builtins.sum",
             "shopping_cart.ShoppingCart.__init__",
             "shopping_cart.format_price",
