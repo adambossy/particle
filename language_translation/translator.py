@@ -54,7 +54,7 @@ class CallGraphAnalyzer:
         self.current_namespace: List[str] = (
             []
         )  # Track current namespace during traversal
-        self.current_class = None  # Track current class during traversal
+        self.current_class = None  # Track current class during traversa
         self.tree = None  # Store the current AST
         self.code = None  # Store the current file's code
 
@@ -447,34 +447,42 @@ class CallGraphAnalyzer:
 
         # Helper function to add nodes and edges recursively
         def add_node_and_edges(namespace: str, processed: Set[str]):
-            # if namespace in processed:
-            #     return
+            stack = [namespace]
 
-            func_info = self.functions.get(namespace)
-            if not func_info:
-                return
+            print(f"Recursing with namespace: {namespace}")
 
-            # Add the current node
-            node_label = f"{func_info.name}\n({'.'.join(namespace.split('.')[:-1])})"
-            dot.node(namespace, node_label)
-            processed.add(namespace)
+            while stack:
+                current_namespace = stack.pop()
 
-            # Add edges for each function call
-            for called_func in func_info.calls:
-                # Add the called function node if it hasn't been processed
-                if called_func not in processed:
-                    called_info = self.functions.get(called_func)
-                    # print(f"called_info: {called_info}")
-                    if called_info:
-                        called_label = f"{called_info.name}\n({'.'.join(called_func.split('.')[:-1])})"
-                        dot.node(called_func, called_label)
-                        processed.add(called_func)
+                print(f"Iterating with namespace: {current_namespace}")
 
-                # Add the edge
-                dot.edge(namespace, called_func)
+                func_info = self.functions.get(current_namespace)
+                if not func_info:
+                    continue
 
-                # Recursively process the called function
-                add_node_and_edges(called_func, processed)
+                # Add the current node
+                node_label = (
+                    f"{func_info.name}\n({'.'.join(current_namespace.split('.')[:-1])})"
+                )
+                dot.node(current_namespace, node_label)
+                processed.add(current_namespace)
+
+                # Add edges for each function call
+                for called_func in func_info.calls:
+                    # Add the called function node if it hasn't been processed
+                    if called_func not in processed:
+                        called_info = self.functions.get(called_func)
+                        if called_info:
+                            called_label = f"{called_info.name}\n({'.'.join(called_func.split('.')[:-1])})"
+                            dot.node(called_func, called_label)
+
+                    # Add the edge
+                    dot.edge(current_namespace, called_func)
+
+                    # Add the called function to the stack for further processing
+                    stack.append(called_func)
+
+                processed.add(current_namespace)
 
         # Start with root nodes (functions that aren't called by others)
         root_nodes = {
@@ -490,12 +498,8 @@ class CallGraphAnalyzer:
         dot.attr("edge", arrowsize="0.5")
 
         # Save the graph
-        try:
-            dot.render(output_file, view=view, cleanup=True)
-            print(f"Graph saved as {output_file}.pdf")
-        except Exception as e:
-            print(f"Failed to generate graph: {e}")
-            print("Make sure Graphviz is installed on your system.")
+        dot.render(output_file, view=view, cleanup=True)
+        print(f"Graph saved as {output_file}.pdf")
 
 
 @click.command()
