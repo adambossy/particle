@@ -1,5 +1,6 @@
 import builtins
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
 
@@ -363,19 +364,41 @@ class CallGraphAnalyzer:
         for child in node.children:
             self.print_ast(child, level + 1)
 
-    def print_call_graph(self):
-        """Print the generated call graph."""
-        print("\nCall Graph Analysis:")
+    def _get_log_path(self, output_file: str = None) -> Path:
+        """Generate the log file path with timestamp."""
+        output_file = self._output_file_slug(output_file)
+        timestamp = datetime.now().strftime(
+            "%Y-%m-%d_%I:%M_%p"
+        )  # e.g. 2024-03-20_02_30_PM
+        log_dir = Path("logs") / f"{output_file}_{timestamp}"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        return log_dir / "call_graph.log"
+
+    def print_call_graph(self, output_file: str = None):
+        """Print the generated call graph to both stdout and a log file."""
+        log_path = self._get_log_path(output_file)
+
+        # Create a list to store the output lines
+        output_lines = ["\nCall Graph Analysis:"]
         for full_name, info in self.functions.items():
-            print(f"\nFunction: {full_name}")
+            output_lines.append(f"\nFunction: {full_name}")
             if info.calls:
-                print("  Calls:")
+                output_lines.append("  Calls:")
                 for call in sorted(info.calls):
-                    print(f"    → {call}")
+                    output_lines.append(f"    → {call}")
             if info.called_by:
-                print("  Called by:")
+                output_lines.append("  Called by:")
                 for caller in sorted(info.called_by):
-                    print(f"    ← {caller}")
+                    output_lines.append(f"    ← {caller}")
+
+        # Print to stdout
+        print("\n".join(output_lines))
+
+        # Write to log file
+        with open(log_path, "w") as f:
+            f.write("\n".join(output_lines))
+
+        print(f"\nCall graph log saved to: {log_path}")
 
     def analyze_project(self):
         """Analyze all files in the project directory."""
@@ -423,13 +446,7 @@ class CallGraphAnalyzer:
 
         return result
 
-    def visualize_graph(self, output_file: str = None, view: bool = True):
-        """Create a visual representation of the call graph using graphviz.
-
-        Args:
-            output_file: Name of the output file (without extension)
-            view: Whether to automatically open the generated graph
-        """
+    def _output_file_slug(self, output_file: str = None) -> str:
         # Determine the output file name based on project_path or files
         if not output_file:
             if self.project_path:
@@ -437,6 +454,17 @@ class CallGraphAnalyzer:
             elif self.files:
                 file_names = [f.stem[:20] for f in self.files]
                 output_file = "_".join(file_names)
+
+        return output_file
+
+    def visualize_graph(self, output_file: str = None, view: bool = True):
+        """Create a visual representation of the call graph using graphviz.
+
+        Args:
+            output_file: Name of the output file (without extension)
+            view: Whether to automatically open the generated graph
+        """
+        output_file = self._output_file_slug(output_file)
 
         # Create a new directed graph
         dot = Digraph(comment="Call Graph")
