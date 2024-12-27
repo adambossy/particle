@@ -71,16 +71,37 @@ class CallGraphAnalyzer:
         """Analyze specific files and build call graph."""
         self.functions.clear()
         for file_path in self.files:
+            # Use the helper function to check if the file is a test file
+            if self._is_test_file(file_path):
+                print(f"Skipping test file: {file_path}")
+                continue
+
             print(f"\nAnalyzing file: {file_path}")
             self.current_namespace = [Path(file_path).stem]  # Start with module name
             ast = self.parse_file(str(file_path))
             self.collect_functions(ast)
 
+    def _is_test_file(self, file_path: Path) -> bool:
+        """Determine if a file is a test file based on its name."""
+        return file_path.name.startswith("test_") or file_path.name.endswith("_test.py")
+
     def collect_functions(self, node: Node):
         """Build the call graph by traversing the AST."""
         if node.type == "function_definition":
+            # Skip test functions
+            if self._is_test_function(node):
+                print(
+                    f"Skipping test function: {self._get_symbol_name(self._find_identifier(node))}"
+                )
+                return
             self._process_function_definition(node)
         elif node.type == "class_definition":
+            # Skip test classes
+            if self._is_test_class(node):
+                print(
+                    f"Skipping test class: {self._get_symbol_name(self._find_identifier(node))}"
+                )
+                return
             self._process_class_definition(node)
         elif node.type == "call":
             self._process_function_call(node)
@@ -93,6 +114,22 @@ class CallGraphAnalyzer:
             self.current_namespace.pop()
             if node.type == "class_definition":
                 self.current_class = None
+
+    def _is_test_function(self, node: Node) -> bool:
+        """Determine if a function is a test function based on its name."""
+        identifier_node = self._find_identifier(node)
+        if identifier_node:
+            func_name = self._get_symbol_name(identifier_node)
+            return func_name.startswith("test_")
+        return False
+
+    def _is_test_class(self, node: Node) -> bool:
+        """Determine if a class is a test class based on its name."""
+        identifier_node = self._find_identifier(node)
+        if identifier_node:
+            class_name = self._get_symbol_name(identifier_node)
+            return class_name.startswith("Test")
+        return False
 
     def _process_function_definition(self, node: Node):
         """Process a function definition node."""
