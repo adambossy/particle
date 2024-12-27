@@ -297,21 +297,6 @@ class CallGraphAnalyzer:
             return self._resolve_attribute_call(func_node.children[-1])
         return None, None
 
-    def _is_builtin_type(self, type_name: str) -> bool:
-        """Check if a type is a Python built-in type."""
-        return type_name.lower() in {
-            "str",
-            "int",
-            "float",
-            "list",
-            "dict",
-            "set",
-            "tuple",
-            "bool",
-            "bytes",
-            "object",
-        }
-
     def _find_identifier(self, node: Node) -> Node:
         """Find the identifier node in a definition."""
         for child in node.children:
