@@ -32,6 +32,7 @@ class FunctionInfo:
     start_point: tuple  # Line, column where function starts
     end_point: tuple  # Line, column where function ends
     node: Node  # AST node that was used to create this function
+    file: str  # Path to the file containing this function
 
 
 class CallGraphAnalyzer:
@@ -59,6 +60,7 @@ class CallGraphAnalyzer:
         self.tree = None  # Store the current AST
         self.code = None  # Store the current file's code
         self.imports = {}  # Maps local names to full module paths
+        self.current_file = None  # Track the current file being analyzed
 
     def analyze(self):
         """Analyze either the project directory or specific files."""
@@ -144,15 +146,24 @@ class CallGraphAnalyzer:
         self.current_namespace.append(func_name)
 
         full_name = ".".join(self.current_namespace)
-        function_info = self._get_or_create_function_info(func_name, full_name, node)
+        function_info = self._get_or_create_function_info(
+            func_name, full_name, node, file=self.current_file
+        )
         function_info.start_point = node.start_point
         function_info.end_point = node.end_point
 
     def _get_or_create_function_info(
-        self, func_name: str, full_name: str, node: Node
+        self,
+        func_name: str,
+        full_name: str,
+        node: Node,
+        file: str,
     ) -> FunctionInfo:
-        if full_name in self.functions:
-            return self.functions[full_name]
+        function_info = self.functions.get(full_name)
+        if function_info:
+            if function_info.file == "UNKNOWN":
+                function_info.file = file
+            return function_info
 
         self.functions[full_name] = FunctionInfo(
             name=func_name,
@@ -162,6 +173,7 @@ class CallGraphAnalyzer:
             start_point=node.start_point,
             end_point=node.end_point,
             node=node,
+            file=file,
         )
 
         return self.functions[full_name]
@@ -184,7 +196,12 @@ class CallGraphAnalyzer:
         callee, full_callee = self._resolve_call(node)
         if callee:
             self.functions[caller_namespace].calls.add(full_callee)
-            callee_info = self._get_or_create_function_info(callee, full_callee, node)
+            callee_info = self._get_or_create_function_info(
+                callee,
+                full_callee,
+                node,
+                file="UNKNOWN",
+            )
             callee_info.called_by.add(caller_namespace)
 
     def _resolve_call(self, node: Node) -> tuple[str, str]:
@@ -353,6 +370,7 @@ class CallGraphAnalyzer:
 
     def parse_file(self, file_path: str) -> Node:
         """Parse a single file and return its AST."""
+        self.current_file = file_path  # Set current file
         with open(file_path, "rb") as f:
             self.code = f.read()  # Store code for _get_symbol_name
         self.tree = self.parser.parse(self.code)  # Store the tree
@@ -420,7 +438,9 @@ class CallGraphAnalyzer:
         # Create a list to store the output lines
         output_lines = ["Call Graph Analysis:"]
         for full_name, info in self.functions.items():
+            # Include the file name in the output
             output_lines.append(f"\nFunction: {full_name}")
+            output_lines.append(f"  File: {info.file}")
             if info.calls:
                 output_lines.append("  Calls:")
                 for call in sorted(info.calls):
