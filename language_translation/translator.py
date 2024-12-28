@@ -32,6 +32,7 @@ class TranslatorNode:
     class_deps: Set[str] = field(default_factory=set)
     var_deps: Set[str] = field(default_factory=set)
     source_code: str = ""  # Add source code field
+    is_test: bool = False  # Add is_test field
 
     def key(self) -> str:
         """Return a unique key for the node, combining namespace and name."""
@@ -123,20 +124,8 @@ class CallGraphAnalyzer:
         elif node.type == "import_from_statement":
             self._process_import_from_statement(node)
         elif node.type == "function_definition":
-            # Skip test functions
-            if self._is_test_function(node):
-                print(
-                    f"Skipping test function: {self._get_symbol_name(self._find_identifier(node))}"
-                )
-                return
             self._process_function_definition(node)
         elif node.type == "class_definition":
-            # Skip test classes
-            if self._is_test_class(node):
-                print(
-                    f"Skipping test class: {self._get_symbol_name(self._find_identifier(node))}"
-                )
-                return
             self._process_class_definition(node)
         elif node.type == "call":
             self._process_function_call(node)
@@ -204,6 +193,7 @@ class CallGraphAnalyzer:
             node=node,
             file=file,
             source_code=source_code,  # Store the source code
+            is_test=self._is_test_function(node),
         )
 
         return self.functions[full_name]
@@ -225,6 +215,7 @@ class CallGraphAnalyzer:
             namespace=full_name,
             node=node,
             file=self.current_file,
+            is_test=self._is_test_class(node),
         )
 
         # Continue with existing namespace tracking
