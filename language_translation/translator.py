@@ -21,12 +21,26 @@ LANGUAGES: Dict[str, Language] = {
 LANGUAGE_EXTENSIONS = {"python": ".py", "swift": ".swift"}
 
 
+def get_function_key(func_name: str, namespace: str | None, file_path: str) -> str:
+    module_name = get_module_name(file_path)
+    tokens = []
+    if module_name != "UNKNOWN":
+        tokens.append(module_name)
+    if namespace:
+        tokens.append(namespace)
+    tokens.append(func_name)
+    return ".".join(tokens)
+
+
+def get_module_name(file_path: str) -> str:
+    return Path(file_path).stem
+
+
 @dataclass
 class TranslatorNode:
     """Base class for storing information about code entities like functions and classes"""
 
     name: str
-    namespace: str  # Full namespace path
     node: Node  # AST node that was used to create this entity
     file: str  # Path to the file containing this entity
     class_deps: Set[str] = field(default_factory=set)
@@ -34,9 +48,13 @@ class TranslatorNode:
     source_code: str = ""  # Add source code field
     is_test: bool = False  # Add is_test field
 
-    def key(self) -> str:
-        """Return a unique key for the node, combining namespace and name."""
-        return f"{self.namespace}.{self.name}"
+    def module_name(self) -> str:
+        """Return the module name for the node."""
+        return get_module_name(self.file)
+
+    def __str__(self) -> int:
+        """Return the hash of the node, using its unique key."""
+        return self.key()
 
 
 @dataclass
@@ -44,14 +62,23 @@ class FunctionNode(TranslatorNode):
     """Store information about a function/method"""
 
     # The default values here are an ugly hack to get the parent dataclasses' default values to work
+    namespace: str | None = None  # Full namespace path
     start_point: tuple = (-1, -1)  # Line, column where function starts
     end_point: tuple = (-1, -1)  # Line, column where function ends
-    calls: Set[str] = field(
+    calls: Set["FunctionNode"] = field(
         default_factory=set
     )  # Set of fully qualified function names this function calls
     called_by: Set[str] = field(
         default_factory=set
     )  # Set of fully qualified function names that call this function
+
+    def key(self) -> str:
+        """Return a unique key for the node, combining namespace and name."""
+        return get_function_key(self.name, self.namespace, self.file)
+
+    def __hash__(self) -> int:
+        """Return the hash of the node, using its unique key."""
+        return hash(self.key())
 
 
 @dataclass
@@ -59,6 +86,10 @@ class ClassNode(TranslatorNode):
     """Store information about a class"""
 
     # No additional fields needed for now, but can be extended in the future
+
+    def key(self) -> str:
+        """Return a unique key for the node, combining namespace and name."""
+        return f"{self.module_name()}.{self.name}"
 
 
 class CallGraphAnalyzer:
@@ -108,7 +139,6 @@ class CallGraphAnalyzer:
                 continue
 
             print(f"\nAnalyzing file: {file_path}")
-            self.current_namespace = [Path(file_path).stem]  # Start with module name
             ast = self.parse_file(str(file_path))
             self.collect_functions(ast)
 
@@ -160,32 +190,63 @@ class CallGraphAnalyzer:
         func_name = self._get_symbol_name(self._find_identifier(node))
         self.current_namespace.append(func_name)
 
-        full_name = ".".join(self.current_namespace)
+        # FIXME (adam) This is a hack to get the namespace to work for now
+        namespace = ".".join(self.current_namespace[:-1])
         function_info = self._get_or_create_function_info(
-            func_name, full_name, node, file=self.current_file
+            node, func_name, namespace=namespace, file=self.current_file
         )
         function_info.start_point = node.start_point
         function_info.end_point = node.end_point
 
+    def _try_resolve_call_with_function_info(
+        self, func_name: str, namespace: str | None
+    ) -> FunctionNode | None:
+        partial_key = (namespace or "") + "." + func_name
+        for function_key in self.functions.keys():
+            if function_key.endswith(partial_key):
+                return self.functions[function_key]
+        return None
+
     def _get_or_create_function_info(
         self,
-        func_name: str,
-        full_name: str,
         node: Node,
+        func_name: str,
+        namespace: str = None,
         file: str = "UNKNOWN",
     ) -> FunctionNode:
-        function_info = self.functions.get(full_name)
+        function_info = self._try_resolve_call_with_function_info(func_name, namespace)
         if function_info:
-            if function_info.file == "UNKNOWN" and file != "UNKNOWN":
+            if (
+                file == "UNKNOWN"
+            ):  # This is shorthand for functions calls versus function definitions
+                # If we've found the full definition pertaining to that call, use it
+                return function_info
+            else:
+                # Otherwise, we have a function definition and we want to reuse its function_info while amending it
+                old_function_key = function_info.key()
                 function_info.file = file
-            return function_info
+                function_info.start_point = node.start_point
+                function_info.end_point = node.end_point
+                function_info.source_code = self.code[
+                    node.start_byte : node.end_byte
+                ].decode("utf-8")
+                function_info.is_test = self._is_test_function(node)
+
+                # Remove the old function info
+                del self.functions[old_function_key]
+
+                # Add the new function info
+                self.functions[function_info.key()] = function_info
+
+                return function_info
 
         # Capture the source code using the node's byte range
         source_code = self.code[node.start_byte : node.end_byte].decode("utf-8")
 
-        self.functions[full_name] = FunctionNode(
+        function_key = get_function_key(func_name, namespace, file)
+        self.functions[function_key] = FunctionNode(
             name=func_name,
-            namespace=full_name,
+            namespace=namespace,
             calls=set(),
             called_by=set(),
             start_point=node.start_point,
@@ -196,27 +257,18 @@ class CallGraphAnalyzer:
             is_test=self._is_test_function(node),
         )
 
-        return self.functions[full_name]
+        return self.functions[function_key]
 
     def _process_class_definition(self, node: Node):
         """Process a class definition node."""
         class_name = self._get_symbol_name(self._find_identifier(node))
-
-        # Create full name using current namespace
-        full_name = (
-            f"{self.current_namespace[0]}.{class_name}"
-            if self.current_namespace
-            else class_name
-        )
-
-        # Store class info
-        self.classes[full_name] = ClassNode(
+        class_info = ClassNode(
             name=class_name,
-            namespace=full_name,
             node=node,
             file=self.current_file,
             is_test=self._is_test_class(node),
         )
+        self.classes[class_info.key()] = class_info
 
         # Continue with existing namespace tracking
         self.current_namespace.append(class_name)
@@ -227,26 +279,26 @@ class CallGraphAnalyzer:
         if not self.current_namespace:
             return  # Skip if we're not in any namespace
 
-        caller_namespace = ".".join(self.current_namespace)
-        if caller_namespace not in self.functions:
+        current_module = get_module_name(self.current_file)
+        caller_key = ".".join([current_module] + self.current_namespace)
+        if caller_key not in self.functions:
             return  # Skip if we're not in a function
 
         callee_info = self._resolve_call(node)
         if isinstance(callee_info, FunctionNode):
-            self.functions[caller_namespace].calls.add(callee_info.namespace)
-            callee_info.called_by.add(caller_namespace)
+            self.functions[caller_key].calls.add(callee_info)
+            callee_info.called_by.add(caller_key)
         elif isinstance(callee_info, ClassNode):
-            self.functions[caller_namespace].class_deps.add(callee_info.namespace)
+            self.functions[caller_key].class_deps.add(callee_info.key())
 
             # Add the __init__ function as well for some redundancy, who knows if we'll need it later
             function_info = self._get_or_create_function_info(
-                "__init__",
-                callee_info.namespace + ".__init__",
                 callee_info.node,
-                callee_info.file,
+                "__init__",
+                file=callee_info.file,
             )
-            self.functions[caller_namespace].calls.add(function_info.namespace)
-            function_info.called_by.add(caller_namespace)
+            self.functions[caller_key].calls.add(function_info)
+            function_info.called_by.add(caller_key)
 
     def _resolve_call(self, node: Node) -> FunctionNode:
         """Resolve the full namespace of a function call."""
@@ -271,15 +323,18 @@ class CallGraphAnalyzer:
 
         # Check if it's a call to an imported module
         if func_name in self.imports:
-            full_name = f"{self.imports[func_name]}"
-            return self._get_or_create_function_info(func_name, full_name, func_node)
+            namespace = f"{self.imports[func_name]}"
+            return self._get_or_create_function_info(
+                func_node, func_name, namespace=namespace
+            )
 
         # Check if it's a built-in function
         if func_name in dir(builtins):
             return self._get_or_create_function_info(
-                func_name, f"builtins.{func_name}", func_node
+                func_node, func_name, file="builtins"
             )
 
+        # FIXME (adam) Lookup class names in self.classes
         # Imperfect way of grabbing the class name for class instantiations
         candidate_class_names = [
             node_name.split(".")[-2]
@@ -291,27 +346,25 @@ class CallGraphAnalyzer:
             return class_info
 
         # Handle module.function() calls
-        full_name = f"{self.current_namespace[0]}.{func_name}"
-        return self._get_or_create_function_info(func_name, full_name, func_node)
+        return self._get_or_create_function_info(func_node, func_name)
 
     def _get_or_create_class_info(
         self, class_name: str, node: Node, file: str = "UNKNOWN"
     ) -> ClassNode:
         """Get or create a ClassInfo object."""
-        full_name = f"{self.current_namespace[0]}.{class_name}"
-        class_info = self.classes.get(full_name)
+        class_key = f"{self.current_namespace[0]}.{class_name}"
+        class_info = self.classes.get(class_key)
         if not class_info:
             # Capture the source code using the node's byte range
             source_code = self.code[node.start_byte : node.end_byte].decode("utf-8")
 
             class_info = ClassNode(
                 name=class_name,
-                namespace=full_name,
                 node=node,
                 file=file,
                 source_code=source_code,  # Store the source code
             )
-            self.classes[full_name] = class_info
+            self.classes[class_key] = class_info
         return class_info
 
     def _resolve_attribute_call(self, func_node: Node) -> FunctionNode:
@@ -326,48 +379,52 @@ class CallGraphAnalyzer:
         # Handle calls on imported modules
         if obj_name in self.imports:
             base_module = self.imports[obj_name]
-            full_name = f"{base_module}.{method_name}"
-            return self._get_or_create_function_info(method_name, full_name, func_node)
+            # FIXME (adam) We're overloading file here with a module name
+            return self._get_or_create_function_info(
+                func_node, method_name, file=base_module
+            )
 
         # Handle self.method() calls
         if obj_name == "self" and self.current_class:
-            full_name = f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
-            return self._get_or_create_function_info(method_name, full_name, func_node)
+            namespace = f"{'.'.join(self.current_namespace[:-1])}"
+            return self._get_or_create_function_info(func_node, method_name, namespace)
 
         # Handle self.instance.method() calls
         if obj_name.startswith("self") and self.current_class:
             obj_type = self._infer_object_type(obj_name)
             if obj_type:
-                full_name = f"{obj_type}.{method_name}"
                 return self._get_or_create_function_info(
-                    method_name, full_name, func_node
+                    func_node, method_name, namespace=obj_type
                 )
             else:
-                # Default to builtins
-                full_name = f"builtins.{method_name}"
-                return self._get_or_create_function_info(
-                    method_name, full_name, func_node
-                )
+                # NOTE (adam) Default to unknown function that may later be resolved to something.
+                # This isn't the ideal solution but should do for now
+                return self._get_or_create_function_info(func_node, method_name)
 
         # Handle class.static_method() calls
         if self.current_class and obj_name == self.current_class:
-            full_name = f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
-            return self._get_or_create_function_info(method_name, full_name, func_node)
+            namespace = f"{'.'.join(self.current_namespace[:-1])}"
+            return self._get_or_create_function_info(
+                func_node, method_name, namespace=namespace
+            )
 
         # Handle module.function() calls
         if obj_name in self.current_namespace:
-            full_name = f"{obj_name}.{method_name}"
-            return self._get_or_create_function_info(method_name, full_name, func_node)
+            return self._get_or_create_function_info(
+                func_node, method_name, namespace=obj_name
+            )
 
         # Handle instance.method() calls by trying to determine the object's type
         obj_type = self._infer_object_type(obj_name)
         if obj_type:
-            full_name = f"{obj_type}.{method_name}"
-            return self._get_or_create_function_info(method_name, full_name, func_node)
+            return self._get_or_create_function_info(
+                func_node, method_name, namespace=obj_type
+            )
 
         # Fallback: return just obj_name.method_name
-        full_name = f"{obj_name}.{method_name}"
-        return self._get_or_create_function_info(method_name, full_name, func_node)
+        return self._get_or_create_function_info(
+            func_node, method_name, namespace=obj_name
+        )
 
     def _infer_object_type(self, obj_name: str) -> str:
         """Attempt to infer the type of an object from the current context.
@@ -380,25 +437,28 @@ class CallGraphAnalyzer:
         Returns the fully qualified class name if found, None otherwise.
         """
         # Look for assignment in the current function's scope
-        if self.current_namespace:
-            current_func = self.functions.get(".".join(self.current_namespace))
-            if current_func and current_func.node:
-                # Search for assignment statements
-                assignments = self._find_nodes(current_func.node, "assignment")
-                for assign in assignments:
-                    # Check if left side matches our object name
-                    left_side = assign.children[0]
-                    if (
-                        left_side.type == "identifier"
-                        and self._get_symbol_name(left_side) == obj_name
-                    ):
-                        # Look at right side for class instantiation
-                        right_side = assign.children[2]
-                        if right_side.type == "call":
-                            class_name = self._get_symbol_name(right_side.children[0])
-                            # Check if it's in current namespace
-                            current_module = self.current_namespace[0]
-                            return f"{current_module}.{class_name}"
+        function_key = get_function_key(
+            self.current_namespace[0],
+            ".".join(self.current_namespace[:-1]) or None,
+            self.current_file,
+        )
+        current_func = self.functions.get(function_key)
+        if current_func and current_func.node:
+            # Search for assignment statements
+            assignments = self._find_nodes(current_func.node, "assignment")
+            for assign in assignments:
+                # Check if left side matches our object name
+                left_side = assign.children[0]
+                if (
+                    left_side.type == "identifier"
+                    and self._get_symbol_name(left_side) == obj_name
+                ):
+                    # Look at right side for class instantiation
+                    right_side = assign.children[2]
+                    if right_side.type == "call":
+                        class_name = self._get_symbol_name(right_side.children[0])
+                        # Check if it's in current namespace
+                        return class_name
 
         return None
 
@@ -523,8 +583,8 @@ class CallGraphAnalyzer:
             output_lines.append(f"  File: {info.file}")
             if info.calls:
                 output_lines.append("  Calls:")
-                for call in sorted(info.calls):
-                    output_lines.append(f"    → {call}")
+                for call in sorted(info.calls, key=lambda x: x.key()):
+                    output_lines.append(f"    → {call.key()}")
             if info.called_by:
                 output_lines.append("  Called by:")
                 for caller in sorted(info.called_by):
@@ -566,18 +626,20 @@ class CallGraphAnalyzer:
         all_prev_level_nodes = set()
         for level in range(level):
             all_prev_level_nodes.update(
-                {node.namespace for node in self.get_nodes_at_level(level)}
+                {node.key() for node in self.get_nodes_at_level(level)}
             )
 
         # For other levels, find nodes that only call nodes from previous levels
         result = []
         for func in self.functions.values():
             # Skip if already found in previous levels
-            if any(func.namespace in nodes for nodes in [all_prev_level_nodes]):
+            if any(func.key() in nodes for nodes in [all_prev_level_nodes]):
                 continue
 
             # Check if all calls are to previous level nodes
-            if func.calls and all(call in all_prev_level_nodes for call in func.calls):
+            if func.calls and all(
+                call.key() in all_prev_level_nodes for call in func.calls
+            ):
                 result.append(func)
 
         return result
@@ -632,17 +694,17 @@ class CallGraphAnalyzer:
                 # Add edges for each function call
                 for called_func in func_info.calls:
                     # Add the called function node if it hasn't been processed
-                    if called_func not in processed:
-                        called_info = self.functions.get(called_func)
+                    if called_func.key() not in processed:
+                        called_info = self.functions.get(called_func.key())
                         if called_info:
-                            called_label = f"name={called_info.name}\nnamespace={called_func}\nfile={called_info.file}"
-                            dot.node(called_func, called_label)
+                            called_label = f"name={called_info.name}\nnamespace={called_info.namespace}\nfile={called_info.file}"
+                            dot.node(called_func.key(), called_label)
 
                     # Add the edge
-                    dot.edge(current_namespace, called_func)
+                    dot.edge(current_namespace, called_func.key())
 
                     # Add the called function to the stack for further processing
-                    stack.append(called_func)
+                    stack.append(called_func.key())
 
                 processed.add(current_namespace)
 

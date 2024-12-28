@@ -167,7 +167,7 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
 
     def setUp(self):
         """Set up the namespace context for each test"""
-        self.analyzer.current_namespace = ["shopping_cart", "ShoppingCart", "add_item"]
+        self.analyzer.current_namespace = ["ShoppingCart", "add_item"]
         self.analyzer.current_class = "ShoppingCart"
 
     def test_resolve_self_method_call(self):
@@ -178,9 +178,11 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
         attribute_node = call_nodes[1].children[0]  # The self.calculate_total part
 
         function_info = self.analyzer._resolve_attribute_call(attribute_node)
+        self.assertEqual(function_info.module_name(), "shopping_cart")
+        self.assertEqual(function_info.namespace, "ShoppingCart")
         self.assertEqual(function_info.name, "calculate_total")
         self.assertEqual(
-            function_info.namespace, "shopping_cart.ShoppingCart.calculate_total"
+            function_info.key(), "shopping_cart.ShoppingCart.calculate_total"
         )
 
     def test_resolve_instance_method_call(self):
@@ -190,11 +192,13 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
         call_nodes = self._find_nodes(process_func, "call")
         attribute_node = call_nodes[1].children[0]  # The cart.add_item part
 
-        self.analyzer.current_namespace = ["shopping_cart", "process_shopping_cart"]
+        self.analyzer.current_namespace = ["process_shopping_cart"]
 
         function_info = self.analyzer._resolve_attribute_call(attribute_node)
+        self.assertEqual(function_info.module_name(), "shopping_cart")
+        self.assertEqual(function_info.namespace, "ShoppingCart")
         self.assertEqual(function_info.name, "add_item")
-        self.assertEqual(function_info.namespace, "shopping_cart.ShoppingCart.add_item")
+        self.assertEqual(function_info.key(), "shopping_cart.ShoppingCart.add_item")
 
     def test_resolve_builtin_method_call(self):
         """Test resolving a method call on a built-in type (self.items.append())"""
@@ -204,8 +208,10 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
         attribute_node = append_call[0].children[0]  # The self.items.append part
 
         function_info = self.analyzer._resolve_attribute_call(attribute_node)
+        self.assertEqual(function_info.module_name(), "UNKNOWN")
+        self.assertIsNone(function_info.namespace)
         self.assertEqual(function_info.name, "append")
-        self.assertEqual(function_info.namespace, "builtins.append")
+        self.assertEqual(function_info.key(), "append")
 
 
 class TestGetLeafNodes(TestCallGraphAnalyzerBase):
@@ -216,12 +222,12 @@ class TestGetLeafNodes(TestCallGraphAnalyzerBase):
         leaf_nodes = self.analyzer.get_leaf_nodes()
 
         # Convert to set of names for easier comparison
-        leaf_names = {node.namespace for node in leaf_nodes}
+        leaf_names = {node.key() for node in leaf_nodes}
 
         # In our sample code, format_price and calculate_total are leaf nodes
         # as they don't call any other functions
         expected_leaves = {
-            "builtins.append",
+            "append",
             "builtins.sum",
             "shopping_cart.ShoppingCart.__init__",
             "shopping_cart.format_price",
@@ -256,11 +262,11 @@ class TestGetNodesAtLevel(TestCallGraphAnalyzerBase):
     def test_get_nodes_level_0(self):
         """Test getting leaf nodes (level 0)"""
         nodes = self.analyzer.get_nodes_at_level(0)
-        node_names = {node.namespace for node in nodes}
+        node_names = {node.key() for node in nodes}
 
         # Level 0 should match leaf nodes
         expected_nodes = {
-            "builtins.append",
+            "append",
             "builtins.sum",
             "shopping_cart.ShoppingCart.__init__",
             "shopping_cart.format_price",
@@ -271,7 +277,7 @@ class TestGetNodesAtLevel(TestCallGraphAnalyzerBase):
     def test_get_nodes_level_1(self):
         """Test getting nodes that only call leaf nodes (level 1)"""
         nodes = self.analyzer.get_nodes_at_level(1)
-        node_names = {node.namespace for node in nodes}
+        node_names = {node.key() for node in nodes}
 
         # calculate_total calls format_price (level 0)
         expected_nodes = {
@@ -283,7 +289,7 @@ class TestGetNodesAtLevel(TestCallGraphAnalyzerBase):
     def test_get_nodes_level_2(self):
         """Test getting nodes that call level 1 nodes (level 2)"""
         nodes = self.analyzer.get_nodes_at_level(2)
-        node_names = {node.namespace for node in nodes}
+        node_names = {node.key() for node in nodes}
 
         # add_item calls calculate_total (level 1)
         expected_nodes = {
@@ -295,7 +301,7 @@ class TestGetNodesAtLevel(TestCallGraphAnalyzerBase):
     def test_get_nodes_level_3(self):
         """Test getting nodes that call level 2 nodes (level 3)"""
         nodes = self.analyzer.get_nodes_at_level(3)
-        node_names = {node.namespace for node in nodes}
+        node_names = {node.key() for node in nodes}
 
         # process_shopping_cart calls add_item (level 2)
         expected_nodes = {
