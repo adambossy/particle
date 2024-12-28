@@ -172,7 +172,7 @@ class CallGraphAnalyzer:
     ) -> FunctionInfo:
         function_info = self.functions.get(full_name)
         if function_info:
-            if function_info.file == "UNKNOWN":
+            if function_info.file == "UNKNOWN" and file != "UNKNOWN":
                 function_info.file = file
             return function_info
 
@@ -221,21 +221,15 @@ class CallGraphAnalyzer:
         if caller_namespace not in self.functions:
             return  # Skip if we're not in a function
 
-        callee, full_callee = self._resolve_call(node)
-        if callee:
-            self.functions[caller_namespace].calls.add(full_callee)
-            callee_info = self._get_or_create_function_info(
-                callee,
-                full_callee,
-                node,
-                file="UNKNOWN",
-            )
+        callee_info = self._resolve_call(node)
+        if callee_info:
+            self.functions[caller_namespace].calls.add(callee_info.namespace)
             callee_info.called_by.add(caller_namespace)
 
-    def _resolve_call(self, node: Node) -> tuple[str, str]:
+    def _resolve_call(self, node: Node) -> FunctionInfo:
         """Resolve the full namespace of a function call."""
         if node.type != "call":
-            return None, None
+            return None
 
         # Get the function being called (first child of call node)
         func = node.children[0]
@@ -247,19 +241,24 @@ class CallGraphAnalyzer:
         elif func.type == "call":
             return self._resolve_nested_call(func)
 
-        return None, None
+        return None
 
-    def _resolve_simple_call(self, func_node: Node) -> tuple[str, str]:
+    def _resolve_simple_call(self, func_node: Node) -> FunctionInfo:
         """Handle simple function calls like my_function()"""
         func_name = self._get_symbol_name(func_node)
 
         # Check if it's a call to an imported module
         if func_name in self.imports:
-            return f"{self.imports[func_name]}"
+            full_name = f"{self.imports[func_name]}"
+            return self._get_or_create_function_info(
+                func_name, full_name, func_node, "UNKNOWN"
+            )
 
         # Check if it's a built-in function
         if func_name in dir(builtins):
-            return func_name, f"builtins.{func_name}"
+            return self._get_or_create_function_info(
+                func_name, f"builtins.{func_name}", func_node, "UNKNOWN"
+            )
 
         # Imperfect way of grabbing the class name for class instantiations
         candidate_class_names = [
@@ -269,12 +268,18 @@ class CallGraphAnalyzer:
         ]
         if func_name in candidate_class_names:
             class_name = func_name
-            return "__init__", f"{self.current_namespace[0]}.{class_name}.__init__"
+            full_name = f"{self.current_namespace[0]}.{class_name}.__init__"
+            return self._get_or_create_function_info(
+                "__init__", full_name, func_node, "UNKNOWN"
+            )
 
         # Handle module.function() calls
-        return func_name, f"{self.current_namespace[0]}.{func_name}"
+        full_name = f"{self.current_namespace[0]}.{func_name}"
+        return self._get_or_create_function_info(
+            func_name, full_name, func_node, "UNKNOWN"
+        )
 
-    def _resolve_attribute_call(self, func_node: Node) -> tuple[str, str]:
+    def _resolve_attribute_call(self, func_node: Node) -> FunctionInfo:
         """Handle attribute-based calls like obj.method() or module.function()"""
         obj = func_node.children[0]
         method = func_node.children[2]
@@ -286,36 +291,60 @@ class CallGraphAnalyzer:
         # Handle calls on imported modules
         if obj_name in self.imports:
             base_module = self.imports[obj_name]
-            return method_name, f"{base_module}.{method_name}"
+            full_name = f"{base_module}.{method_name}"
+            return self._get_or_create_function_info(
+                method_name, full_name, func_node, "UNKNOWN"
+            )
 
         # Handle self.method() calls
         if obj_name == "self" and self.current_class:
-            return method_name, f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
+            full_name = f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
+            return self._get_or_create_function_info(
+                method_name, full_name, func_node, "UNKNOWN"
+            )
 
         # Handle self.instance.method() calls
         if obj_name.startswith("self") and self.current_class:
             obj_type = self._infer_object_type(obj_name)
             if obj_type:
-                return method_name, f"{obj_type}.{method_name}"
+                full_name = f"{obj_type}.{method_name}"
+                return self._get_or_create_function_info(
+                    method_name, full_name, func_node, "UNKNOWN"
+                )
             else:
                 # Default to builtins
-                return method_name, f"builtins.{method_name}"
+                full_name = f"builtins.{method_name}"
+                return self._get_or_create_function_info(
+                    method_name, full_name, func_node, "UNKNOWN"
+                )
 
         # Handle class.static_method() calls
         if self.current_class and obj_name == self.current_class:
-            return method_name, f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
+            full_name = f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
+            return self._get_or_create_function_info(
+                method_name, full_name, func_node, "UNKNOWN"
+            )
 
         # Handle module.function() calls
         if obj_name in self.current_namespace:
-            return method_name, f"{obj_name}.{method_name}"
+            full_name = f"{obj_name}.{method_name}"
+            return self._get_or_create_function_info(
+                method_name, full_name, func_node, "UNKNOWN"
+            )
 
         # Handle instance.method() calls by trying to determine the object's type
         obj_type = self._infer_object_type(obj_name)
         if obj_type:
-            return method_name, f"{obj_type}.{method_name}"
+            full_name = f"{obj_type}.{method_name}"
+            return self._get_or_create_function_info(
+                method_name, full_name, func_node, "UNKNOWN"
+            )
 
         # Fallback: return just obj_name.method_name
-        return method_name, f"{obj_name}.{method_name}"
+        full_name = f"{obj_name}.{method_name}"
+        return self._get_or_create_function_info(
+            method_name, full_name, func_node, "UNKNOWN"
+        )
 
     def _infer_object_type(self, obj_name: str) -> str:
         """Attempt to infer the type of an object from the current context.
@@ -359,13 +388,13 @@ class CallGraphAnalyzer:
             nodes.extend(self._find_nodes(child, type_name))
         return nodes
 
-    def _resolve_nested_call(self, func_node: Node) -> tuple[str, str]:
+    def _resolve_nested_call(self, func_node: Node) -> FunctionInfo:
         """Handle nested calls like get_object().method()"""
         # For nested calls, we focus on the final method being called
         # This is a simplified implementation
         if func_node.children and func_node.children[-1].type == "attribute":
             return self._resolve_attribute_call(func_node.children[-1])
-        return None, None
+        return None
 
     def _find_identifier(self, node: Node) -> Node:
         """Find the identifier node in a definition."""

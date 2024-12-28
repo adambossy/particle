@@ -177,9 +177,11 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
         call_nodes = self._find_nodes(add_item_node, "call")
         attribute_node = call_nodes[1].children[0]  # The self.calculate_total part
 
-        result = self.analyzer._resolve_attribute_call(attribute_node)
-        self.assertEqual(result[0], "calculate_total")
-        self.assertEqual(result[1], "shopping_cart.ShoppingCart.calculate_total")
+        function_info = self.analyzer._resolve_attribute_call(attribute_node)
+        self.assertEqual(function_info.name, "calculate_total")
+        self.assertEqual(
+            function_info.namespace, "shopping_cart.ShoppingCart.calculate_total"
+        )
 
     def test_resolve_instance_method_call(self):
         """Test resolving a method call on an instance (cart.add_item())"""
@@ -190,9 +192,9 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
 
         self.analyzer.current_namespace = ["shopping_cart", "process_shopping_cart"]
 
-        result = self.analyzer._resolve_attribute_call(attribute_node)
-        self.assertEqual(result[0], "add_item")
-        self.assertEqual(result[1], "shopping_cart.ShoppingCart.add_item")
+        function_info = self.analyzer._resolve_attribute_call(attribute_node)
+        self.assertEqual(function_info.name, "add_item")
+        self.assertEqual(function_info.namespace, "shopping_cart.ShoppingCart.add_item")
 
     def test_resolve_builtin_method_call(self):
         """Test resolving a method call on a built-in type (self.items.append())"""
@@ -201,9 +203,9 @@ class TestResolveAttributeCall(TestCallGraphAnalyzerBase):
         append_call = self._find_nodes(class_node, "call")
         attribute_node = append_call[0].children[0]  # The self.items.append part
 
-        result = self.analyzer._resolve_attribute_call(attribute_node)
-        self.assertEqual(result[0], "append")
-        self.assertEqual(result[1], "builtins.append")
+        function_info = self.analyzer._resolve_attribute_call(attribute_node)
+        self.assertEqual(function_info.name, "append")
+        self.assertEqual(function_info.namespace, "builtins.append")
 
 
 class TestGetLeafNodes(TestCallGraphAnalyzerBase):
