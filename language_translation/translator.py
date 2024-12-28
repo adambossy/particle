@@ -625,9 +625,7 @@ class CallGraphAnalyzer:
                     continue
 
                 # Add the current node
-                node_label = (
-                    f"{func_info.name}\n({'.'.join(current_namespace.split('.')[:-1])})"
-                )
+                node_label = f"name={func_info.name}\nnamespace={func_info.namespace}\nfile={func_info.file}"
                 dot.node(current_namespace, node_label)
                 processed.add(current_namespace)
 
@@ -637,7 +635,7 @@ class CallGraphAnalyzer:
                     if called_func not in processed:
                         called_info = self.functions.get(called_func)
                         if called_info:
-                            called_label = f"{called_info.name}\n({'.'.join(called_func.split('.')[:-1])})"
+                            called_label = f"name={called_info.name}\nnamespace={called_func}\nfile={called_info.file}"
                             dot.node(called_func, called_label)
 
                     # Add the edge
