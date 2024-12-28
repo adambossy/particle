@@ -35,7 +35,7 @@ class TranslatorNode:
 
 
 @dataclass
-class FunctionInfo(TranslatorNode):
+class FunctionNode(TranslatorNode):
     """Store information about a function/method"""
 
     # The default values here are an ugly hack to get the parent dataclasses' default values to work
@@ -73,7 +73,7 @@ class CallGraphAnalyzer:
         self.parser = Parser(LANGUAGES[self.language])
 
         # Add new attributes for call graph
-        self.functions: Dict[str, FunctionInfo] = {}  # Maps full_name -> FunctionInfo
+        self.functions: Dict[str, FunctionNode] = {}  # Maps full_name -> FunctionInfo
         self.current_namespace: List[str] = (
             []
         )  # Track current namespace during traversal
@@ -180,7 +180,7 @@ class CallGraphAnalyzer:
         full_name: str,
         node: Node,
         file: str = "UNKNOWN",
-    ) -> FunctionInfo:
+    ) -> FunctionNode:
         function_info = self.functions.get(full_name)
         if function_info:
             if function_info.file == "UNKNOWN" and file != "UNKNOWN":
@@ -190,7 +190,7 @@ class CallGraphAnalyzer:
         # Capture the source code using the node's byte range
         source_code = self.code[node.start_byte : node.end_byte].decode("utf-8")
 
-        self.functions[full_name] = FunctionInfo(
+        self.functions[full_name] = FunctionNode(
             name=func_name,
             namespace=full_name,
             calls=set(),
@@ -237,7 +237,7 @@ class CallGraphAnalyzer:
             return  # Skip if we're not in a function
 
         callee_info = self._resolve_call(node)
-        if isinstance(callee_info, FunctionInfo):
+        if isinstance(callee_info, FunctionNode):
             self.functions[caller_namespace].calls.add(callee_info.namespace)
             callee_info.called_by.add(caller_namespace)
         elif isinstance(callee_info, ClassInfo):
@@ -253,7 +253,7 @@ class CallGraphAnalyzer:
             self.functions[caller_namespace].calls.add(function_info.namespace)
             function_info.called_by.add(caller_namespace)
 
-    def _resolve_call(self, node: Node) -> FunctionInfo:
+    def _resolve_call(self, node: Node) -> FunctionNode:
         """Resolve the full namespace of a function call."""
         if node.type != "call":
             return None
@@ -270,7 +270,7 @@ class CallGraphAnalyzer:
 
         return None
 
-    def _resolve_simple_call(self, func_node: Node) -> FunctionInfo:
+    def _resolve_simple_call(self, func_node: Node) -> FunctionNode:
         """Handle simple function calls like my_function()"""
         func_name = self._get_symbol_name(func_node)
 
@@ -319,7 +319,7 @@ class CallGraphAnalyzer:
             self.classes[full_name] = class_info
         return class_info
 
-    def _resolve_attribute_call(self, func_node: Node) -> FunctionInfo:
+    def _resolve_attribute_call(self, func_node: Node) -> FunctionNode:
         """Handle attribute-based calls like obj.method() or module.function()"""
         obj = func_node.children[0]
         method = func_node.children[2]
@@ -416,7 +416,7 @@ class CallGraphAnalyzer:
             nodes.extend(self._find_nodes(child, type_name))
         return nodes
 
-    def _resolve_nested_call(self, func_node: Node) -> FunctionInfo:
+    def _resolve_nested_call(self, func_node: Node) -> FunctionNode:
         """Handle nested calls like get_object().method()"""
         # For nested calls, we focus on the final method being called
         # This is a simplified implementation
@@ -551,11 +551,11 @@ class CallGraphAnalyzer:
             ast = self.parse_file(str(file_path))
             self.collect_functions(ast)
 
-    def get_leaf_nodes(self) -> List[FunctionInfo]:
+    def get_leaf_nodes(self) -> List[FunctionNode]:
         """Return all FunctionInfo objects that don't call any other functions."""
         return [info for info in self.functions.values() if not info.calls]
 
-    def get_nodes_at_level(self, level: int) -> List[FunctionInfo]:
+    def get_nodes_at_level(self, level: int) -> List[FunctionNode]:
         """Return all FunctionInfo objects at a specific level in the call tree.
         Level 0 represents leaf nodes (functions that don't call others).
         Level 1 represents functions that only call leaf nodes.
