@@ -22,31 +22,37 @@ LANGUAGE_EXTENSIONS = {"python": ".py", "swift": ".swift"}
 
 
 @dataclass
-class FunctionInfo:
-    """Store information about a function/method"""
+class TranslatorNode:
+    """Base class for storing information about code entities like functions and classes"""
 
     name: str
     namespace: str  # Full namespace path
-    calls: Set[str]  # Set of fully qualified function names this function calls
-    called_by: Set[str]  # Set of fully qualified function names that call this function
-    start_point: tuple  # Line, column where function starts
-    end_point: tuple  # Line, column where function ends
-    node: Node  # AST node that was used to create this function
-    file: str  # Path to the file containing this function
+    node: Node  # AST node that was used to create this entity
+    file: str  # Path to the file containing this entity
     class_deps: Set[str] = field(default_factory=set)
     var_deps: Set[str] = field(default_factory=set)
 
 
 @dataclass
-class ClassInfo:
+class FunctionInfo(TranslatorNode):
+    """Store information about a function/method"""
+
+    # The default values here are an ugly hack to get the parent dataclasses' default values to work
+    start_point: tuple = (-1, -1)  # Line, column where function starts
+    end_point: tuple = (-1, -1)  # Line, column where function ends
+    calls: Set[str] = field(
+        default_factory=set
+    )  # Set of fully qualified function names this function calls
+    called_by: Set[str] = field(
+        default_factory=set
+    )  # Set of fully qualified function names that call this function
+
+
+@dataclass
+class ClassInfo(TranslatorNode):
     """Store information about a class"""
 
-    name: str
-    namespace: str  # Full namespace path
-    node: Node  # AST node that was used to create this class
-    file: str  # Path to the file containing this class
-    class_deps: Set[str] = field(default_factory=set)
-    var_deps: Set[str] = field(default_factory=set)
+    # No additional fields needed for now, but can be extended in the future
 
 
 class CallGraphAnalyzer:
