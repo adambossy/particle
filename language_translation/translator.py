@@ -31,6 +31,7 @@ class TranslatorNode:
     file: str  # Path to the file containing this entity
     class_deps: Set[str] = field(default_factory=set)
     var_deps: Set[str] = field(default_factory=set)
+    source_code: str = ""  # Add source code field
 
 
 @dataclass
@@ -186,6 +187,9 @@ class CallGraphAnalyzer:
                 function_info.file = file
             return function_info
 
+        # Capture the source code using the node's byte range
+        source_code = self.code[node.start_byte : node.end_byte].decode("utf-8")
+
         self.functions[full_name] = FunctionInfo(
             name=func_name,
             namespace=full_name,
@@ -195,6 +199,7 @@ class CallGraphAnalyzer:
             end_point=node.end_point,
             node=node,
             file=file,
+            source_code=source_code,  # Store the source code
         )
 
         return self.functions[full_name]
@@ -301,11 +306,15 @@ class CallGraphAnalyzer:
         full_name = f"{self.current_namespace[0]}.{class_name}"
         class_info = self.classes.get(full_name)
         if not class_info:
+            # Capture the source code using the node's byte range
+            source_code = self.code[node.start_byte : node.end_byte].decode("utf-8")
+
             class_info = ClassInfo(
                 name=class_name,
                 namespace=full_name,
                 node=node,
                 file=file,
+                source_code=source_code,  # Store the source code
             )
             self.classes[full_name] = class_info
         return class_info
