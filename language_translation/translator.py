@@ -168,7 +168,7 @@ class CallGraphAnalyzer:
         func_name: str,
         full_name: str,
         node: Node,
-        file: str,
+        file: str = "UNKNOWN",
     ) -> FunctionInfo:
         function_info = self.functions.get(full_name)
         if function_info:
@@ -251,13 +251,13 @@ class CallGraphAnalyzer:
         if func_name in self.imports:
             full_name = f"{self.imports[func_name]}"
             return self._get_or_create_function_info(
-                func_name, full_name, func_node, "UNKNOWN"
+                func_name, full_name, func_node
             )
 
         # Check if it's a built-in function
         if func_name in dir(builtins):
             return self._get_or_create_function_info(
-                func_name, f"builtins.{func_name}", func_node, "UNKNOWN"
+                func_name, f"builtins.{func_name}", func_node
             )
 
         # Imperfect way of grabbing the class name for class instantiations
@@ -270,13 +270,13 @@ class CallGraphAnalyzer:
             class_name = func_name
             full_name = f"{self.current_namespace[0]}.{class_name}.__init__"
             return self._get_or_create_function_info(
-                "__init__", full_name, func_node, "UNKNOWN"
+                "__init__", full_name, func_node
             )
 
         # Handle module.function() calls
         full_name = f"{self.current_namespace[0]}.{func_name}"
         return self._get_or_create_function_info(
-            func_name, full_name, func_node, "UNKNOWN"
+            func_name, full_name, func_node
         )
 
     def _resolve_attribute_call(self, func_node: Node) -> FunctionInfo:
@@ -293,14 +293,14 @@ class CallGraphAnalyzer:
             base_module = self.imports[obj_name]
             full_name = f"{base_module}.{method_name}"
             return self._get_or_create_function_info(
-                method_name, full_name, func_node, "UNKNOWN"
+                method_name, full_name, func_node
             )
 
         # Handle self.method() calls
         if obj_name == "self" and self.current_class:
             full_name = f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
             return self._get_or_create_function_info(
-                method_name, full_name, func_node, "UNKNOWN"
+                method_name, full_name, func_node
             )
 
         # Handle self.instance.method() calls
@@ -309,27 +309,27 @@ class CallGraphAnalyzer:
             if obj_type:
                 full_name = f"{obj_type}.{method_name}"
                 return self._get_or_create_function_info(
-                    method_name, full_name, func_node, "UNKNOWN"
+                    method_name, full_name, func_node
                 )
             else:
                 # Default to builtins
                 full_name = f"builtins.{method_name}"
                 return self._get_or_create_function_info(
-                    method_name, full_name, func_node, "UNKNOWN"
+                    method_name, full_name, func_node
                 )
 
         # Handle class.static_method() calls
         if self.current_class and obj_name == self.current_class:
             full_name = f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
             return self._get_or_create_function_info(
-                method_name, full_name, func_node, "UNKNOWN"
+                method_name, full_name, func_node
             )
 
         # Handle module.function() calls
         if obj_name in self.current_namespace:
             full_name = f"{obj_name}.{method_name}"
             return self._get_or_create_function_info(
-                method_name, full_name, func_node, "UNKNOWN"
+                method_name, full_name, func_node
             )
 
         # Handle instance.method() calls by trying to determine the object's type
@@ -337,13 +337,13 @@ class CallGraphAnalyzer:
         if obj_type:
             full_name = f"{obj_type}.{method_name}"
             return self._get_or_create_function_info(
-                method_name, full_name, func_node, "UNKNOWN"
+                method_name, full_name, func_node
             )
 
         # Fallback: return just obj_name.method_name
         full_name = f"{obj_name}.{method_name}"
         return self._get_or_create_function_info(
-            method_name, full_name, func_node, "UNKNOWN"
+            method_name, full_name, func_node
         )
 
     def _infer_object_type(self, obj_name: str) -> str:
