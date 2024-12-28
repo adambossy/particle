@@ -33,6 +33,10 @@ class TranslatorNode:
     var_deps: Set[str] = field(default_factory=set)
     source_code: str = ""  # Add source code field
 
+    def key(self) -> str:
+        """Return a unique key for the node, combining namespace and name."""
+        return f"{self.namespace}.{self.name}"
+
 
 @dataclass
 class FunctionNode(TranslatorNode):
