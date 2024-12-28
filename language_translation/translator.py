@@ -1,5 +1,5 @@
 import builtins
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
@@ -33,6 +33,8 @@ class FunctionInfo:
     end_point: tuple  # Line, column where function ends
     node: Node  # AST node that was used to create this function
     file: str  # Path to the file containing this function
+    class_deps: Set[str] = field(default_factory=set)
+    var_deps: Set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -43,6 +45,8 @@ class ClassInfo:
     namespace: str  # Full namespace path
     node: Node  # AST node that was used to create this class
     file: str  # Path to the file containing this class
+    class_deps: Set[str] = field(default_factory=set)
+    var_deps: Set[str] = field(default_factory=set)
 
 
 class CallGraphAnalyzer:
@@ -222,9 +226,21 @@ class CallGraphAnalyzer:
             return  # Skip if we're not in a function
 
         callee_info = self._resolve_call(node)
-        if callee_info:
+        if isinstance(callee_info, FunctionInfo):
             self.functions[caller_namespace].calls.add(callee_info.namespace)
             callee_info.called_by.add(caller_namespace)
+        elif isinstance(callee_info, ClassInfo):
+            self.functions[caller_namespace].class_deps.add(callee_info.namespace)
+
+            # Add the __init__ function as well for some redundancy, who knows if we'll need it later
+            function_info = self._get_or_create_function_info(
+                "__init__",
+                callee_info.namespace + ".__init__",
+                callee_info.node,
+                callee_info.file,
+            )
+            self.functions[caller_namespace].calls.add(function_info.namespace)
+            function_info.called_by.add(caller_namespace)
 
     def _resolve_call(self, node: Node) -> FunctionInfo:
         """Resolve the full namespace of a function call."""
@@ -250,9 +266,7 @@ class CallGraphAnalyzer:
         # Check if it's a call to an imported module
         if func_name in self.imports:
             full_name = f"{self.imports[func_name]}"
-            return self._get_or_create_function_info(
-                func_name, full_name, func_node
-            )
+            return self._get_or_create_function_info(func_name, full_name, func_node)
 
         # Check if it's a built-in function
         if func_name in dir(builtins):
@@ -267,17 +281,28 @@ class CallGraphAnalyzer:
             if len(node_name.split(".")) > 1
         ]
         if func_name in candidate_class_names:
-            class_name = func_name
-            full_name = f"{self.current_namespace[0]}.{class_name}.__init__"
-            return self._get_or_create_function_info(
-                "__init__", full_name, func_node
-            )
+            class_info = self._get_or_create_class_info(func_name, func_node)
+            return class_info
 
         # Handle module.function() calls
         full_name = f"{self.current_namespace[0]}.{func_name}"
-        return self._get_or_create_function_info(
-            func_name, full_name, func_node
-        )
+        return self._get_or_create_function_info(func_name, full_name, func_node)
+
+    def _get_or_create_class_info(
+        self, class_name: str, node: Node, file: str = "UNKNOWN"
+    ) -> ClassInfo:
+        """Get or create a ClassInfo object."""
+        full_name = f"{self.current_namespace[0]}.{class_name}"
+        class_info = self.classes.get(full_name)
+        if not class_info:
+            class_info = ClassInfo(
+                name=class_name,
+                namespace=full_name,
+                node=node,
+                file=file,
+            )
+            self.classes[full_name] = class_info
+        return class_info
 
     def _resolve_attribute_call(self, func_node: Node) -> FunctionInfo:
         """Handle attribute-based calls like obj.method() or module.function()"""
@@ -292,16 +317,12 @@ class CallGraphAnalyzer:
         if obj_name in self.imports:
             base_module = self.imports[obj_name]
             full_name = f"{base_module}.{method_name}"
-            return self._get_or_create_function_info(
-                method_name, full_name, func_node
-            )
+            return self._get_or_create_function_info(method_name, full_name, func_node)
 
         # Handle self.method() calls
         if obj_name == "self" and self.current_class:
             full_name = f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
-            return self._get_or_create_function_info(
-                method_name, full_name, func_node
-            )
+            return self._get_or_create_function_info(method_name, full_name, func_node)
 
         # Handle self.instance.method() calls
         if obj_name.startswith("self") and self.current_class:
@@ -321,30 +342,22 @@ class CallGraphAnalyzer:
         # Handle class.static_method() calls
         if self.current_class and obj_name == self.current_class:
             full_name = f"{'.'.join(self.current_namespace[:-1])}.{method_name}"
-            return self._get_or_create_function_info(
-                method_name, full_name, func_node
-            )
+            return self._get_or_create_function_info(method_name, full_name, func_node)
 
         # Handle module.function() calls
         if obj_name in self.current_namespace:
             full_name = f"{obj_name}.{method_name}"
-            return self._get_or_create_function_info(
-                method_name, full_name, func_node
-            )
+            return self._get_or_create_function_info(method_name, full_name, func_node)
 
         # Handle instance.method() calls by trying to determine the object's type
         obj_type = self._infer_object_type(obj_name)
         if obj_type:
             full_name = f"{obj_type}.{method_name}"
-            return self._get_or_create_function_info(
-                method_name, full_name, func_node
-            )
+            return self._get_or_create_function_info(method_name, full_name, func_node)
 
         # Fallback: return just obj_name.method_name
         full_name = f"{obj_name}.{method_name}"
-        return self._get_or_create_function_info(
-            method_name, full_name, func_node
-        )
+        return self._get_or_create_function_info(method_name, full_name, func_node)
 
     def _infer_object_type(self, obj_name: str) -> str:
         """Attempt to infer the type of an object from the current context.
