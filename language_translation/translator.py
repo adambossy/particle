@@ -1,3 +1,4 @@
+import ast
 import builtins
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -5,20 +6,19 @@ from pathlib import Path
 from typing import Dict, List, Set
 
 import click
-import tree_sitter_python
 from graphviz import Digraph
 from tree_sitter import Language, Node, Parser
 
-# Define paths for both Swift and Python language libraries
-LANGUAGE_PATHS = {"swift": "tree-sitter-swift/", "python": "tree-sitter-python/"}
+# # Define paths for both Swift and Python language libraries
+# LANGUAGE_PATHS = {"swift": "tree-sitter-swift/", "python": "tree-sitter-python/"}
 
-# Load languages
-LANGUAGES: Dict[str, Language] = {
-    "python": Language(tree_sitter_python.language()),
-}
+# # Load languages
+# LANGUAGES: Dict[str, Language] = {
+#     "python": Language(tree_sitter_python.language()),
+# }
 
-# Map language names to file extensions
-LANGUAGE_EXTENSIONS = {"python": ".py", "swift": ".swift"}
+# # Map language names to file extensions
+# LANGUAGE_EXTENSIONS = {"python": ".py", "swift": ".swift"}
 
 
 def get_function_key(func_name: str, namespace: str | None, file_path: str) -> str:
@@ -92,7 +92,7 @@ class ClassNode(TranslatorNode):
         return f"{self.module_name()}.{self.name}"
 
 
-class CallGraphAnalyzer:
+class CallGraphAnalyzer(ast.NodeVisitor):
     def __init__(
         self, language: str, project_path: str = None, files: list[str] = None
     ):
@@ -100,25 +100,25 @@ class CallGraphAnalyzer:
         self.project_path = Path(project_path) if project_path else None
         self.files = [Path(f) for f in files] if files else None
 
-        if self.language not in LANGUAGES:
+        if self.language != "python":
             raise ValueError(
-                f"Unsupported language: {language}. Supported languages: {list(LANGUAGES.keys())}"
+                "Unsupported language: Only Python is supported with ast.NodeVisitor"
             )
 
-        # Initialize parser
-        self.parser = Parser(LANGUAGES[self.language])
-
-        # Add new attributes for call graph
-        self.functions: Dict[str, FunctionNode] = {}  # Maps full_name -> FunctionInfo
-        self.current_namespace: List[str] = (
-            []
-        )  # Track current namespace during traversal
-        self.current_class = None  # Track current class during traversa
+        # Initialize attributes for call graph
+        self.functions: Dict[str, FunctionNode] = {}
+        self.current_namespace: List[str] = []
+        self.current_class = None
         self.tree = None  # Store the current AST
-        self.code = None  # Store the current file's code
-        self.imports = {}  # Maps local names to full module paths
-        self.current_file = None  # Track the current file being analyzed
-        self.classes: Dict[str, ClassNode] = {}  # Maps full_name -> ClassInfo
+        self.code = None
+        self.imports = {}
+        self.current_file = None
+        self.classes: Dict[str, ClassNode] = {}
+
+        self._collect_imports = False
+        self._collect_classes = False
+        self._collect_functions = False
+        self._collect_calls = False
 
     def analyze(self):
         """Analyze either the project directory or specific files."""
@@ -133,37 +133,70 @@ class CallGraphAnalyzer:
         """Analyze specific files and build call graph."""
         self.functions.clear()
         for file_path in self.files:
-            # Use the helper function to check if the file is a test file
-            if self._is_test_file(file_path):
-                print(f"Skipping test file: {file_path}")
-                continue
-
             print(f"\nAnalyzing file: {file_path}")
-            ast = self.parse_file(str(file_path))
-            self.collect_functions(ast)
+            tree = self.parse_file(str(file_path))
+            self.collect_imports(tree)
+            # self.collect_classes()
+            # self.collect_functions(ast)
+            # self.collect_calls(ast)
+
+        import pprint
+
+        print(f"Imported modules: {len(self.imports)}")
+        pprint.pprint(self.imports)
 
     def _is_test_file(self, file_path: Path) -> bool:
         """Determine if a file is a test file based on its name."""
         return file_path.name.startswith("test_") or file_path.name.endswith("_test.py")
 
+    def collect_imports(self, tree: Node):
+        self._collect_imports = True
+        self.visit(tree)
+        self._collect_imports = False
+
+    def collect_classes(self, node: Node):
+        self._collect_classes = True
+        self.visit(node)
+        self._collect_classes = False
+
     def collect_functions(self, node: Node):
-        """Build the call graph by traversing the AST."""
-        # Add import handling
-        if node.type == "import_statement":
-            self._process_import_statement(node)
-        elif node.type == "import_from_statement":
-            self._process_import_from_statement(node)
-        elif node.type == "function_definition":
-            self._process_function_definition(node)
-        elif node.type == "class_definition":
-            self._process_class_definition(node)
-        elif node.type == "call":
-            self._process_function_call(node)
+        self._collect_functions = True
+        self._maybe_track_namespace(node)
+        self.visit(node)
+        self._maybe_untrack_namespace(node)
+        self._collect_functions = False
 
-        for child in node.children:
-            self.collect_functions(child)
+    def collect_calls(self, node: Node):
+        self._collect_calls = True
+        self._maybe_track_namespace(node)
+        self.visit(node)
+        self._maybe_untrack_namespace(node)
+        self._collect_calls = False
 
-        # Pop namespace when leaving class or function
+    def visit_Import(self, node: ast.Import):
+        if not self.collect_imports:
+            return
+        for alias in node.names:
+            self.imports[alias.asname or alias.name] = alias.name
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if not self.collect_imports:
+            return
+        module = node.module or ""
+        for alias in node.names:
+            self.imports[alias.asname or alias.name] = f"{module}.{alias.name}"
+        self.generic_visit(node)
+
+    def _maybe_track_namespace(self, node: Node):
+        if node.type in ("function_definition", "class_definition"):
+            symbol_name = self._get_symbol_name(self._find_identifier(node))
+            self.current_namespace.append(symbol_name)
+            if node.type == "class_definition":
+                self.current_class = symbol_name
+
+    def _maybe_untrack_namespace(self, node: Node):
+        # Legacy - pop namespace when leaving class or function
         if node.type in ("function_definition", "class_definition"):
             self.current_namespace.pop()
             if node.type == "class_definition":
@@ -185,9 +218,9 @@ class CallGraphAnalyzer:
             return class_name.startswith("Test")
         return False
 
-    def _process_function_definition(self, node: Node):
+    def visit_FunctionDef(self, node: ast.FunctionDef):
         """Process a function definition node."""
-        func_name = self._get_symbol_name(self._find_identifier(node))
+        func_name = node.name
         self.current_namespace.append(func_name)
 
         # FIXME (adam) This is a hack to get the namespace to work for now
@@ -195,8 +228,11 @@ class CallGraphAnalyzer:
         function_info = self._get_or_create_function_info(
             node, func_name, namespace=namespace, file=self.current_file
         )
-        function_info.start_point = node.start_point
-        function_info.end_point = node.end_point
+        function_info.start_point = (node.lineno, node.col_offset)
+        function_info.end_point = (node.end_lineno, node.end_col_offset)
+        self.current_namespace.append(func_name)
+        self.generic_visit(node)
+        self.current_namespace.pop()
 
     def _try_resolve_call_with_function_info(
         self, func_name: str, namespace: str | None
@@ -259,94 +295,104 @@ class CallGraphAnalyzer:
 
         return self.functions[function_key]
 
-    def _process_class_definition(self, node: Node):
-        """Process a class definition node."""
-        class_name = self._get_symbol_name(self._find_identifier(node))
-        class_info = ClassNode(
-            name=class_name,
-            node=node,
-            file=self.current_file,
-            is_test=self._is_test_class(node),
-        )
+    def visit_ClassDef(self, node: ast.ClassDef):
+        # Process class definitions
+        class_name = node.name
+        class_info = ClassNode(name=class_name, node=node, file=self.current_file)
         self.classes[class_info.key()] = class_info
-
-        # Continue with existing namespace tracking
         self.current_namespace.append(class_name)
         self.current_class = class_name
+        self.generic_visit(node)
+        self.current_namespace.pop()
+        self.current_class = None
 
-    def _process_function_call(self, node: Node):
-        """Process a function call node and update the call graph."""
+    def visit_Call(self, node: ast.Call):
+        # Process function calls
         if not self.current_namespace:
-            return  # Skip if we're not in any namespace
-
+            return
         current_module = get_module_name(self.current_file)
         caller_key = ".".join([current_module] + self.current_namespace)
         if caller_key not in self.functions:
-            return  # Skip if we're not in a function
-
+            return
         callee_info = self._resolve_call(node)
         if isinstance(callee_info, FunctionNode):
             self.functions[caller_key].calls.add(callee_info)
             callee_info.called_by.add(caller_key)
-        elif isinstance(callee_info, ClassNode):
-            self.functions[caller_key].class_deps.add(callee_info.key())
+        self.generic_visit(node)
 
-            # Add the __init__ function as well for some redundancy, who knows if we'll need it later
-            function_info = self._get_or_create_function_info(
-                callee_info.node,
-                "__init__",
-                file=callee_info.file,
-            )
-            self.functions[caller_key].calls.add(function_info)
-            function_info.called_by.add(caller_key)
+    # def _process_function_call(self, node: Node):
+    #     """Process a function call node and update the call graph."""
+    #     if not self.current_namespace:
+    #         return  # Skip if we're not in any namespace
 
-    def _resolve_call(self, node: Node) -> FunctionNode:
-        """Resolve the full namespace of a function call."""
-        if node.type != "call":
-            return None
+    #     current_module = get_module_name(self.current_file)
+    #     caller_key = ".".join([current_module] + self.current_namespace)
+    #     if caller_key not in self.functions:
+    #         return  # Skip if we're not in a function
 
-        # Get the function being called (first child of call node)
-        func = node.children[0]
+    #     callee_info = self._resolve_call(node)
+    #     if isinstance(callee_info, FunctionNode):
+    #         self.functions[caller_key].calls.add(callee_info)
+    #         callee_info.called_by.add(caller_key)
+    #     elif isinstance(callee_info, ClassNode):
+    #         self.functions[caller_key].class_deps.add(callee_info.key())
 
-        if func.type == "identifier":
-            return self._resolve_simple_call(func)
-        elif func.type == "attribute":
-            return self._resolve_attribute_call(func)
-        elif func.type == "call":
-            return self._resolve_nested_call(func)
+    #         # Add the __init__ function as well for some redundancy, who knows if we'll need it later
+    #         function_info = self._get_or_create_function_info(
+    #             callee_info.node,
+    #             "__init__",
+    #             file=callee_info.file,
+    #         )
+    #         self.functions[caller_key].calls.add(function_info)
+    #         function_info.called_by.add(caller_key)
 
-        return None
+    # def _resolve_call(self, node: Node) -> FunctionNode:
+    #     """Resolve the full namespace of a function call."""
+    #     if node.type != "call":
+    #         return None
 
-    def _resolve_simple_call(self, func_node: Node) -> FunctionNode:
-        """Handle simple function calls like my_function()"""
-        func_name = self._get_symbol_name(func_node)
+    #     # Get the function being called (first child of call node)
+    #     func = node.children[0]
 
-        # Check if it's a call to an imported module
-        if func_name in self.imports:
-            namespace = f"{self.imports[func_name]}"
-            return self._get_or_create_function_info(
-                func_node, func_name, namespace=namespace
-            )
+    #     if func.type == "identifier":
+    #         return self._resolve_simple_call(func)
+    #     elif func.type == "attribute":
+    #         return self._resolve_attribute_call(func)
+    #     elif func.type == "call":
+    #         return self._resolve_nested_call(func)
 
-        # Check if it's a built-in function
-        if func_name in dir(builtins):
-            return self._get_or_create_function_info(
-                func_node, func_name, file="builtins"
-            )
+    #     return None
 
-        # FIXME (adam) Lookup class names in self.classes
-        # Imperfect way of grabbing the class name for class instantiations
-        candidate_class_names = [
-            node_name.split(".")[-2]
-            for node_name in self.functions.keys()
-            if len(node_name.split(".")) > 1
-        ]
-        if func_name in candidate_class_names:
-            class_info = self._get_or_create_class_info(func_name, func_node)
-            return class_info
+    # def _resolve_simple_call(self, func_node: Node) -> FunctionNode:
+    #     """Handle simple function calls like my_function()"""
+    #     func_name = self._get_symbol_name(func_node)
 
-        # Handle module.function() calls
-        return self._get_or_create_function_info(func_node, func_name)
+    #     # Check if it's a call to an imported module
+    #     if func_name in self.imports:
+    #         namespace = f"{self.imports[func_name]}"
+    #         return self._get_or_create_function_info(
+    #             func_node, func_name, namespace=namespace
+    #         )
+
+    #     # Check if it's a built-in function
+    #     if func_name in dir(builtins):
+    #         return self._get_or_create_function_info(
+    #             func_node, func_name, file="builtins"
+    #         )
+
+    #     # FIXME (adam) Lookup class names in self.classes
+    #     # Imperfect way of grabbing the class name for class instantiations
+    #     candidate_class_names = [
+    #         node_name.split(".")[-2]
+    #         for node_name in self.functions.keys()
+    #         if len(node_name.split(".")) > 1
+    #     ]
+    #     if func_name in candidate_class_names:
+    #         class_info = self._get_or_create_class_info(func_name, func_node)
+    #         return class_info
+
+    #     # Handle module.function() calls
+    #     return self._get_or_create_function_info(func_node, func_name)
 
     def _get_or_create_class_info(
         self, class_name: str, node: Node, file: str = "UNKNOWN"
@@ -367,64 +413,64 @@ class CallGraphAnalyzer:
             self.classes[class_key] = class_info
         return class_info
 
-    def _resolve_attribute_call(self, func_node: Node) -> FunctionNode:
-        """Handle attribute-based calls like obj.method() or module.function()"""
-        obj = func_node.children[0]
-        method = func_node.children[2]
+    # def _resolve_attribute_call(self, func_node: Node) -> FunctionNode:
+    #     """Handle attribute-based calls like obj.method() or module.function()"""
+    #     obj = func_node.children[0]
+    #     method = func_node.children[2]
 
-        obj_name = self._get_symbol_name(obj)
-        obj_tokens = obj_name.split(".")
-        method_name = self._get_symbol_name(method)
+    #     obj_name = self._get_symbol_name(obj)
+    #     obj_tokens = obj_name.split(".")
+    #     method_name = self._get_symbol_name(method)
 
-        # Handle calls on imported modules
-        if obj_name in self.imports:
-            base_module = self.imports[obj_name]
-            # FIXME (adam) We're overloading file here with a module name
-            return self._get_or_create_function_info(
-                func_node, method_name, file=base_module
-            )
+    #     # Handle calls on imported modules
+    #     if obj_name in self.imports:
+    #         base_module = self.imports[obj_name]
+    #         # FIXME (adam) We're overloading file here with a module name
+    #         return self._get_or_create_function_info(
+    #             func_node, method_name, file=base_module
+    #         )
 
-        # Handle self.method() calls
-        if obj_name == "self" and self.current_class:
-            namespace = f"{'.'.join(self.current_namespace[:-1])}"
-            return self._get_or_create_function_info(func_node, method_name, namespace)
+    #     # Handle self.method() calls
+    #     if obj_name == "self" and self.current_class:
+    #         namespace = f"{'.'.join(self.current_namespace[:-1])}"
+    #         return self._get_or_create_function_info(func_node, method_name, namespace)
 
-        # Handle self.instance.method() calls
-        if obj_name.startswith("self") and self.current_class:
-            obj_type = self._infer_object_type(obj_name)
-            if obj_type:
-                return self._get_or_create_function_info(
-                    func_node, method_name, namespace=obj_type
-                )
-            else:
-                # NOTE (adam) Default to unknown function that may later be resolved to something.
-                # This isn't the ideal solution but should do for now
-                return self._get_or_create_function_info(func_node, method_name)
+    #     # Handle self.instance.method() calls
+    #     if obj_name.startswith("self") and self.current_class:
+    #         obj_type = self._infer_object_type(obj_name)
+    #         if obj_type:
+    #             return self._get_or_create_function_info(
+    #                 func_node, method_name, namespace=obj_type
+    #             )
+    #         else:
+    #             # NOTE (adam) Default to unknown function that may later be resolved to something.
+    #             # This isn't the ideal solution but should do for now
+    #             return self._get_or_create_function_info(func_node, method_name)
 
-        # Handle class.static_method() calls
-        if self.current_class and obj_name == self.current_class:
-            namespace = f"{'.'.join(self.current_namespace[:-1])}"
-            return self._get_or_create_function_info(
-                func_node, method_name, namespace=namespace
-            )
+    #     # Handle class.static_method() calls
+    #     if self.current_class and obj_name == self.current_class:
+    #         namespace = f"{'.'.join(self.current_namespace[:-1])}"
+    #         return self._get_or_create_function_info(
+    #             func_node, method_name, namespace=namespace
+    #         )
 
-        # Handle module.function() calls
-        if obj_name in self.current_namespace:
-            return self._get_or_create_function_info(
-                func_node, method_name, namespace=obj_name
-            )
+    #     # Handle module.function() calls
+    #     if obj_name in self.current_namespace:
+    #         return self._get_or_create_function_info(
+    #             func_node, method_name, namespace=obj_name
+    #         )
 
-        # Handle instance.method() calls by trying to determine the object's type
-        obj_type = self._infer_object_type(obj_name)
-        if obj_type:
-            return self._get_or_create_function_info(
-                func_node, method_name, namespace=obj_type
-            )
+    #     # Handle instance.method() calls by trying to determine the object's type
+    #     obj_type = self._infer_object_type(obj_name)
+    #     if obj_type:
+    #         return self._get_or_create_function_info(
+    #             func_node, method_name, namespace=obj_type
+    #         )
 
-        # Fallback: return just obj_name.method_name
-        return self._get_or_create_function_info(
-            func_node, method_name, namespace=obj_name
-        )
+    #     # Fallback: return just obj_name.method_name
+    #     return self._get_or_create_function_info(
+    #         func_node, method_name, namespace=obj_name
+    #     )
 
     def _infer_object_type(self, obj_name: str) -> str:
         """Attempt to infer the type of an object from the current context.
@@ -513,8 +559,8 @@ class CallGraphAnalyzer:
         self.current_file = file_path  # Set current file
         with open(file_path, "rb") as f:
             self.code = f.read()  # Store code for _get_symbol_name
-        self.tree = self.parser.parse(self.code)  # Store the tree
-        return self.tree.root_node
+        self.tree = ast.parse(self.code)  # Store the tree
+        return self.tree
 
     def print_ast(
         self,
@@ -604,7 +650,15 @@ class CallGraphAnalyzer:
         for file_path in self.project_path.rglob(f"*{extension}"):
             print(f"\nAnalyzing file: {file_path}")
             ast = self.parse_file(str(file_path))
-            self.collect_functions(ast)
+            self.collect_imports(ast)
+            # self.collect_classes()
+            # self.collect_functions(ast)
+            # self.collect_calls(ast)
+
+        import pprint
+
+        print(f"Imported modules: {len(self.imports)}")
+        pprint.pprint(self.imports)
 
     def get_leaf_nodes(self) -> List[FunctionNode]:
         """Return all FunctionInfo objects that don't call any other functions."""
@@ -727,50 +781,82 @@ class CallGraphAnalyzer:
 
     def _process_import_statement(self, node: Node):
         """Process a simple import statement like 'import foo' or 'import foo as bar'."""
-        for child in node.children:
-            if child.type == "dotted_name":
-                module_path = self._get_symbol_name(child)
+        query_text = """(
+    (import_statement
+        (dotted_name) @import.module
+    ) @import.statement
+)"""
+
+        #         """
+        #         query_text = """(
+        #     (import_statement
+        #         (aliased_import
+        #             (dotted_name) @import.module
+        #             (as)
+        #             (identifier) @import.alias
+        #         )
+        #     ) @import.statement
+        # )"""
+        query = self.parser.language.query(query_text)
+        captures = query.captures(node)
+        module_path = None
+        for capture in captures:
+            if capture[1] == "import.module":
+                module_path = self._get_symbol_name(capture[0])
                 alias = module_path  # Default alias is the module path itself
-
-                # Check for 'as' alias
-                next_sibling = child.next_sibling
-                if next_sibling and next_sibling.type == "as":
-                    alias_node = next_sibling.next_sibling
-                    if alias_node:
-                        alias = self._get_symbol_name(alias_node)
-
+                self.imports[alias] = module_path
+            elif capture[1] == "import.alias":
+                alias = self._get_symbol_name(capture[0])
                 self.imports[alias] = module_path
 
     def _process_import_from_statement(self, node: Node):
         """Process from-import statements like 'from foo import bar' or 'from foo import bar as baz'."""
-        # Get the module path (after 'from')
-        module_node = None
-        for child in node.children:
-            if child.type == "dotted_name":
-                module_node = child
-                break
+        query_text = """
+        (
+          (import_from_statement
+            (relative_import)? @import_from.relative
+            (dotted_name)? @import_from.module
+            (import
+              (aliased_import
+                (identifier) @import_from.name
+                (as)
+                (identifier)? @import_from.alias
+              )+
+            )
+          ) @import_from.statement
+        )
+        """
+        query = self.parser.language.query(query_text)
+        captures = query.captures(node)
+        module_path = None
+        for capture in captures:
+            if capture[1] == "import_from.module":
+                module_path = self._get_symbol_name(capture[0])
+            elif capture[1] == "import_from.name":
+                name = self._get_symbol_name(capture[0])
+                alias = name  # Default alias is the name itself
+                self.imports[alias] = f"{module_path}.{name}"
+            elif capture[1] == "import_from.alias":
+                alias = self._get_symbol_name(capture[0])
+                self.imports[alias] = f"{module_path}.{name}"
 
-        if not module_node:
-            return
-
-        module_path = self._get_symbol_name(module_node)
-
-        # Process imported names
-        for child in node.children:
-            if child.type == "import_statement":
-                for import_child in child.children:
-                    if import_child.type == "dotted_name":
-                        name = self._get_symbol_name(import_child)
-                        alias = name  # Default alias is the name itself
-
-                        # Check for 'as' alias
-                        next_sibling = import_child.next_sibling
-                        if next_sibling and next_sibling.type == "as":
-                            alias_node = next_sibling.next_sibling
-                            if alias_node:
-                                alias = self._get_symbol_name(alias_node)
-
-                        self.imports[alias] = f"{module_path}.{name}"
+    def _process_wildcard_import(self, node: Node):
+        """Process wildcard import statements like 'from foo import *'."""
+        query_text = """
+        (
+          (from_import_statement
+            (relative_import)? @import_from.relative
+            (dotted_name)? @import_from.module
+            (wildcard_import) @import_from.star
+          ) @import_from.statement
+        )
+        """
+        query = self.parser.language.query(query_text)
+        captures = query.captures(node)
+        for capture in captures:
+            if capture[1] == "import_from.module":
+                module_path = self._get_symbol_name(capture[0])
+                self.imports[f"{module_path}.*"] = module_path
 
 
 @click.command()
@@ -805,11 +891,11 @@ def main(project_path, files, language):
     )
     analyzer.analyze()
 
-    analyzer.print_ast(analyzer.tree.root_node, 0)
+    # analyzer.print_ast(analyzer.tree, 0)
     analyzer.print_call_graph()
 
-    print("Generating graph...")
-    analyzer.visualize_graph()
+    # print("Generating graph...")
+    # analyzer.visualize_graph()
 
     print("Done.")
 

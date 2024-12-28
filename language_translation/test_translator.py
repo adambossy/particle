@@ -321,5 +321,81 @@ class TestGetNodesAtLevel(TestCallGraphAnalyzerBase):
         self.assertEqual(len(nodes), 0)
 
 
+class TestProcessImports(TestCallGraphAnalyzerBase):
+    """Test cases for processing import statements"""
+
+    @classmethod
+    def setUpClass(cls):
+        # Create a temporary file with import statements
+        cls.import_code = """import nltk
+import itertools as it
+from shopping_cart import ShoppingCart, format_price
+from . import models
+from .models import GenAIImage, StoryDraft, StoryDraftState
+from .tasks.image_gen import gen_images as gen_images_task
+"""
+        cls.temp_file = Path("temp_imports.py")
+        cls.temp_file.write_text(cls.import_code)
+
+        # Initialize and analyze
+        cls.analyzer = CallGraphAnalyzer(language="python", files=[str(cls.temp_file)])
+        cls.analyzer.analyze()
+
+    @classmethod
+    def tearDownClass(cls):
+        # Clean up temporary file
+        if cls.temp_file.exists():
+            cls.temp_file.unlink()
+
+    def test_simple_import(self):
+        """Test processing a simple import statement like 'import nltk'"""
+        # Check if 'nltk' is correctly added to imports
+        self.assertIn("nltk", self.analyzer.imports)
+        self.assertEqual(self.analyzer.imports["nltk"], "nltk")
+
+    def test_import_with_alias(self):
+        """Test processing an import with alias like 'import itertools as it'"""
+        self.assertIn("it", self.analyzer.imports)
+        self.assertEqual(self.analyzer.imports["it"], "itertools")
+
+    def test_from_import_multiple(self):
+        """Test processing from-import with multiple names"""
+        # Check if both imports from shopping_cart are present
+        self.assertIn("ShoppingCart", self.analyzer.imports)
+        self.assertEqual(
+            self.analyzer.imports["ShoppingCart"], "shopping_cart.ShoppingCart"
+        )
+
+        self.assertIn("format_price", self.analyzer.imports)
+        self.assertEqual(
+            self.analyzer.imports["format_price"], "shopping_cart.format_price"
+        )
+
+    def test_relative_import(self):
+        """Test processing relative import like 'from . import models'"""
+        self.assertIn("models", self.analyzer.imports)
+        self.assertEqual(self.analyzer.imports["models"], ".models")
+
+    def test_relative_import_multiple(self):
+        """Test processing relative import with multiple names"""
+        self.assertIn("GenAIImage", self.analyzer.imports)
+        self.assertEqual(self.analyzer.imports["GenAIImage"], "models.GenAIImage")
+
+        self.assertIn("StoryDraft", self.analyzer.imports)
+        self.assertEqual(self.analyzer.imports["StoryDraft"], "models.StoryDraft")
+
+        self.assertIn("StoryDraftState", self.analyzer.imports)
+        self.assertEqual(
+            self.analyzer.imports["StoryDraftState"], "models.StoryDraftState"
+        )
+
+    def test_relative_import_with_alias(self):
+        """Test processing relative import with alias"""
+        self.assertIn("gen_images_task", self.analyzer.imports)
+        self.assertEqual(
+            self.analyzer.imports["gen_images_task"], "tasks.image_gen.gen_images"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
