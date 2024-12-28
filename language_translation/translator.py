@@ -50,7 +50,7 @@ class FunctionNode(TranslatorNode):
 
 
 @dataclass
-class ClassInfo(TranslatorNode):
+class ClassNode(TranslatorNode):
     """Store information about a class"""
 
     # No additional fields needed for now, but can be extended in the future
@@ -82,7 +82,7 @@ class CallGraphAnalyzer:
         self.code = None  # Store the current file's code
         self.imports = {}  # Maps local names to full module paths
         self.current_file = None  # Track the current file being analyzed
-        self.classes: Dict[str, ClassInfo] = {}  # Maps full_name -> ClassInfo
+        self.classes: Dict[str, ClassNode] = {}  # Maps full_name -> ClassInfo
 
     def analyze(self):
         """Analyze either the project directory or specific files."""
@@ -216,7 +216,7 @@ class CallGraphAnalyzer:
         )
 
         # Store class info
-        self.classes[full_name] = ClassInfo(
+        self.classes[full_name] = ClassNode(
             name=class_name,
             namespace=full_name,
             node=node,
@@ -240,7 +240,7 @@ class CallGraphAnalyzer:
         if isinstance(callee_info, FunctionNode):
             self.functions[caller_namespace].calls.add(callee_info.namespace)
             callee_info.called_by.add(caller_namespace)
-        elif isinstance(callee_info, ClassInfo):
+        elif isinstance(callee_info, ClassNode):
             self.functions[caller_namespace].class_deps.add(callee_info.namespace)
 
             # Add the __init__ function as well for some redundancy, who knows if we'll need it later
@@ -301,7 +301,7 @@ class CallGraphAnalyzer:
 
     def _get_or_create_class_info(
         self, class_name: str, node: Node, file: str = "UNKNOWN"
-    ) -> ClassInfo:
+    ) -> ClassNode:
         """Get or create a ClassInfo object."""
         full_name = f"{self.current_namespace[0]}.{class_name}"
         class_info = self.classes.get(full_name)
@@ -309,7 +309,7 @@ class CallGraphAnalyzer:
             # Capture the source code using the node's byte range
             source_code = self.code[node.start_byte : node.end_byte].decode("utf-8")
 
-            class_info = ClassInfo(
+            class_info = ClassNode(
                 name=class_name,
                 namespace=full_name,
                 node=node,
