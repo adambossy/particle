@@ -42,7 +42,6 @@ class TranslatorNode:
 
     name: str
     node: Node  # AST node that was used to create this entity
-    file: str  # Path to the file containing this entity
     lineno: int = -1  # Line where function starts
     end_lineno: int = -1  # Line where function ends
     class_deps: Set[str] = field(default_factory=set)
@@ -62,6 +61,7 @@ class TranslatorNode:
 class FunctionNode(TranslatorNode):
     """Store information about a function/method"""
 
+    file: str = None  # Path to the file containing this entity
     namespace: str | None = None  # Full namespace path
     calls: Set["FunctionNode"] = field(
         default_factory=set
@@ -87,12 +87,18 @@ class FunctionNode(TranslatorNode):
 class CallNode(TranslatorNode):
     """Store information about a function call"""
 
+    # attrs: Dict[str, FunctionNode] = field(default_factory=dict)
     pass
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 @dataclass
 class ClassNode(TranslatorNode):
     """Store information about a class"""
+
+    file: str = None  # Path to the file containing this entity
 
     # No additional fields needed for now, but can be extended in the future
 
@@ -127,6 +133,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.imports = {}
         self.current_file = None
         self.classes: Dict[str, ClassNode] = {}
+        self.calls: Dict[str, CallNode] = {}
 
         self._collect_imports = False
         self._collect_classes = False
@@ -151,18 +158,19 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             self.collect_imports(tree)
             self.collect_classes()
             self.collect_functions(ast)
-            # self.collect_calls(ast)
+            self.collect_calls(ast)
 
         import pprint
 
-        print(f"Imported modules: {len(self.imports)}")
-        pprint.pprint(self.imports)
+        # print(f"Imported modules: {len(self.imports)}")
+        # pprint.pprint(self.imports)
+        # print(f"Classes: {len(self.classes)}")
+        # pprint.pprint(self.classes)
+        # print(f"Functions: {len(self.functions)}")
+        # pprint.pprint(self.functions)
 
-        print(f"Classes: {len(self.classes)}")
-        pprint.pprint(self.classes)
-
-        print(f"Functions: {len(self.functions)}")
-        pprint.pprint(self.functions)
+        print(f"Calls: {len(self.calls)}")
+        pprint.pprint(self.calls)
 
     def _is_test_file(self, file_path: Path) -> bool:
         """Determine if a file is a test file based on its name."""
@@ -185,9 +193,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
     def collect_calls(self, tree: ast.AST):
         self._collect_calls = True
-        self._maybe_track_namespace(tree)
         self.visit(tree)
-        self._maybe_untrack_namespace(tree)
         self._collect_calls = False
 
     def visit_Import(self, node: ast.Import):
@@ -322,10 +328,15 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         caller_key = ".".join([current_module] + self.current_namespace)
         # if caller_key not in self.functions:
         #     return
-        callee_info = self._resolve_call(node)
-        if isinstance(callee_info, FunctionNode):
-            self.functions[caller_key].calls.add(callee_info)
-            callee_info.called_by.add(caller_key)
+        callee_node = self._resolve_call(node)
+        # if isinstance(callee_info, FunctionNode):
+        if caller_key not in self.calls:
+            self.calls[caller_key] = []
+        # NOTE (adam) This adds dupes, which is fine for now
+        self.calls[caller_key].append(callee_node)
+        # self.functions[caller_key].calls.add(callee_info)
+        # callee_info.called_by.add(caller_key)
+
         self.generic_visit(node)
 
     # def _process_function_call(self, node: Node):
@@ -377,10 +388,13 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             # name_chain is backwards, e.g. ["entries", "cmudict", "corpus", "nltk"]
             name_chain.reverse()
             # print(f"method_name: {'.'.join(name_chain)}")
+
+            return CallNode(node=node, name=".".join(name_chain))
         elif isinstance(node.func, ast.Name):
             #     # if node.args:
             #     #     print(f"CALL ARGS: {[arg.__dict__ for arg in node.args]}")
             method_name = node.func.id
+            return CallNode(node=node, name=method_name)
             # print(f"method_name: {method_name}")
 
         # return CallNode(obj_name, method_name)
@@ -724,14 +738,15 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
         import pprint
 
-        print(f"Imported modules: {len(self.imports)}")
-        pprint.pprint(self.imports)
+        # print(f"Imported modules: {len(self.imports)}")
+        # pprint.pprint(self.imports)
+        # print(f"Classes: {len(self.classes)}")
+        # pprint.pprint(self.classes)
+        # print(f"Functions: {len(self.functions)}")
+        # pprint.pprint(self.functions)
 
-        print(f"Classes: {len(self.classes)}")
-        pprint.pprint(self.classes)
-
-        print(f"Functions: {len(self.functions)}")
-        pprint.pprint(self.functions)
+        print(f"Calls: {len(self.calls)}")
+        pprint.pprint(self.calls)
 
     def get_leaf_nodes(self) -> List[FunctionNode]:
         """Return all FunctionInfo objects that don't call any other functions."""
