@@ -32,7 +32,11 @@ class TranslatorNode:
     """Base class for storing information about code entities like functions and classes"""
 
     name: str
+
+    # FIXME (adam) Deprecate node in favor of scope
     node: ast.AST  # AST node that was used to create this entity
+    scope: Union["Scope", None] = None
+
     lineno: int = -1  # Line where function starts
     end_lineno: int = -1  # Line where function ends
     class_deps: Set[str] = field(default_factory=set)
@@ -78,7 +82,7 @@ class FunctionNode(TranslatorNode):
 class CallNode(TranslatorNode):
     """Store information about a function call"""
 
-    scope: Union["Scope", None] = None
+    # scope: Union["Scope", None] = None
 
     # attrs: Dict[str, FunctionNode] = field(default_factory=dict)
     def key(self) -> str:
@@ -90,8 +94,10 @@ class CallNode(TranslatorNode):
 
 @dataclass
 class VarNode(TranslatorNode):
-    scope: str | None = None
     type: str | None = None
+
+    def key(self) -> str:
+        return f"{self.scope.name}.{self.name}"
 
 
 @dataclass
@@ -114,9 +120,9 @@ class ClassNode(TranslatorNode):
 class Scope:
     def __init__(self, name: str):
         self.name = name
-        self.classes: list[ClassNode] = []
-        self.functions: list[FunctionNode] = []
-        self.vars: list[VarNode] = []
+        self.classes: dict[str, ClassNode] = {}
+        self.functions: dict[str, FunctionNode] = {}
+        self.vars: dict[str, VarNode] = {}
         self.parent: Scope | None = None
         self.children: list[Scope] = []
 
@@ -125,16 +131,71 @@ class Scope:
         child.parent = self
 
     def add_class(self, class_node: ClassNode):
-        self.classes.append(class_node)
+        self.classes[class_node.name] = class_node
+
+    def get_class(self, name: str) -> ClassNode | None:
+        return self.classes.get(name)
 
     def add_var(self, var_node: VarNode):
-        self.vars.append(var_node)
+        self.vars[var_node.name] = var_node
+
+    def get_var(self, name: str) -> VarNode | None:
+        return self.vars.get(name)
 
     def add_function(self, function_node: FunctionNode):
-        self.functions.append(function_node)
+        self.functions[function_node.name] = function_node
 
-    def add_class(self, class_node: ClassNode):
-        self.classes.append(class_node)
+    def get_function(self, name: str) -> FunctionNode | None:
+        return self.functions.get(name)
+
+    def get_local_symbols(self) -> list[str]:
+        return (
+            list(self.classes.keys())
+            + list(self.functions.keys())
+            + list(self.vars.keys())
+        )
+
+    def is_module(self) -> bool:
+        return self.parent is None
+
+    def get_enclosing_symbols(self) -> set[TranslatorNode]:
+        symbols = set()
+        scope = self.parent
+        while scope and not scope.is_module():
+            symbols.update(scope.get_local_symbols())
+            scope = scope.parent
+        return symbols
+
+    def get_global_symbols(self) -> set[TranslatorNode]:
+        symbols = set()
+        scope = self.parent
+        while scope and not scope.is_module():
+            scope = scope.parent
+        assert scope.is_module()
+        if scope:
+            symbols.update(scope.get_local_symbols())
+        return symbols
+
+    def get_local_node(self, symbol_name: str) -> TranslatorNode | None:
+        if symbol_name in self.vars:
+            return self.vars[symbol_name]
+        if symbol_name in self.functions:
+            return self.functions[symbol_name]
+        if symbol_name in self.classes:
+            return self.classes[symbol_name]
+        return None
+
+    def get_node(self, symbol_name: str) -> TranslatorNode | None:
+        node = self.get_local_node(symbol_name)
+        if node:
+            return node
+        return self.parent.get_node(symbol_name)
+
+    def __str__(self) -> str:
+        return f"Scope: {self.name}"
+
+    def __repr__(self) -> str:
+        return f"Scope: {self.name}"
 
 
 class CallGraphAnalyzer(ast.NodeVisitor):
@@ -162,6 +223,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.classes: Dict[str, ClassNode] = {}
         self.calls: Dict[str, CallNode] = {}
         self.vars: Dict[str, VarNode] = {}
+        self.scopes: list[Scope] = []
 
         self._collect_imports = False
         self._collect_classes = False
@@ -206,8 +268,8 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         # pprint.pprint(self.functions)
         # print(f"Calls: {len(self.calls)}")
         # pprint.pprint(self.calls)
-        print(f"Vars: {len(self.vars)}")
-        pprint.pprint(self.vars)
+        # print(f"Vars: {len(self.vars)}")
+        # pprint.pprint(self.vars)
 
         self._resolve_calls()
 
@@ -288,6 +350,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
     def visit_AnnAssign(self, node: ast.AnnAssign):
         print(f"AnnAssign: {node.__dict__}")
+        print("annotation", self._resolve_generic(node.annotation))
         self._create_var_node(
             node,
             [self._resolve_generic(node.target)],
@@ -296,7 +359,9 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Module(self, node: ast.Module):
-        self.current_scope = Scope(name=get_module_name(self.current_file))
+        scope = Scope(name=get_module_name(self.current_file))
+        self.scopes.append(scope)
+        self.current_scope = scope
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign):
@@ -322,7 +387,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                 node=node,
                 lineno=node.lineno,
                 end_lineno=node.end_lineno,
-                scope=scope,
+                scope=self.current_scope,
                 type=annotation,
             )
             self.current_scope.add_var(var_node)
@@ -409,6 +474,70 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                 return self.functions[function_key]
         return None
 
+    def get_all_args(self, node: ast.FunctionDef) -> list[VarNode]:
+        # node.args example:
+        # {
+        #     'posonlyargs': [],
+        #     'args': [<ast.arg object at 0x1034f7760>],
+        #     'vararg': None,
+        #     'kwonlyargs': [],
+        #     'kw_defaults': [],
+        #     'kwarg': None,
+        #     'defaults': []
+        # }
+        #
+        # node.args.args[0] example:
+        # {
+        #     'arg': 'self',
+        #     'annotation': None,
+        #     'type_comment': None,
+        #     'lineno': 8,
+        #     'col_offset': 26,
+        #     'end_lineno': 8,
+        #     'end_col_offset': 30
+        # }
+
+        scope = ".".join(self.current_namespace)
+        vars = []
+
+        for arg in node.args.args:
+            vars.append(
+                VarNode(
+                    name=arg.arg,
+                    node=arg,
+                    lineno=arg.lineno,
+                    end_lineno=arg.end_lineno,
+                    scope=self.current_scope,
+                    type=arg.annotation,
+                )
+            )
+
+        if node.args.kwarg:
+            vars.append(
+                VarNode(
+                    name=node.args.kwarg.arg,
+                    node=node.args.kwarg,
+                    lineno=node.args.kwarg.lineno,
+                    end_lineno=node.args.kwarg.end_lineno,
+                    scope=self.current_scope,
+                    type=None,
+                )
+            )
+
+        if node.args.vararg:
+            vars.append(
+                VarNode(
+                    name=node.args.vararg.arg,
+                    node=node.args.vararg,
+                    lineno=node.args.vararg.lineno,
+                    end_lineno=node.args.vararg.end_lineno,
+                    scope=scope,
+                    type=None,
+                )
+            )
+
+        return vars
+
     def _create_function_node(
         self,
         node: ast.FunctionDef,
@@ -430,7 +559,15 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             file=file,
             source_code=source_code,  # Store the source code
         )
+
+        parent_scope = self.current_scope.parent
+        parent_scope.add_function(function_node)
+
         self.current_scope.add_function(function_node)
+
+        arg_vars = self.get_all_args(node)
+        for var in arg_vars:
+            self.current_scope.add_var(var)
 
         # TODO (adam) Should probably get rid of self.functions
         self.functions[function_key] = function_node
@@ -451,7 +588,12 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         )
         # TODO (adam) Should probably get rid of self.classes
         self.classes[class_info.key()] = class_info
+
+        parent_scope = self.current_scope.parent
+        parent_scope.add_class(class_info)
+
         self.current_scope.add_class(class_info)
+
         # TODO (adam) May want to pack class tracking into the scope object
         self.current_class = class_name
 
@@ -514,20 +656,73 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                 matching_classes = class_nodes_by_name[func_name]
                 matches.extend(matching_classes)
 
-                if len(matches) > 1:
+                if len(matches) > 0:
+
+                    # LEGB - Local, Enclosing, Global, Built-in
+                    scope = call.scope
 
                     print("\n--------------------------------")
-                    if matches:
-                        print(f"{len(matches)} matches for {func_name}")
-                        print(f"\nCaller: {caller}")
-                        print(f"\nCall:")
-                        pprint.pprint(call.__dict__)
-                        print(f"\nMatches:")
-                        for match in matches:
-                            print(f"  Name: {match.name}")
-                            print(f"  File: {match.file}")
-                    else:
-                        print(f"Unmatched call {call.__dict__}")
+                    print(f"{len(matches)} matches for {func_name}")
+
+                    print(f"\nCaller: {caller}")
+                    print(f"\nCall: {call.name}")
+                    print(f"\nMatches:")
+                    for match in matches:
+                        print(f"  Name: {match.name}")
+                        print(f"  File: {match.file}")
+
+                    attributes = call.name.split(".")
+                    print(f"Found {len(attributes)} attributes: {attributes}")
+                    for attribute in attributes:
+                        print(f"Checking attribute: {attribute}")
+
+                        print("\nScope:")
+                        pprint.pprint(scope.__dict__)
+
+                        print("\nLocal symbols:")
+                        pprint.pprint(scope.get_local_symbols())
+
+                        print("\nEnclosing symbols:")
+                        pprint.pprint(scope.get_enclosing_symbols())
+
+                        print("\nGlobal symbols:")
+                        pprint.pprint(scope.get_global_symbols())
+
+                        matched_node = None
+                        if attribute in scope.get_local_symbols():
+                            matched_node = scope.get_node(attribute)
+                        elif attribute in scope.get_enclosing_symbols():
+                            matched_node = scope.get_node(attribute)
+                        elif attribute in scope.get_global_symbols():
+                            print("HERE")
+                            matched_node = scope.get_node(attribute)
+                        else:
+                            print("CANDIDATE FOR BUILTIN!")
+
+                        if matched_node:
+                            print(
+                                f"\nFound {type(matched_node)} attribute in scope {matched_node.scope}"
+                            )
+                            pprint.pprint(matched_node.__dict__)
+                            scope = matched_node.scope
+                            # scope = matched_node.type.scope
+                        else:
+                            print(f"Did not find attribute {attribute} in scope")
+
+                # elif len(matches) == 1:
+                #     print(f"Matched call {call.name}")
+                elif not matches:
+                    print(f"Unmatched call {call.name}")
+
+        # for scope in self.scopes:
+        #     self.print_scope_tree(scope)
+
+    def print_scope_tree(self, scope: Scope, indent: int = 0):
+        print(f"\n{indent * '  '}Scope: {scope.name}")
+        print(f"{indent * '  '}  Symbols: {scope.get_local_symbols()}")
+        print(f"{indent * '  '}  Is Module? {scope.is_module()}")
+        for child in scope.children:
+            self.print_scope_tree(child, indent + 1)
 
     def parse_file(self, file_path: str) -> ast.AST:
         """Parse a single file and return its AST."""
