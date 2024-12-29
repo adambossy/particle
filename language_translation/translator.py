@@ -194,7 +194,7 @@ class Scope:
         node = self.get_local_node(symbol_name)
         if node:
             return node
-        return self.parent.get_node(symbol_name)
+        return self.parent and self.parent.get_node(symbol_name)
 
     def __str__(self) -> str:
         return f"Scope: {self.name}"
