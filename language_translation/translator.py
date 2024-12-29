@@ -1,4 +1,5 @@
 import ast
+import pprint
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -558,6 +559,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             node=node,
             file=file,
             source_code=source_code,  # Store the source code
+            scope=self.current_scope,
         )
 
         parent_scope = self.current_scope.parent
@@ -585,6 +587,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             file=self.current_file,
             lineno=node.lineno,
             end_lineno=node.end_lineno,
+            scope=self.current_scope,
         )
         # TODO (adam) Should probably get rid of self.classes
         self.classes[class_info.key()] = class_info
@@ -620,6 +623,32 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         #     pdb.set_trace()
 
         return CallNode(node=node, name=method_name, scope=self.current_scope)
+
+    def _find_node(self, attribute: str, scope: Scope) -> TranslatorNode | None:
+        print(f"Checking attribute: {attribute}")
+
+        print("\nScope:")
+        pprint.pprint(scope.__dict__)
+
+        print("\nLocal symbols:")
+        pprint.pprint(scope.get_local_symbols())
+
+        print("\nEnclosing symbols:")
+        pprint.pprint(scope.get_enclosing_symbols())
+
+        print("\nGlobal symbols:")
+        pprint.pprint(scope.get_global_symbols())
+
+        if attribute in scope.get_local_symbols():
+            return scope.get_node(attribute)
+        elif attribute in scope.get_enclosing_symbols():
+            return scope.get_node(attribute)
+        elif attribute in scope.get_global_symbols():
+            print("HERE")
+            return scope.get_node(attribute)
+
+        print("CANDIDATE FOR BUILTIN!")
+        return None
 
     def _resolve_calls(self):
         # function_nodes_by_name = {f.name: f for f in self.functions.values()}
@@ -674,38 +703,26 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     attributes = call.name.split(".")
                     print(f"Found {len(attributes)} attributes: {attributes}")
                     for attribute in attributes:
-                        print(f"Checking attribute: {attribute}")
 
-                        print("\nScope:")
-                        pprint.pprint(scope.__dict__)
+                        # May want to treat "self" as a special case
+                        # May want to treat "None" as a special case
+                        # Discern between "terminal" attributes and attributes in a chain
 
-                        print("\nLocal symbols:")
-                        pprint.pprint(scope.get_local_symbols())
-
-                        print("\nEnclosing symbols:")
-                        pprint.pprint(scope.get_enclosing_symbols())
-
-                        print("\nGlobal symbols:")
-                        pprint.pprint(scope.get_global_symbols())
-
-                        matched_node = None
-                        if attribute in scope.get_local_symbols():
-                            matched_node = scope.get_node(attribute)
-                        elif attribute in scope.get_enclosing_symbols():
-                            matched_node = scope.get_node(attribute)
-                        elif attribute in scope.get_global_symbols():
-                            print("HERE")
-                            matched_node = scope.get_node(attribute)
-                        else:
-                            print("CANDIDATE FOR BUILTIN!")
-
+                        matched_node = self._find_node(attribute, scope)
                         if matched_node:
                             print(
-                                f"\nFound {type(matched_node)} attribute in scope {matched_node.scope}"
+                                f"\nFound {type(matched_node)} attribute in scope {matched_node.scope.name}"
                             )
                             pprint.pprint(matched_node.__dict__)
-                            scope = matched_node.scope
-                            # scope = matched_node.type.scope
+                            if isinstance(matched_node, VarNode) and matched_node.type:
+                                type_node = self._find_node(
+                                    matched_node.type, matched_node.scope
+                                )
+                                print(
+                                    f"Found node for type '{matched_node.type}': {type_node}"
+                                )
+                                if type_node:
+                                    scope = type_node.scope
                         else:
                             print(f"Did not find attribute {attribute} in scope")
 
