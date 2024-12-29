@@ -330,9 +330,25 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.current_scope = scope
         self.generic_visit(node)
 
+    def _flatten_nested_targets(self, targets: list) -> list[str]:
+        """
+        This is for handling syntax like:
+
+        a, b, c = 1, 2, 3
+        a, (b, c) = 1, (2, 3)
+        """
+        flattened = []
+        for target in targets:
+            if isinstance(target, (list, tuple, set)):
+                flattened.extend(self._flatten_nested_targets(target))
+            else:
+                flattened.append(target)
+        return flattened
+
     def visit_Assign(self, node: ast.Assign):
         target_names = [self._resolve_generic(t) for t in node.targets]
-        self._create_var_node(node, target_names)
+        flattened_target_names = self._flatten_nested_targets(target_names)
+        self._create_var_node(node, flattened_target_names)
         self.generic_visit(node)
 
     def _create_var_node(
