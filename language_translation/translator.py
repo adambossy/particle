@@ -122,7 +122,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.functions: Dict[str, FunctionNode] = {}
         self.current_namespace: List[str] = []
         self.current_class = None
-        self.tree = None  # Store the current AST
+        self.tree: ast.AST = None  # Store the current AST
         self.code = None
         self.imports = {}
         self.current_file = None
@@ -150,7 +150,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             tree = self.parse_file(str(file_path))
             self.collect_imports(tree)
             self.collect_classes()
-            # self.collect_functions(ast)
+            self.collect_functions(ast)
             # self.collect_calls(ast)
 
         import pprint
@@ -161,32 +161,33 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         print(f"Classes: {len(self.classes)}")
         pprint.pprint(self.classes)
 
+        print(f"Functions: {len(self.functions)}")
+        pprint.pprint(self.functions)
+
     def _is_test_file(self, file_path: Path) -> bool:
         """Determine if a file is a test file based on its name."""
         return file_path.name.startswith("test_") or file_path.name.endswith("_test.py")
 
-    def collect_imports(self, tree: Node):
+    def collect_imports(self, tree: ast.AST):
         self._collect_imports = True
         self.visit(tree)
         self._collect_imports = False
 
-    def collect_classes(self, node: Node):
+    def collect_classes(self, tree: ast.AST):
         self._collect_classes = True
-        self.visit(node)
+        self.visit(tree)
         self._collect_classes = False
 
-    def collect_functions(self, node: Node):
+    def collect_functions(self, tree: ast.AST):
         self._collect_functions = True
-        self._maybe_track_namespace(node)
-        self.visit(node)
-        self._maybe_untrack_namespace(node)
+        self.visit(tree)
         self._collect_functions = False
 
-    def collect_calls(self, node: Node):
+    def collect_calls(self, tree: ast.AST):
         self._collect_calls = True
-        self._maybe_track_namespace(node)
-        self.visit(node)
-        self._maybe_untrack_namespace(node)
+        self._maybe_track_namespace(tree)
+        self.visit(tree)
+        self._maybe_untrack_namespace(tree)
         self._collect_calls = False
 
     def visit_Import(self, node: ast.Import):
@@ -204,25 +205,27 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             self.imports[alias.asname or alias.name] = f"{module}.{alias.name}"
         self.generic_visit(node)
 
-    def _maybe_track_namespace(self, node: Node):
+    def _maybe_track_namespace(self, node: ast.FunctionDef | ast.ClassDef):
         if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
             symbol_name = node.name  # Directly access the name attribute
             self.current_namespace.append(symbol_name)
+            print(f"NS: {'.'.join(self.current_namespace)}")
             if isinstance(node, ast.ClassDef):
                 self.current_class = symbol_name
 
-    def _maybe_untrack_namespace(self, node: Node):
+    def _maybe_untrack_namespace(self, node: ast.FunctionDef | ast.ClassDef):
         # Legacy - pop namespace when leaving class or function
-        if node.type in ("function_definition", "class_definition"):
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
             self.current_namespace.pop()
-            if node.type == "class_definition":
+            print(f"NS: {'.'.join(self.current_namespace)}")
+            if isinstance(node, ast.ClassDef):
                 self.current_class = None
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
         """Process a function definition node."""
-        func_name = node.name
-        self.current_namespace.append(func_name)
+        self._maybe_track_namespace(node)
 
+        func_name = node.name
         # FIXME (adam) This is a hack to get the namespace to work for now
         namespace = ".".join(self.current_namespace[:-1])
         function_info = self._get_or_create_function_info(
@@ -230,9 +233,9 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         )
         function_info.lineno = node.lineno
         function_info.end_lineno = node.end_lineno
-        self.current_namespace.append(func_name)
+
         self.generic_visit(node)
-        self.current_namespace.pop()
+        self._maybe_untrack_namespace(node)
 
     def _try_resolve_call_with_function_info(
         self, func_name: str, namespace: str | None
@@ -293,6 +296,8 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
     def visit_ClassDef(self, node: ast.ClassDef):
         # Process class definitions
+        self._maybe_track_namespace(node)
+
         class_name = node.name
         class_info = ClassNode(
             name=class_name,
@@ -302,9 +307,10 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             end_lineno=node.end_lineno,
         )
         self.classes[class_info.key()] = class_info
-        self.current_namespace.append(class_name)
         self.current_class = class_name
+
         self.generic_visit(node)
+
         self.current_namespace.pop()
         self.current_class = None
 
@@ -370,12 +376,12 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
             # name_chain is backwards, e.g. ["entries", "cmudict", "corpus", "nltk"]
             name_chain.reverse()
-            print(f"method_name: {'.'.join(name_chain)}")
+            # print(f"method_name: {'.'.join(name_chain)}")
         elif isinstance(node.func, ast.Name):
             #     # if node.args:
             #     #     print(f"CALL ARGS: {[arg.__dict__ for arg in node.args]}")
             method_name = node.func.id
-            print(f"method_name: {method_name}")
+            # print(f"method_name: {method_name}")
 
         # return CallNode(obj_name, method_name)
 
@@ -620,7 +626,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.current_file = file_path  # Set current file
         with open(file_path, "rb") as f:
             self.code = f.read().decode("utf-8")
-        self.tree = ast.parse(self.code)  # Store the tree
+        self.tree: ast.AST = ast.parse(self.code)  # Store the tree
         return self.tree
 
     def print_ast(
@@ -723,6 +729,9 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
         print(f"Classes: {len(self.classes)}")
         pprint.pprint(self.classes)
+
+        print(f"Functions: {len(self.functions)}")
+        pprint.pprint(self.functions)
 
     def get_leaf_nodes(self) -> List[FunctionNode]:
         """Return all FunctionInfo objects that don't call any other functions."""
