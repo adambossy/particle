@@ -3,7 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Union
 
 import click
 from graphviz import Digraph
@@ -78,6 +78,8 @@ class FunctionNode(TranslatorNode):
 class CallNode(TranslatorNode):
     """Store information about a function call"""
 
+    scope: Union["Scope", None] = None
+
     # attrs: Dict[str, FunctionNode] = field(default_factory=dict)
     def key(self) -> str:
         return self.name
@@ -109,6 +111,32 @@ class ClassNode(TranslatorNode):
         return self.name.startswith("Test")
 
 
+class Scope:
+    def __init__(self, name: str):
+        self.name = name
+        self.classes: list[ClassNode] = []
+        self.functions: list[FunctionNode] = []
+        self.vars: list[VarNode] = []
+        self.parent: Scope | None = None
+        self.children: list[Scope] = []
+
+    def add_child(self, child: "Scope"):
+        self.children.append(child)
+        child.parent = self
+
+    def add_class(self, class_node: ClassNode):
+        self.classes.append(class_node)
+
+    def add_var(self, var_node: VarNode):
+        self.vars.append(var_node)
+
+    def add_function(self, function_node: FunctionNode):
+        self.functions.append(function_node)
+
+    def add_class(self, class_node: ClassNode):
+        self.classes.append(class_node)
+
+
 class CallGraphAnalyzer(ast.NodeVisitor):
     def __init__(
         self, language: str, project_path: str = None, files: list[str] = None
@@ -126,6 +154,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.functions: Dict[str, FunctionNode] = {}
         self.current_namespace: List[str] = []
         self.current_class = None
+        self.current_scope = None
         self.tree: ast.AST = None  # Store the current AST
         self.code = None
         self.imports = {}
@@ -231,14 +260,29 @@ class CallGraphAnalyzer(ast.NodeVisitor):
     def _maybe_track_namespace(self, node: ast.FunctionDef | ast.ClassDef):
         if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
             symbol_name = node.name  # Directly access the name attribute
+
+            # TODO (adam) May want to pack namespace handling in to the scope object
             self.current_namespace.append(symbol_name)
+
+            scope = Scope(name=".".join(self.current_namespace))
+            if self.current_scope:
+                self.current_scope.add_child(scope)
+            self.current_scope = scope
+
+            # TODO (adam) May want to pack class tracking into the scope object
             if isinstance(node, ast.ClassDef):
                 self.current_class = symbol_name
 
     def _maybe_untrack_namespace(self, node: ast.FunctionDef | ast.ClassDef):
         # Legacy - pop namespace when leaving class or function
         if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+
+            # TODO (adam) May want to pack namespace handling in to the scope object
             self.current_namespace.pop()
+
+            self.current_scope = self.current_scope.parent
+
+            # TODO (adam) May want to pack class tracking into the scope object
             if isinstance(node, ast.ClassDef):
                 self.current_class = None
 
@@ -249,6 +293,10 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             [self._resolve_generic(node.target)],
             self._resolve_generic(node.annotation),
         )
+        self.generic_visit(node)
+
+    def visit_Module(self, node: ast.Module):
+        self.current_scope = Scope(name=get_module_name(self.current_file))
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign):
@@ -263,19 +311,23 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         annotation: str | None = None,
     ) -> str:
         scope = ".".join(self.current_namespace)
+
+        # TODO (adam) Should probably get rid of self.vars
         if scope not in self.vars:
             self.vars[scope] = []
+
         for target_name in target_names:
-            self.vars[scope].append(
-                VarNode(
-                    name=target_name,
-                    node=node,
-                    lineno=node.lineno,
-                    end_lineno=node.end_lineno,
-                    scope=scope,
-                    type=annotation,
-                )
+            var_node = VarNode(
+                name=target_name,
+                node=node,
+                lineno=node.lineno,
+                end_lineno=node.end_lineno,
+                scope=scope,
+                type=annotation,
             )
+            self.current_scope.add_var(var_node)
+            # TODO (adam) Should probably get rid of self.vars
+            self.vars[scope].append(var_node)
 
     def _resolve_generic(self, node: ast.AST) -> str:
         if isinstance(node, ast.Call):
@@ -294,11 +346,15 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             # Returns the constant value - not sure we need it
             return node.value
         elif isinstance(node, ast.List | ast.Tuple | ast.Set):
-            # Returns the list elements
             return [self._resolve_generic(e) for e in node.elts]
         elif isinstance(node, ast.Dict):
-            # Returns the dict elements
-            return [self._resolve_generic(e) for e in node.elts]
+            return [self._resolve_generic(e) for e in node.elts]  # Needs testing
+        elif isinstance(node, ast.JoinedStr):
+            return "".join(
+                [self._resolve_generic(e) for e in node.values]
+            )  # Needs testing
+        elif isinstance(node, ast.FormattedValue):
+            return self._resolve_generic(node.value)  # Needs testing
 
         import pdb
 
@@ -335,11 +391,11 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         func_name = node.name
         # FIXME (adam) This is a hack to get the namespace to work for now
         namespace = ".".join(self.current_namespace[:-1])
-        function_info = self._create_function_node(
+        function_node = self._create_function_node(
             node, func_name, namespace=namespace, file=self.current_file
         )
-        function_info.lineno = node.lineno
-        function_info.end_lineno = node.end_lineno
+        function_node.lineno = node.lineno
+        function_node.end_lineno = node.end_lineno
 
         self.generic_visit(node)
         self._maybe_untrack_namespace(node)
@@ -363,7 +419,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         source_code = self._get_source_code(node, self.code)
         function_key = get_function_key(func_name, namespace, file)
 
-        self.functions[function_key] = FunctionNode(
+        function_node = FunctionNode(
             name=func_name,
             namespace=namespace,
             calls=set(),
@@ -374,8 +430,12 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             file=file,
             source_code=source_code,  # Store the source code
         )
+        self.current_scope.add_function(function_node)
 
-        return self.functions[function_key]
+        # TODO (adam) Should probably get rid of self.functions
+        self.functions[function_key] = function_node
+
+        return function_node
 
     def visit_ClassDef(self, node: ast.ClassDef):
         # Process class definitions
@@ -389,13 +449,14 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             lineno=node.lineno,
             end_lineno=node.end_lineno,
         )
+        # TODO (adam) Should probably get rid of self.classes
         self.classes[class_info.key()] = class_info
+        self.current_scope.add_class(class_info)
+        # TODO (adam) May want to pack class tracking into the scope object
         self.current_class = class_name
 
         self.generic_visit(node)
-
-        self.current_namespace.pop()
-        self.current_class = None
+        self._maybe_untrack_namespace(node)
 
     def visit_Call(self, node: ast.Call):
         current_module = get_module_name(self.current_file)
@@ -411,7 +472,12 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
     def _resolve_call(self, node: ast.Call) -> CallNode:
         method_name = self._resolve_generic(node.func)
-        return CallNode(node=node, name=method_name)
+        # if isinstance(method_name, CallNode):
+        #     import pdb
+
+        #     pdb.set_trace()
+
+        return CallNode(node=node, name=method_name, scope=self.current_scope)
 
     def _resolve_calls(self):
         # function_nodes_by_name = {f.name: f for f in self.functions.values()}
@@ -435,6 +501,10 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         print("\nCalls:")
         for caller, calls in self.calls.items():
             for call in calls:
+                # FIXME (adam) I'm not sure yet what to do with nested calls,
+                # so we'll just skip them for now
+                if isinstance(call.name, CallNode):
+                    continue
                 func_name = call.name.split(".")[-1]
                 matches = []
 
@@ -444,17 +514,20 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                 matching_classes = class_nodes_by_name[func_name]
                 matches.extend(matching_classes)
 
-                print("\n--------------------------------")
-                if matches:
-                    print(f"{len(matches)} matches for {func_name}")
-                    print(f"\nCaller: {caller}")
-                    print(f"\nCall:")
-                    pprint.pprint(call.__dict__)
-                    print(f"\nMatches:")
-                    for match in matches:
-                        pprint.pprint(match.__dict__)
-                else:
-                    print(f"Unmatched call {call.__dict__}")
+                if len(matches) > 1:
+
+                    print("\n--------------------------------")
+                    if matches:
+                        print(f"{len(matches)} matches for {func_name}")
+                        print(f"\nCaller: {caller}")
+                        print(f"\nCall:")
+                        pprint.pprint(call.__dict__)
+                        print(f"\nMatches:")
+                        for match in matches:
+                            print(f"  Name: {match.name}")
+                            print(f"  File: {match.file}")
+                    else:
+                        print(f"Unmatched call {call.__dict__}")
 
     def parse_file(self, file_path: str) -> ast.AST:
         """Parse a single file and return its AST."""
