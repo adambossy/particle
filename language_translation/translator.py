@@ -1,4 +1,5 @@
 import ast
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -78,10 +79,17 @@ class CallNode(TranslatorNode):
     """Store information about a function call"""
 
     # attrs: Dict[str, FunctionNode] = field(default_factory=dict)
-    pass
+    def key(self) -> str:
+        return self.name
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+
+@dataclass
+class VarNode(TranslatorNode):
+    scope: str | None = None
+    type: str | None = None
 
 
 @dataclass
@@ -124,6 +132,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.current_file = None
         self.classes: Dict[str, ClassNode] = {}
         self.calls: Dict[str, CallNode] = {}
+        self.vars: Dict[str, VarNode] = {}
 
         self._collect_imports = False
         self._collect_classes = False
@@ -140,29 +149,45 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             raise ValueError("Either project_path or files must be provided")
 
     def analyze_files(self):
+        self._analyze_files(self.files)
+
+    def _analyze_files(self, files: list[str]):
         """Analyze specific files and build call graph."""
+        self.imports.clear()
+        self.classes.clear()
         self.functions.clear()
-        for file_path in self.files:
+        self.calls.clear()
+
+        for file_path in files:
             print(f"\nAnalyzing file: {file_path}")
             tree = self.parse_file(str(file_path))
-            # self.collect_imports(tree)
-            # self.collect_classes(tree)
-            # self.collect_functions(tree)
-            self.collect_calls(tree)
+            if tree:
+                # self.collect_imports(tree)
+                # self.collect_classes(tree)
+                # self.collect_functions(tree)
+                self.collect_calls(tree)
 
         import pprint
 
-        print(f"Imported modules: {len(self.imports)}")
-        pprint.pprint(self.imports)
+        # print(f"Imported modules: {len(self.imports)}")
+        # pprint.pprint(self.imports)
+        # print(f"Classes: {len(self.classes)}")
+        # pprint.pprint(self.classes)
+        # print(f"Functions: {len(self.functions)}")
+        # pprint.pprint(self.functions)
+        # print(f"Calls: {len(self.calls)}")
+        # pprint.pprint(self.calls)
+        print(f"Vars: {len(self.vars)}")
+        pprint.pprint(self.vars)
 
-        print(f"Classes: {len(self.classes)}")
-        pprint.pprint(self.classes)
+        self._resolve_calls()
 
-        print(f"Functions: {len(self.functions)}")
-        pprint.pprint(self.functions)
-
-        print(f"Calls: {len(self.calls)}")
-        pprint.pprint(self.calls)
+    def analyze_project(self):
+        """Analyze all files in the project directory."""
+        # Get the file extension for the current language
+        extension = LANGUAGE_EXTENSIONS.get(self.language, f".{self.language}")
+        self.files = [f for f in self.project_path.rglob(f"*{extension}")]
+        return self._analyze_files(self.files)
 
     def _is_test_file(self, file_path: Path) -> bool:
         """Determine if a file is a test file based on its name."""
@@ -216,6 +241,85 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             self.current_namespace.pop()
             if isinstance(node, ast.ClassDef):
                 self.current_class = None
+
+    def visit_Assign(self, node: ast.Assign):
+        scope = ".".join(self.current_namespace)
+        if scope not in self.vars:
+            self.vars[scope] = []
+        target_names = [self._resolve_generic(t) for t in node.targets]
+        for target_name in target_names:
+            self.vars[scope].append(
+                VarNode(
+                    name=target_name,
+                    node=node,
+                    lineno=node.lineno,
+                    end_lineno=node.end_lineno,
+                    scope=scope,
+                )
+            )
+        self.generic_visit(node)
+
+    def _resolve_generic(self, node: ast.AST) -> str:
+        if isinstance(node, ast.Call):
+            return self._resolve_call(node)
+        if isinstance(node, ast.Attribute):
+            return self._resolve_attribute(node)
+        elif isinstance(node, ast.Name):
+            return self._resolve_name(node)
+        elif isinstance(node, ast.BoolOp):
+            # node.func could be ast.Or or ast.And
+            raise NotImplementedError(f"Unsupported node type: {type(node)}")
+        elif isinstance(node, ast.Subscript):
+            # for example, "score_funcs['image_quality'](arg1, arg2, ...)"
+            # node.args[0] is arg1
+            # node.args[1] is arg2
+            # node.func.value.id is 'score_funcs'
+            # node.func.value.slice.value is 'image_quality'
+            raise NotImplementedError(f"Unsupported node type: {type(node)}")
+        elif isinstance(node, ast.Constant):
+            # node.kind = 'int' or 'str' or 'float' or None
+            # Returns the constant value - not sure we need it
+            return node.value
+        elif isinstance(node, ast.List):
+            # Returns the list elements
+            return [self._resolve_generic(e) for e in node.elts]
+        elif isinstance(node, ast.Tuple):
+            # Returns the tuple elements
+            return [self._resolve_generic(e) for e in node.elts]
+        elif isinstance(node, ast.Set):
+            # Returns the set elements
+            return [self._resolve_generic(e) for e in node.elts]
+        elif isinstance(node, ast.Dict):
+            # Returns the dict elements
+            return [self._resolve_generic(e) for e in node.elts]
+
+        import pdb
+
+        pdb.set_trace()
+
+    def _resolve_attribute(self, node: ast.Attribute) -> str:
+        name_chain = []
+        # current = node.func
+        current = node
+
+        # Walk “backwards” while we have Attribute nodes.
+        while isinstance(current, ast.Attribute):
+            name_chain.append(current.attr)
+            current = current.value
+
+        if isinstance(current, ast.Name):
+            name_chain.append(self._resolve_name(current))
+
+        # name_chain is backwards, e.g. ["entries", "cmudict", "corpus", "nltk"]
+        name_chain.reverse()
+
+        return ".".join(name_chain)
+
+    def _resolve_name(self, node: ast.Name) -> str:
+        return node.id
+
+    def _resolve_assign(self, node: ast.Assign):
+        pass
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
         """Process a function definition node."""
@@ -290,40 +394,74 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         current_module = get_module_name(self.current_file)
         caller_key = ".".join([current_module] + self.current_namespace)
         callee_node = self._resolve_call(node)
-        if caller_key not in self.calls:
-            self.calls[caller_key] = []
-        # NOTE (adam) This adds dupes, which is fine for now
-        self.calls[caller_key].append(callee_node)
+        if callee_node:
+            if caller_key not in self.calls:
+                self.calls[caller_key] = []
+            # NOTE (adam) This adds dupes, which is fine for now
+            self.calls[caller_key].append(callee_node)
 
         self.generic_visit(node)
 
     def _resolve_call(self, node: ast.Call) -> CallNode:
-        if isinstance(node.func, ast.Attribute):
-            name_chain = []
-            current = node.func
+        method_name = self._resolve_generic(node.func)
+        return CallNode(node=node, name=method_name)
 
-            # Walk “backwards” while we have Attribute nodes.
-            while isinstance(current, ast.Attribute):
-                name_chain.append(current.attr)
-                current = current.value
+    def _resolve_calls(self):
+        # function_nodes_by_name = {f.name: f for f in self.functions.values()}
+        # class_nodes_by_name = {c.name: c for c in self.classes.values()}
 
-            if isinstance(current, ast.Name):
-                name_chain.append(current.id)
+        function_nodes_by_name = defaultdict(list)
+        for f in self.functions.values():
+            function_nodes_by_name[f.name].append(f)
 
-            # name_chain is backwards, e.g. ["entries", "cmudict", "corpus", "nltk"]
-            name_chain.reverse()
+        class_nodes_by_name = defaultdict(list)
+        for c in self.classes.values():
+            class_nodes_by_name[c.name].append(c)
 
-            return CallNode(node=node, name=".".join(name_chain))
-        elif isinstance(node.func, ast.Name):
-            method_name = node.func.id
-            return CallNode(node=node, name=method_name)
+        import pprint
+
+        # print("Function names:")
+        # pprint.pprint(function_nodes_by_name)
+        # print("Class names:")
+        # pprint.pprint(class_nodes_by_name)
+
+        print("\nCalls:")
+        for caller, calls in self.calls.items():
+            for call in calls:
+                func_name = call.name.split(".")[-1]
+                matches = []
+
+                matching_functions = function_nodes_by_name[func_name]
+                matches.extend(matching_functions)
+
+                matching_classes = class_nodes_by_name[func_name]
+                matches.extend(matching_classes)
+
+                print("\n--------------------------------")
+                if matches:
+                    print(f"{len(matches)} matches for {func_name}")
+                    print(f"\nCaller: {caller}")
+                    print(f"\nCall:")
+                    pprint.pprint(call.__dict__)
+                    print(f"\nMatches:")
+                    for match in matches:
+                        pprint.pprint(match.__dict__)
+                else:
+                    print(f"Unmatched call {call.__dict__}")
 
     def parse_file(self, file_path: str) -> ast.AST:
         """Parse a single file and return its AST."""
         self.current_file = file_path  # Set current file
         with open(file_path, "rb") as f:
             self.code = f.read().decode("utf-8")
-        self.tree: ast.AST = ast.parse(self.code)  # Store the tree
+        try:
+            self.tree: ast.AST = ast.parse(self.code)  # Store the tree
+        except SyntaxError as e:
+            # Catching this for an issue with 'dropdown_html' in paloma-story-generation/backend/common/views.py:
+            #
+            # SyntaxError: f-string expression part cannot include a backslash
+            print(f"Error parsing file {file_path}: {e}")
+            return None
         return self.tree
 
     def print_ast(
@@ -405,33 +543,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             f.write("\n".join(output_lines))
 
         print(f"\nCall graph log saved to: {log_path}")
-
-    def analyze_project(self):
-        """Analyze all files in the project directory."""
-        # Get the file extension for the current language
-        extension = LANGUAGE_EXTENSIONS.get(self.language, f".{self.language}")
-
-        for file_path in self.project_path.rglob(f"*{extension}"):
-            print(f"\nAnalyzing file: {file_path}")
-            tree = self.parse_file(str(file_path))
-            # self.collect_imports(tree)
-            # self.collect_classes(tree)
-            # self.collect_functions(tree)
-            self.collect_calls(tree)
-
-        import pprint
-
-        print(f"Imported modules: {len(self.imports)}")
-        pprint.pprint(self.imports)
-
-        print(f"Classes: {len(self.classes)}")
-        pprint.pprint(self.classes)
-
-        print(f"Functions: {len(self.functions)}")
-        pprint.pprint(self.functions)
-
-        print(f"Calls: {len(self.calls)}")
-        pprint.pprint(self.calls)
 
     def get_leaf_nodes(self) -> List[FunctionNode]:
         """Return all FunctionInfo objects that don't call any other functions."""
