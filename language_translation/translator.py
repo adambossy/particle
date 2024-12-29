@@ -126,6 +126,7 @@ class Scope:
         self.vars: dict[str, VarNode] = {}
         self.parent: Scope | None = None
         self.children: list[Scope] = []
+        self.imports: dict[str, str] = {}
 
     def add_child(self, child: "Scope"):
         self.children.append(child)
@@ -170,7 +171,9 @@ class Scope:
     def get_global_symbols(self) -> set[TranslatorNode]:
         symbols = set()
         scope = self.parent
-        while scope and not scope.is_module():
+        if not scope:
+            return set()
+        while not scope.is_module():
             scope = scope.parent
         assert scope.is_module()
         if scope:
@@ -219,17 +222,11 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.current_scope = None
         self.tree: ast.AST = None  # Store the current AST
         self.code = None
-        self.imports = {}
         self.current_file = None
         self.classes: Dict[str, ClassNode] = {}
         self.calls: Dict[str, CallNode] = {}
         self.vars: Dict[str, VarNode] = {}
         self.scopes: list[Scope] = []
-
-        self._collect_imports = False
-        self._collect_classes = False
-        self._collect_functions = False
-        self._collect_calls = False
 
     def analyze(self):
         """Analyze either the project directory or specific files."""
@@ -245,7 +242,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
     def _analyze_files(self, files: list[str]):
         """Analyze specific files and build call graph."""
-        self.imports.clear()
         self.classes.clear()
         self.functions.clear()
         self.calls.clear()
@@ -254,10 +250,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             print(f"\nAnalyzing file: {file_path}")
             tree = self.parse_file(str(file_path))
             if tree:
-                # self.collect_imports(tree)
-                # self.collect_classes(tree)
-                # self.collect_functions(tree)
-                self.collect_calls(tree)
+                self.visit(tree)
 
         import pprint
 
@@ -272,6 +265,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         # print(f"Vars: {len(self.vars)}")
         # pprint.pprint(self.vars)
 
+        self._resolve_imports()
         self._resolve_calls()
 
     def analyze_project(self):
@@ -285,39 +279,17 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         """Determine if a file is a test file based on its name."""
         return file_path.name.startswith("test_") or file_path.name.endswith("_test.py")
 
-    def collect_imports(self, tree: ast.AST):
-        self._collect_imports = True
-        self.visit(tree)
-        self._collect_imports = False
-
-    def collect_classes(self, tree: ast.AST):
-        self._collect_classes = True
-        self.visit(tree)
-        self._collect_classes = False
-
-    def collect_functions(self, tree: ast.AST):
-        self._collect_functions = True
-        self.visit(tree)
-        self._collect_functions = False
-
-    def collect_calls(self, tree: ast.AST):
-        self._collect_calls = True
-        self.visit(tree)
-        self._collect_calls = False
-
     def visit_Import(self, node: ast.Import):
-        if not self.collect_imports:
-            return
         for alias in node.names:
-            self.imports[alias.asname or alias.name] = alias.name
+            self.current_scope.imports[alias.asname or alias.name] = alias.name
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        if not self.collect_imports:
-            return
         module = node.module or ""
         for alias in node.names:
-            self.imports[alias.asname or alias.name] = f"{module}.{alias.name}"
+            self.current_scope.imports[alias.asname or alias.name] = (
+                f"{module}.{alias.name}"
+            )
         self.generic_visit(node)
 
     def _maybe_track_namespace(self, node: ast.FunctionDef | ast.ClassDef):
@@ -350,8 +322,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                 self.current_class = None
 
     def visit_AnnAssign(self, node: ast.AnnAssign):
-        print(f"AnnAssign: {node.__dict__}")
-        print("annotation", self._resolve_generic(node.annotation))
         self._create_var_node(
             node,
             [self._resolve_generic(node.target)],
@@ -625,7 +595,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         return CallNode(node=node, name=method_name, scope=self.current_scope)
 
     def _find_node(self, attribute: str, scope: Scope) -> TranslatorNode | None:
-        print(f"Checking attribute: {attribute}")
+        print(f"\nChecking attribute: {attribute}")
 
         print("\nScope:")
         pprint.pprint(scope.__dict__)
@@ -649,6 +619,54 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
         print("CANDIDATE FOR BUILTIN!")
         return None
+
+    def _resolve_imports(self):
+        print("Resolving imports")
+
+        for scope in self.scopes:
+            print(f"\nScope: {scope.name}")
+            print("Imports:")
+            pprint.pprint(scope.imports)
+
+            for import_name, full_import_name in scope.imports.items():
+                print(f"Import: {import_name} -> {full_import_name}")
+
+                other_scopes = [s for s in self.scopes if s != scope]
+                for other_scope in other_scopes:
+                    matched_node = self._resolve_attribute_chain(
+                        full_import_name, other_scope
+                    )
+                    if matched_node:
+                        if isinstance(matched_node, FunctionNode):
+                            scope.add_function(matched_node)
+                        elif isinstance(matched_node, ClassNode):
+                            scope.add_class(matched_node)
+                        elif isinstance(matched_node, VarNode):
+                            scope.add_var(matched_node)
+
+    def _resolve_attribute_chain(self, attribute_chain: str, scope: Scope):
+        attributes = attribute_chain.split(".")
+        print(f"Found {len(attributes)} attributes: {attributes}")
+        for attribute in attributes:
+
+            # May want to treat "self" as a special case
+            # May want to treat "None" as a special case
+            # Discern between "terminal" attributes and attributes in a chain
+
+            matched_node = self._find_node(attribute, scope)
+            if matched_node:
+                print(
+                    f"\nFound {type(matched_node)} attribute in scope {matched_node.scope.name}"
+                )
+                pprint.pprint(matched_node.__dict__)
+                if isinstance(matched_node, VarNode) and matched_node.type:
+                    type_node = self._find_node(matched_node.type, matched_node.scope)
+                    print(f"Found node for type '{matched_node.type}': {type_node}")
+                    if type_node:
+                        scope = type_node.scope
+            else:
+                print(f"Did not find attribute {attribute} in scope")
+        return matched_node
 
     def _resolve_calls(self):
         # function_nodes_by_name = {f.name: f for f in self.functions.values()}
@@ -700,32 +718,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                         print(f"  Name: {match.name}")
                         print(f"  File: {match.file}")
 
-                    attributes = call.name.split(".")
-                    print(f"Found {len(attributes)} attributes: {attributes}")
-                    for attribute in attributes:
-
-                        # May want to treat "self" as a special case
-                        # May want to treat "None" as a special case
-                        # Discern between "terminal" attributes and attributes in a chain
-
-                        matched_node = self._find_node(attribute, scope)
-                        if matched_node:
-                            print(
-                                f"\nFound {type(matched_node)} attribute in scope {matched_node.scope.name}"
-                            )
-                            pprint.pprint(matched_node.__dict__)
-                            if isinstance(matched_node, VarNode) and matched_node.type:
-                                type_node = self._find_node(
-                                    matched_node.type, matched_node.scope
-                                )
-                                print(
-                                    f"Found node for type '{matched_node.type}': {type_node}"
-                                )
-                                if type_node:
-                                    scope = type_node.scope
-                        else:
-                            print(f"Did not find attribute {attribute} in scope")
-
+                    self._resolve_attribute_chain(call.name, scope)
                 # elif len(matches) == 1:
                 #     print(f"Matched call {call.name}")
                 elif not matches:
