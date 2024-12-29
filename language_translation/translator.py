@@ -732,7 +732,10 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     print(f"NODE---------------> {node}")
                     print(f"CALLING NODE-------> {call.calling_node}")
 
-                    if node and isinstance(node, FunctionNode):
+                    if not call.calling_node:
+                        print(f"Function {call.name} called at the module level")
+
+                    if node and isinstance(node, FunctionNode) and call.calling_node:
                         calling_node = self._resolve_attribute_chain(
                             call.calling_node, scope
                         )
