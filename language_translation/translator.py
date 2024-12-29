@@ -242,11 +242,29 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             if isinstance(node, ast.ClassDef):
                 self.current_class = None
 
+    def visit_AnnAssign(self, node: ast.AnnAssign):
+        print(f"AnnAssign: {node.__dict__}")
+        self._create_var_node(
+            node,
+            [self._resolve_generic(node.target)],
+            self._resolve_generic(node.annotation),
+        )
+        self.generic_visit(node)
+
     def visit_Assign(self, node: ast.Assign):
+        target_names = [self._resolve_generic(t) for t in node.targets]
+        self._create_var_node(node, target_names)
+        self.generic_visit(node)
+
+    def _create_var_node(
+        self,
+        node: ast.Assign | ast.AnnAssign,
+        target_names: list[str],
+        annotation: str | None = None,
+    ) -> str:
         scope = ".".join(self.current_namespace)
         if scope not in self.vars:
             self.vars[scope] = []
-        target_names = [self._resolve_generic(t) for t in node.targets]
         for target_name in target_names:
             self.vars[scope].append(
                 VarNode(
@@ -255,9 +273,9 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     lineno=node.lineno,
                     end_lineno=node.end_lineno,
                     scope=scope,
+                    type=annotation,
                 )
             )
-        self.generic_visit(node)
 
     def _resolve_generic(self, node: ast.AST) -> str:
         if isinstance(node, ast.Call):
@@ -270,24 +288,13 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             # node.func could be ast.Or or ast.And
             raise NotImplementedError(f"Unsupported node type: {type(node)}")
         elif isinstance(node, ast.Subscript):
-            # for example, "score_funcs['image_quality'](arg1, arg2, ...)"
-            # node.args[0] is arg1
-            # node.args[1] is arg2
-            # node.func.value.id is 'score_funcs'
-            # node.func.value.slice.value is 'image_quality'
-            raise NotImplementedError(f"Unsupported node type: {type(node)}")
+            return f"{self._resolve_generic(node.value)}[{self._resolve_generic(node.slice)}]"
         elif isinstance(node, ast.Constant):
             # node.kind = 'int' or 'str' or 'float' or None
             # Returns the constant value - not sure we need it
             return node.value
-        elif isinstance(node, ast.List):
+        elif isinstance(node, ast.List | ast.Tuple | ast.Set):
             # Returns the list elements
-            return [self._resolve_generic(e) for e in node.elts]
-        elif isinstance(node, ast.Tuple):
-            # Returns the tuple elements
-            return [self._resolve_generic(e) for e in node.elts]
-        elif isinstance(node, ast.Set):
-            # Returns the set elements
             return [self._resolve_generic(e) for e in node.elts]
         elif isinstance(node, ast.Dict):
             # Returns the dict elements
