@@ -1,5 +1,7 @@
 import ast
+import collections
 import pprint
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -8,6 +10,8 @@ from typing import Dict, List, Set, Union
 
 import click
 from graphviz import Digraph
+
+from language_translation.conversation import MODELS, Conversation
 
 # Map language names to file extensions
 LANGUAGE_EXTENSIONS = {"python": ".py", "swift": ".swift"}
@@ -965,6 +969,8 @@ class Translator:
 
     def __init__(self, analyzer: CallGraphAnalyzer):
         self.analyzer = analyzer
+        self.llm = MODELS["claude"]()
+        self.conversation = Conversation(self.llm)
 
     def _setup_project(self):
         self.project_path: Path = self.analyzer.project_path.with_name(
@@ -991,7 +997,9 @@ class Translator:
     ) -> list[tuple[FunctionNode, list[FunctionNode]]]:
         nodes_and_exclusive_callers = []
         for node in self.analyzer.get_leaf_nodes():
-            if node.is_test():
+            if node.is_test() or not (
+                node.scope.parent and node.scope.parent.is_module()
+            ):
                 continue
             # Callers that exclusively call this function and no others. In the future, we can get more sophisticated
             # and get callers that only call functions at the same level as this one, but we're starting simple
@@ -1003,19 +1011,52 @@ class Translator:
             if exclusive_callers:
                 print(f"Translating {node.name}")
                 print(f"  File: {node.file}")
-                print(f"  Scope: {node.scope} module_level? {node.scope.is_module()}")
+                print(
+                    f"  Scope: {node.scope} module_level? {node.scope.parent and node.scope.parent.is_module()}"
+                )
                 nodes_and_exclusive_callers.append((node, exclusive_callers))
             for caller in exclusive_callers:
                 print(f"  Exclusive caller: {caller.name}")
         return nodes_and_exclusive_callers
 
-    def _translate_tree(self, node: FunctionNode, exclusive_callers: list[FunctionNode]):
-        pass
+    def parse_translated_code(self, translated_code: str) -> dict[str, list[str]]:
+        # TODO (adam) May want to use a sentinel that can't appear in code to avoid false positives
+        file_pattern = re.compile(r"//\s*(.+\.go)")
+        file_to_code_chunks = {}
+        current_file = None
+
+        for line in translated_code.splitlines():
+            match = file_pattern.match(line)
+            if match:
+                current_file = match.group(1)
+                file_to_code_chunks.setdefault(current_file, [])
+            elif current_file:
+                file_to_code_chunks[current_file].append(line)
+
+        # Convert lists of lines into single code chunks
+        for file in file_to_code_chunks:
+            file_to_code_chunks[file] = ["\n".join(file_to_code_chunks[file])]
+
+        return file_to_code_chunks
+
+    def _translate_tree(
+        self, node: FunctionNode, exclusive_callers: list[FunctionNode]
+    ):
+        code_snippets_by_file = collections.defaultdict(list)
+        code_snippets_by_file[node.file].append(node.source_code)
+
+        for caller in exclusive_callers:
+            code_snippets_by_file[caller.file].append(caller.source_code)
+
+        translated_go_code = self.conversation.translate(code_snippets_by_file)
+        print(translated_go_code)
+
+        return self.parse_translated_code(translated_go_code)
 
     def translate(self) -> str:
         print(f"Found {len(self.analyzer.functions)} functions")
         nodes_and_exclusive_callers = self._find_nodes_with_exclusive_callers()
-        for node, exclusive_callers in nodes_and_exclusive_callers:
+        for node, exclusive_callers in nodes_and_exclusive_callers[:1]:
             self._setup_project()
             files = [Path(f.file) for f in exclusive_callers] + [Path(node.file)]
             self._setup_files(files)

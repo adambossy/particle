@@ -65,14 +65,18 @@ When translating Python code to Go:
 
 Remember: The translated code must pass all provided tests after conversion."""
 
+        self.prompt_template = """Translate this Python code and its tests to Go. 
+For each code snippet, prepend the translation with a comment containing the full relative file path in the new repo that it belongs to, followed by the translated code."""
+
         # Create the conversation chain with example
         self.prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(content=self.system_prompt),
                 HumanMessage(
-                    content="""Translate this Python code and its test to Go:
+                    content=self.prompt_template
+                    + """
 
-# implementation.py
+# src/implementation.py
 def filter_and_transform(items):
     '''
     Filter out negative numbers and transform the remaining ones.
@@ -80,7 +84,7 @@ def filter_and_transform(items):
     '''
     return [f"num: {x}" for x in items if x >= 0]
 
-# test_implementation.py
+# tests/test_implementation.py
 import pytest
 
 def test_filter_and_transform():
@@ -94,7 +98,8 @@ def test_filter_and_transform():
     assert filter_and_transform([-1, -2, -3]) == []"""
                 ),
                 AIMessage(
-                    content="""package main
+                    content="""// src/implementation.go
+package main
 
 import "fmt"
 
@@ -110,7 +115,7 @@ func filterAndTransform(items []int) []string {
     return result
 }
 
-// implementation_test.go
+// tests/test_implementation.go
 package main
 
 import (
@@ -172,6 +177,23 @@ func TestFilterAndTransform(t *testing.T) {
         response = self.chain.invoke({"input": [HumanMessage(content=prompt)]})
         return response.tool_calls[0]["args"]
 
+    def translate(self, code_snippets_by_file: dict[str, list[str]]) -> str:
+        # Compose the prompt by appending each source code with its filename
+        composed_prompt = self.prompt_template + "\n\n"
+        for filename, code_snippets in code_snippets_by_file.items():
+            composed_prompt += f"# {filename}\n"
+            for code_snippet in code_snippets:
+                composed_prompt += f"{code_snippet}\n\n"
+            composed_prompt += "\n"
+
+        print("\nComposed prompt:")
+        print(composed_prompt)
+
+        # Call the completion method with the composed prompt
+        response = self.completion(composed_prompt)
+
+        return response["translated_source"]
+
 
 MODELS = {
     "gpt-4o": lambda: ChatOpenAI(
@@ -184,8 +206,9 @@ MODELS = {
     ),
 }
 
-DEFAULT_PROMPT = """Translate this Python code to Go:
-def process_data(data):
+DEFAULT_SOURCE_AND_FILES = {
+    "src/process_data.py": [
+        """def process_data(data):
     '''Process the input data'''
     result = []
     for item in data:
@@ -194,8 +217,10 @@ def process_data(data):
 
 # test_process_data.py
 import pytest
-
-def test_process_data():
+        """
+    ],
+    "tests/test_process_data.py": [
+        """def test_process_data():
     # Test with a list of positive numbers
     assert process_data([1, 2, 3]) == [2, 4, 6]
     
@@ -205,6 +230,8 @@ def test_process_data():
     # Test with a list containing zero
     assert process_data([0, 1, 2]) == [0, 2, 4]
 """
+    ],
+}
 
 
 @click.command()
@@ -214,21 +241,22 @@ def test_process_data():
     default="claude",
     help="The LLM model to use",
 )
-@click.option("--prompt", default=DEFAULT_PROMPT, help="The prompt to send to the LLM")
-def cli(model: str, prompt: str) -> None:
+def cli(model: str) -> None:
     """CLI tool for translating Python code to Go."""
     llm = MODELS[model]()
     conversation = Conversation(llm)
 
-    click.echo("\nInput Python function:")
-    click.echo(
-        prompt.split("Translate this Python code to Go:\n")[1]
-    )  # Extract just the function part
+    for filename, code_snippets in DEFAULT_SOURCE_AND_FILES.items():
+        click.echo(f"# {filename}\n")
+        for code_snippet in code_snippets:
+            click.echo(f"{code_snippet}\n")
+        click.echo("\n")
+
     click.echo("\nTranslated Go code:")
-    result = conversation.completion(prompt)
+    translated_go_code = conversation.translate(DEFAULT_SOURCE_AND_FILES)
 
     click.echo("\nResult:")
-    click.echo(result["translated_source"])
+    click.echo(translated_go_code)
 
 
 if __name__ == "__main__":
