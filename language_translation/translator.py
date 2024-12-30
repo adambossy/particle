@@ -619,15 +619,12 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         )
 
     def _find_node(self, attribute: str, scope: Scope) -> TranslatorNode | None:
-        print(f"\nChecking attribute: {attribute}")
-
         if attribute in scope.get_local_symbols():
             return scope.get_node(attribute)
         elif attribute in scope.get_enclosing_symbols():
             return scope.get_node(attribute)
         elif attribute in scope.get_global_symbols():
             return scope.get_node(attribute)
-
         return None
 
     def _resolve_imports(self):
@@ -964,6 +961,67 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         return "\n".join(lines[start_line:end_line])
 
 
+class Translator:
+
+    def __init__(self, analyzer: CallGraphAnalyzer):
+        self.analyzer = analyzer
+
+    def _setup_project(self):
+        self.project_path: Path = self.analyzer.project_path.with_name(
+            self.analyzer.project_path.name + "_go"
+        )
+        self.files = self.analyzer.files
+        self.project_path.mkdir(parents=True, exist_ok=True)
+
+    def _setup_files(self, files: list[Path]):
+        for file in files:
+            # For each file, we'll create a new file in the project_path
+            # with the same name but with a .go extension
+            relative_path = file.relative_to(self.analyzer.project_path)
+            new_file_path = self.project_path / relative_path.with_suffix(".go")
+            print(f"Creating {new_file_path}")
+            new_file_path.parent.mkdir(parents=True, exist_ok=True)
+            if not new_file_path.exists():
+                with open(new_file_path, "w") as new_file:
+                    new_file.write("")
+        # TODO (adam) Init git repo, setup go.mod, etc.
+
+    def _find_nodes_with_exclusive_callers(
+        self,
+    ) -> list[tuple[FunctionNode, list[FunctionNode]]]:
+        nodes_and_exclusive_callers = []
+        for node in self.analyzer.get_leaf_nodes():
+            if node.is_test():
+                continue
+            # Callers that exclusively call this function and no others. In the future, we can get more sophisticated
+            # and get callers that only call functions at the same level as this one, but we're starting simple
+            exclusive_callers = [
+                caller
+                for caller in node.called_by
+                if len(caller.calls) == 1 and caller.is_test()
+            ]
+            if exclusive_callers:
+                print(f"Translating {node.name}")
+                print(f"  File: {node.file}")
+                print(f"  Scope: {node.scope} module_level? {node.scope.is_module()}")
+                nodes_and_exclusive_callers.append((node, exclusive_callers))
+            for caller in exclusive_callers:
+                print(f"  Exclusive caller: {caller.name}")
+        return nodes_and_exclusive_callers
+
+    def _translate_tree(self, node: FunctionNode, exclusive_callers: list[FunctionNode]):
+        pass
+
+    def translate(self) -> str:
+        print(f"Found {len(self.analyzer.functions)} functions")
+        nodes_and_exclusive_callers = self._find_nodes_with_exclusive_callers()
+        for node, exclusive_callers in nodes_and_exclusive_callers:
+            self._setup_project()
+            files = [Path(f.file) for f in exclusive_callers] + [Path(node.file)]
+            self._setup_files(files)
+            self._translate_tree(node, exclusive_callers)
+
+
 @click.command()
 @click.option(
     "--project-path",
@@ -996,11 +1054,13 @@ def main(project_path, files, language):
     )
     analyzer.analyze()
 
-    # analyzer.print_ast(analyzer.tree, 0)
-    analyzer.print_call_graph()
+    translator = Translator(analyzer)
+    translator.translate()
 
-    print("Generating graph...")
-    analyzer.visualize_graph()
+    # analyzer.print_call_graph()
+
+    # print("Generating graph...")
+    # analyzer.visualize_graph()
 
     print("Done.")
 
