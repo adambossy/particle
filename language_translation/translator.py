@@ -840,11 +840,11 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         print(f"\nCall graph log saved to: {log_path}")
 
     def get_leaf_nodes(self) -> List[FunctionNode]:
-        """Return all FunctionInfo objects that don't call any other functions."""
-        return [info for info in self.functions.values() if not info.calls]
+        """Return all FunctionNode objects that don't call any other functions."""
+        return [node for node in self.functions.values() if not node.calls]
 
     def get_nodes_at_level(self, level: int) -> List[FunctionNode]:
-        """Return all FunctionInfo objects at a specific level in the call tree.
+        """Return all FunctionNode objects at a specific level in the call tree.
         Level 0 represents leaf nodes (functions that don't call others).
         Level 1 represents functions that only call leaf nodes.
         Level 2 represents functions that call level 1 nodes, and so on.
@@ -926,9 +926,9 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                 for called_func in func_node.calls:
                     # Add the called function node if it hasn't been processed
                     if called_func.key() not in processed:
-                        called_info = self.functions.get(called_func.key())
-                        if called_info:
-                            called_label = f"name={called_info.name}\nnamespace={called_info.namespace}\nfile={called_info.file}"
+                        called_node = self.functions.get(called_func.key())
+                        if called_node:
+                            called_label = f"name={called_node.name}\nnamespace={called_node.namespace}\nfile={called_node.file}"
                             dot.node(called_func.key(), called_label)
 
                     # Add the edge
@@ -941,7 +941,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
         # Start with root nodes (functions that aren't called by others)
         root_nodes = {
-            name for name, info in self.functions.items() if not info.called_by
+            name for name, node in self.functions.items() if not node.called_by
         }
 
         # Process each root node
