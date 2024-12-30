@@ -621,27 +621,13 @@ class CallGraphAnalyzer(ast.NodeVisitor):
     def _find_node(self, attribute: str, scope: Scope) -> TranslatorNode | None:
         print(f"\nChecking attribute: {attribute}")
 
-        print("\nScope:")
-        pprint.pprint(scope.__dict__)
-
-        print("\nLocal symbols:")
-        pprint.pprint(scope.get_local_symbols())
-
-        print("\nEnclosing symbols:")
-        pprint.pprint(scope.get_enclosing_symbols())
-
-        print("\nGlobal symbols:")
-        pprint.pprint(scope.get_global_symbols())
-
         if attribute in scope.get_local_symbols():
             return scope.get_node(attribute)
         elif attribute in scope.get_enclosing_symbols():
             return scope.get_node(attribute)
         elif attribute in scope.get_global_symbols():
-            print("HERE")
             return scope.get_node(attribute)
 
-        print("CANDIDATE FOR BUILTIN!")
         return None
 
     def _resolve_imports(self):
@@ -649,8 +635,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
         for scope in self.scopes:
             print(f"\nScope: {scope.name}")
-            print("Imports:")
-            pprint.pprint(scope.imports)
 
             for import_name, full_import_name in scope.imports.items():
                 print(f"Import: {import_name} -> {full_import_name}")
@@ -676,7 +660,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self, attribute_chain: str, scope: Scope
     ) -> TranslatorNode:
         attributes = attribute_chain.split(".")
-        print(f"Found {len(attributes)} attributes: {attributes}")
         for attribute in attributes:
 
             # May want to treat "self" as a special case
@@ -685,21 +668,10 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
             matched_node = self._find_node(attribute, scope)
             if matched_node:
-                print(
-                    f"\nFound {type(matched_node)} attribute in scope {matched_node.scope.name}"
-                )
-                pprint.pprint(matched_node.__dict__)
                 if isinstance(matched_node, VarNode) and matched_node.type:
                     type_node = self._find_node(matched_node.type, matched_node.scope)
-                    print(f"Found node for type '{matched_node.type}': {type_node}")
                     if type_node:
                         scope = type_node.scope
-            if not matched_node and attribute != attributes[-1]:
-                raise Exception(
-                    f"Couldn't find attribute {attribute} in scope, need to continue resolution"
-                )
-        if matched_node:
-            print(f"Did not find attribute {attribute} in scope, possibly builtin")
         return matched_node
 
     def _resolve_calls(self):
@@ -935,8 +907,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         # Helper function to add nodes and edges recursively
         def add_node_and_edges(namespace: str, processed: Set[str]):
             stack = [namespace]
-
-            print(f"Recursing with namespace: {namespace}")
 
             while stack:
                 current_namespace = stack.pop()
