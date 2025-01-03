@@ -32,6 +32,11 @@ def get_module_name(file_path: str) -> str:
     return Path(file_path).stem
 
 
+def is_test_file(self, file_path: Path) -> bool:
+    """Determine if a file is a test file based on its name."""
+    return file_path.name.startswith("test_") or file_path.name.endswith("_test.py")
+
+
 @dataclass
 class TranslatorNode:
     """Base class for storing information about code entities like functions and classes"""
@@ -267,10 +272,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         extension = LANGUAGE_EXTENSIONS.get(self.language, f".{self.language}")
         self.files = [f for f in self.project_path.rglob(f"*{extension}")]
         return self._analyze_files(self.files)
-
-    def _is_test_file(self, file_path: Path) -> bool:
-        """Determine if a file is a test file based on its name."""
-        return file_path.name.startswith("test_") or file_path.name.endswith("_test.py")
 
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
@@ -965,32 +966,53 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         return "\n".join(lines[start_line:end_line])
 
 
+class FileMap:
+    """Specific for Python to Go translation"""
+
+    def __init__(self, project_path: Path):
+        self.project_path: Path = project_path.with_name(project_path.name + "_go")
+        self._setup_files()
+        self.file_map = {}
+
+    def setup_project(self):
+        self.project_path.mkdir(parents=True, exist_ok=True)
+
+    def _make_go_file_path(self, file_path: Path) -> Path:
+        if file_path.name.startswith("test_"):
+            # Remove "test_" prefix if it exists and append "_test" before the extension
+            new_filename = re.sub(r"^test_", "", file_path.stem) + "_test"
+            return self.project_path / file_path.with_name(new_filename).with_suffix(
+                ".go"
+            )
+        else:
+            return self.project_path / file_path.with_suffix(".go")
+
+    # TODO (adam) This could be renamed "add_files"
+    def setup_files(self, files: list[Path]):
+        for file in files:
+            # For each file, we'll create a new file in the project_path
+            # with the same name but with a .go extension
+            relative_py_file_path = file.relative_to(self.analyzer.project_path)
+            go_file_path = self._make_go_file_path(file)
+            self.file_map[relative_py_file_path] = go_file_path
+
+            print(f"Creating {go_file_path} for {relative_py_file_path}")
+
+            go_file_path.parent.mkdir(parents=True, exist_ok=True)
+            if not go_file_path.exists():
+                with open(go_file_path, "w") as new_file:
+                    new_file.write("")
+
+        # TODO (adam) Init git repo, setup go.mod, etc.
+
+
 class Translator:
 
     def __init__(self, analyzer: CallGraphAnalyzer):
         self.analyzer = analyzer
         self.llm = MODELS["claude"]()
         self.conversation = Conversation(self.llm)
-
-    def _setup_project(self):
-        self.project_path: Path = self.analyzer.project_path.with_name(
-            self.analyzer.project_path.name + "_go"
-        )
-        self.files = self.analyzer.files
-        self.project_path.mkdir(parents=True, exist_ok=True)
-
-    def _setup_files(self, files: list[Path]):
-        for file in files:
-            # For each file, we'll create a new file in the project_path
-            # with the same name but with a .go extension
-            relative_path = file.relative_to(self.analyzer.project_path)
-            new_file_path = self.project_path / relative_path.with_suffix(".go")
-            print(f"Creating {new_file_path}")
-            new_file_path.parent.mkdir(parents=True, exist_ok=True)
-            if not new_file_path.exists():
-                with open(new_file_path, "w") as new_file:
-                    new_file.write("")
-        # TODO (adam) Init git repo, setup go.mod, etc.
+        self.file_map = FileMap(self.analyzer.project_path)
 
     def _find_nodes_with_exclusive_callers(
         self,
@@ -1057,9 +1079,11 @@ class Translator:
         print(f"Found {len(self.analyzer.functions)} functions")
         nodes_and_exclusive_callers = self._find_nodes_with_exclusive_callers()
         for node, exclusive_callers in nodes_and_exclusive_callers[:1]:
-            self._setup_project()
+            self.file_map.setup_project()
+
+            # We set up files a subtree at a time
             files = [Path(f.file) for f in exclusive_callers] + [Path(node.file)]
-            self._setup_files(files)
+            self.file_map.setup_files(files)
             self._translate_tree(node, exclusive_callers)
 
 
