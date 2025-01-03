@@ -970,32 +970,34 @@ class FileMap:
     """Specific for Python to Go translation"""
 
     def __init__(self, project_path: Path):
-        self.project_path: Path = project_path.with_name(project_path.name + "_go")
-        self._setup_files()
+        self.py_project_path: Path = project_path
+        self.go_project_path: Path = project_path.with_name(project_path.name + "_go")
         self.file_map = {}
 
     def setup_project(self):
-        self.project_path.mkdir(parents=True, exist_ok=True)
+        self.go_project_path.mkdir(parents=True, exist_ok=True)
 
     def _make_go_file_path(self, file_path: Path) -> Path:
-        if file_path.name.startswith("test_"):
+        relative_file_path = file_path.relative_to(self.py_project_path)
+        if relative_file_path.name.startswith("test_"):
             # Remove "test_" prefix if it exists and append "_test" before the extension
-            new_filename = re.sub(r"^test_", "", file_path.stem) + "_test"
-            return self.project_path / file_path.with_name(new_filename).with_suffix(
-                ".go"
-            )
+            new_filename = re.sub(r"^test_", "", relative_file_path.stem) + "_test"
+            go_filename = relative_file_path.with_name(new_filename).with_suffix(".go")
         else:
-            return self.project_path / file_path.with_suffix(".go")
+            go_filename = relative_file_path.with_suffix(".go")
+        full_path = self.go_project_path / go_filename
+        return full_path
 
     # TODO (adam) This could be renamed "add_files"
-    def setup_files(self, files: list[Path]):
-        for file in files:
+    def setup_files(self, py_files: list[str]):
+        for file in py_files:
             # For each file, we'll create a new file in the project_path
             # with the same name but with a .go extension
-            relative_py_file_path = file.relative_to(self.analyzer.project_path)
-            go_file_path = self._make_go_file_path(file)
-            self.file_map[relative_py_file_path] = go_file_path
+            py_file_path: Path = Path(file)
+            relative_py_file_path: Path = py_file_path.relative_to(self.py_project_path)
+            go_file_path: Path = self._make_go_file_path(py_file_path)
 
+            self.file_map[relative_py_file_path] = go_file_path
             print(f"Creating {go_file_path} for {relative_py_file_path}")
 
             go_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1004,6 +1006,10 @@ class FileMap:
                     new_file.write("")
 
         # TODO (adam) Init git repo, setup go.mod, etc.
+
+    def get_translated_file_path(self, py_file_path: str) -> Path:
+        cleaned_path = Path(py_file_path).relative_to(self.py_project_path)
+        return self.file_map[cleaned_path]
 
 
 class Translator:
@@ -1041,7 +1047,13 @@ class Translator:
                 print(f"  Exclusive caller: {caller.name}")
         return nodes_and_exclusive_callers
 
-    def parse_translated_code(self, translated_code: str) -> dict[str, list[str]]:
+    def _inject_go_code(self, file_to_code_chunks: dict[str, str]):
+        for go_file_path, code_chunks in file_to_code_chunks.items():
+            print(f"Injecting code into {go_file_path}")
+            with open(go_file_path, "a") as go_file:
+                go_file.write(code_chunks)
+
+    def parse_translated_code(self, translated_code: str) -> dict[str, str]:
         # TODO (adam) May want to use a sentinel that can't appear in code to avoid false positives
         file_pattern = re.compile(r"//\s*(.+\.go)")
         file_to_code_chunks = {}
@@ -1057,7 +1069,7 @@ class Translator:
 
         # Convert lists of lines into single code chunks
         for file in file_to_code_chunks:
-            file_to_code_chunks[file] = ["\n".join(file_to_code_chunks[file])]
+            file_to_code_chunks[file] = "\n".join(file_to_code_chunks[file])
 
         return file_to_code_chunks
 
@@ -1070,7 +1082,9 @@ class Translator:
         for caller in exclusive_callers:
             code_snippets_by_file[caller.file].append(caller.source_code)
 
-        translated_go_code = self.conversation.translate(code_snippets_by_file)
+        translated_go_code = self.conversation.translate(
+            self.file_map.file_map, code_snippets_by_file
+        )
         print(translated_go_code)
 
         return self.parse_translated_code(translated_go_code)
@@ -1078,13 +1092,14 @@ class Translator:
     def translate(self) -> str:
         print(f"Found {len(self.analyzer.functions)} functions")
         nodes_and_exclusive_callers = self._find_nodes_with_exclusive_callers()
-        for node, exclusive_callers in nodes_and_exclusive_callers[:1]:
+        for node, exclusive_callers in nodes_and_exclusive_callers[:2]:
             self.file_map.setup_project()
 
             # We set up files a subtree at a time
-            files = [Path(f.file) for f in exclusive_callers] + [Path(node.file)]
-            self.file_map.setup_files(files)
-            self._translate_tree(node, exclusive_callers)
+            py_files = [Path(f.file) for f in exclusive_callers] + [Path(node.file)]
+            self.file_map.setup_files(py_files)
+            file_to_code_chunks = self._translate_tree(node, exclusive_callers)
+            self._inject_go_code(file_to_code_chunks)
 
 
 @click.command()

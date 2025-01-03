@@ -62,11 +62,14 @@ When translating Python code to Go:
    - Handle test data and mocks appropriately
    - Ensure test setup and teardown are properly translated
 9. Return the complete, properly formatted Go code with tests (if applicable)
+10. Return the full relative file path in the new repo that it belongs to, followed by the translated code.
 
 Remember: The translated code must pass all provided tests after conversion."""
 
         self.prompt_template = """Translate this Python code and its tests to Go. 
-For each code snippet, prepend the translation with a comment containing the full relative file path in the new repo that it belongs to, followed by the translated code."""
+For each code snippet, prepend the translation with a comment containing the full relative file path
+in the new repo that it belongs to, followed by the translated code. Use the file mappings that are
+provided to map the file path to the new repo."""
 
         # Create the conversation chain with example
         self.prompt = ChatPromptTemplate.from_messages(
@@ -75,8 +78,11 @@ For each code snippet, prepend the translation with a comment containing the ful
                 HumanMessage(
                     content=self.prompt_template
                     + """
+File Mappings:
+py_project/src/implementation.py -> go_project/src/implementation.go
+py_project/tests/test_implementation.py -> go_project/src/implementation_test.go
 
-# src/implementation.py
+# py_project/src/implementation.py
 def filter_and_transform(items):
     '''
     Filter out negative numbers and transform the remaining ones.
@@ -84,7 +90,7 @@ def filter_and_transform(items):
     '''
     return [f"num: {x}" for x in items if x >= 0]
 
-# tests/test_implementation.py
+# py_project/tests/test_implementation.py
 import pytest
 
 def test_filter_and_transform():
@@ -98,7 +104,7 @@ def test_filter_and_transform():
     assert filter_and_transform([-1, -2, -3]) == []"""
                 ),
                 AIMessage(
-                    content="""// src/implementation.go
+                    content="""// go_project/src/implementation.go
 package main
 
 import "fmt"
@@ -115,7 +121,7 @@ func filterAndTransform(items []int) []string {
     return result
 }
 
-// tests/test_implementation.go
+// go_project/src/implementation_test.go
 package main
 
 import (
@@ -177,9 +183,14 @@ func TestFilterAndTransform(t *testing.T) {
         response = self.chain.invoke({"input": [HumanMessage(content=prompt)]})
         return response.tool_calls[0]["args"]
 
-    def translate(self, code_snippets_by_file: dict[str, list[str]]) -> str:
+    def translate(
+        self, file_map: dict[str, str], code_snippets_by_file: dict[str, list[str]]
+    ) -> str:
         # Compose the prompt by appending each source code with its filename
-        composed_prompt = self.prompt_template + "\n\n"
+        composed_prompt = self.prompt_template + "\n\nFile Mappings:\n"
+        for py_filename, go_filename in file_map.items():
+            composed_prompt += f"{py_filename} -> {go_filename}\n"
+        composed_prompt += "\n"
         for filename, code_snippets in code_snippets_by_file.items():
             composed_prompt += f"# {filename}\n"
             for code_snippet in code_snippets:
