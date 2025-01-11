@@ -1,7 +1,6 @@
 import ast
 import collections
 import pprint
-import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -11,8 +10,10 @@ from typing import Dict, List, Set, Union
 import click
 from graphviz import Digraph
 
+from .code_editor import CodeEditor
 from .conversation import MODELS, Conversation
 from .file_map import FileMap
+from .llm_results_parser import Edit, LLMResultsParser
 
 # Map language names to file extensions
 LANGUAGE_EXTENSIONS = {"python": ".py", "swift": ".swift"}
@@ -974,6 +975,8 @@ class Translator:
         self.llm = MODELS["claude"]()
         self.conversation = Conversation(self.llm)
         self.file_map = FileMap(self.analyzer.project_path)
+        self.llm_results_parser = LLMResultsParser()
+        self.code_editor = CodeEditor()
 
     def _find_nodes_with_exclusive_callers(
         self,
@@ -1002,35 +1005,9 @@ class Translator:
                 print(f"  Exclusive caller: {caller.name}")
         return nodes_and_exclusive_callers
 
-    def _inject_go_code(self, file_to_code_chunks: dict[str, str]):
-        for go_file_path, code_chunks in file_to_code_chunks.items():
-            print(f"Injecting code into {go_file_path}")
-            with open(go_file_path, "a") as go_file:
-                go_file.write(code_chunks)
-
-    def parse_translated_code(self, translated_code: str) -> dict[str, str]:
-        # TODO (adam) May want to use a sentinel that can't appear in code to avoid false positives
-        file_pattern = re.compile(r"//\s*(.+\.go)")
-        file_to_code_chunks = {}
-        current_file = None
-
-        for line in translated_code.splitlines():
-            match = file_pattern.match(line)
-            if match:
-                current_file = match.group(1)
-                file_to_code_chunks.setdefault(current_file, [])
-            elif current_file:
-                file_to_code_chunks[current_file].append(line)
-
-        # Convert lists of lines into single code chunks
-        for file in file_to_code_chunks:
-            file_to_code_chunks[file] = "\n".join(file_to_code_chunks[file])
-
-        return file_to_code_chunks
-
     def _translate_tree(
         self, node: FunctionNode, exclusive_callers: list[FunctionNode]
-    ):
+    ) -> list[Edit]:
         code_snippets_by_file = collections.defaultdict(list)
         code_snippets_by_file[node.file].append(node.source_code)
 
@@ -1042,7 +1019,11 @@ class Translator:
         )
         print(translated_go_code)
 
-        return self.parse_translated_code(translated_go_code)
+        # return self.parse_translated_code(translated_go_code)
+        return self.llm_results_parser.get_edits(
+            translated_go_code,
+            valid_fnames=list(self.file_map.file_map.values()),
+        )
 
     def translate(self) -> str:
         print(f"Found {len(self.analyzer.functions)} functions")
@@ -1053,8 +1034,8 @@ class Translator:
             # We set up files a subtree at a time
             py_files = [Path(f.file) for f in exclusive_callers] + [Path(node.file)]
             self.file_map.setup_files(py_files)
-            file_to_code_chunks = self._translate_tree(node, exclusive_callers)
-            self._inject_go_code(file_to_code_chunks)
+            edits = self._translate_tree(node, exclusive_callers)
+            self.code_editor.apply_edits(edits)
 
 
 @click.command()

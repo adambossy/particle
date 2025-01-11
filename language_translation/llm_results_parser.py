@@ -3,8 +3,6 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .file_map import FileMap
-
 DEFAULT_FENCE = ("`" * 3, "`" * 3)
 
 HEAD = r"^<{5,9} SEARCH\s*$"
@@ -31,8 +29,8 @@ class Edit:
 class LLMResultsParser:
     """Extracts code changes from LLM responses that can be applied to files."""
 
-    def __init__(self, file_map: FileMap):
-        self.file_map = file_map
+    def __init__(self):
+        pass
 
     def get_edits(self, llm_response: str) -> list[Edit]:
         return find_original_update_blocks(
