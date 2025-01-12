@@ -72,3 +72,7 @@ class FileManager:
 
         with open(file_path, "w") as file:
             file.writelines(lines)
+
+    def rewrite_file(self, file_path: Path, new_source: str):
+        with open(file_path, "w") as file:
+            file.write(new_source)

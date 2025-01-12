@@ -44,38 +44,11 @@ class Conversation:
 
 MODELS = {
     "gpt-4o": lambda: ChatOpenAI(
-        model="gpt-4o", temperature=0.1, api_key=os.getenv("OPENAI_API_KEY")
+        model="gpt-4o", temperature=1.0, api_key=os.getenv("OPENAI_API_KEY")
     ),
     "claude": lambda: ChatAnthropic(
         model="claude-3-5-sonnet-20241022",
-        temperature=0.1,
+        temperature=1.0,
         api_key=os.getenv("ANTHROPIC_API_KEY"),
     ),
-}
-
-DEFAULT_SOURCE_AND_FILES = {
-    "src/process_data.py": [
-        """def process_data(data):
-    '''Process the input data'''
-    result = []
-    for item in data:
-        result.append(item * 2)
-    return result
-
-# test_process_data.py
-import pytest
-        """
-    ],
-    "tests/test_process_data.py": [
-        """def test_process_data():
-    # Test with a list of positive numbers
-    assert process_data([1, 2, 3]) == [2, 4, 6]
-    
-    # Test with an empty list
-    assert process_data([]) == []
-    
-    # Test with a list containing zero
-    assert process_data([0, 1, 2]) == [0, 2, 4]
-"""
-    ],
 }

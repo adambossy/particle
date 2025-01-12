@@ -8,12 +8,8 @@ from langchain.schema import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from pydantic import BaseModel, Field
 
-from language_translation.conversation import (
-    DEFAULT_SOURCE_AND_FILES,
-    MODELS,
-    Conversation,
-)
-from language_translation.file_map import FileManager
+from language_translation.conversation import MODELS, Conversation
+from language_translation.file_manager import FileManager
 
 load_dotenv()
 
@@ -26,19 +22,21 @@ class translate_code(BaseModel):
 
 
 class LLMTranslator(Conversation):
-    def __init__(self, llm: BaseChatModel, file_map: FileManager):
+    def __init__(self, file_manager: FileManager):
         """
         Initialize LLMTranslator with any LangChain-compatible LLM.
 
         Args:
             llm: A LangChain chat model (ChatOpenAI, ChatAnthropic, etc.)
         """
+        llm = MODELS["claude"]()
+
         super().__init__(llm)
 
         # Bind the translation tool to the LLM
         self.llm = self.llm.bind_tools([translate_code], tool_choice="translate_code")
 
-        self.file_map = file_map
+        self.file_map = file_manager
 
         # Define the system prompt
         self.system_prompt = """You are an expert AI assistant focused on translating Python code to Go.
@@ -204,22 +202,65 @@ func TestFilterAndTransform(t *testing.T) {
         print(composed_prompt)
 
         # Call the completion method with the composed prompt
-        response = self.completion(composed_prompt)
+        num_attempts = 0
+        while num_attempts < 5:
+            response = self.completion(composed_prompt)
+            if response.get("error") or not response.get("translated_source"):
+                print(
+                    f"Error in response after {num_attempts} attempts: {response.get('error')}"
+                )
+                num_attempts += 1
+                continue
+            break
+
+        if num_attempts == 5:
+            raise Exception("Failed to translate code after 5 attempts")
 
         return response["translated_source"]
 
 
+DEFAULT_SOURCE_AND_FILES = {
+    "src/process_data.py": [
+        """def process_data(data):
+    '''Process the input data'''
+    result = []
+    for item in data:
+        result.append(item * 2)
+    return result
+"""
+    ],
+    "tests/test_process_data.py": [
+        """def test_process_data():
+    # Test with a list of positive numbers
+    assert process_data([1, 2, 3]) == [2, 4, 6]
+    
+    # Test with an empty list
+    assert process_data([]) == []
+    
+    # Test with a list containing zero
+    assert process_data([0, 1, 2]) == [0, 2, 4]
+"""
+    ],
+}
+
+
 @click.command()
+@click.option(
+    "--project-path",
+    type=click.Path(exists=True),
+    help="Path to the project directory to analyze",
+)
 @click.option(
     "--model",
     type=click.Choice(["gpt-4o", "claude"]),
     default="claude",
     help="The LLM model to use",
 )
-def cli(model: str) -> None:
+def cli(project_path: str, model: str) -> None:
     """CLI tool for translating Python code to Go."""
     llm = MODELS[model]()
-    llm_translator = LLMTranslator(llm)
+    file_manager = FileManager(Path(project_path))
+    llm_translator = LLMTranslator(llm, file_manager)
 
     for filename, code_snippets in DEFAULT_SOURCE_AND_FILES.items():
         click.echo(f"# {filename}\n")

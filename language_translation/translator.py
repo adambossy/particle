@@ -12,7 +12,7 @@ from graphviz import Digraph
 
 from language_translation.code_editor import CodeEditor
 from language_translation.conversation import MODELS
-from language_translation.file_map import FileManager
+from language_translation.file_manager import FileManager
 from language_translation.llm_results_parser import LLMResultsParser
 from language_translation.llm_translator import LLMTranslator
 
@@ -975,11 +975,10 @@ class Translator:
 
     def __init__(self, analyzer: CallGraphAnalyzer):
         self.analyzer = analyzer
-        self.llm = MODELS["claude"]()  # MODELS["gpt-4o"]()
         self.file_manager = FileManager(self.analyzer.project_path)
-        self.llm_translator = LLMTranslator(self.llm, self.file_manager)
+        self.llm_translator = LLMTranslator(self.file_manager)
         self.llm_results_parser = LLMResultsParser()
-        self.code_editor = CodeEditor(self.llm, self.file_manager)
+        self.code_editor = CodeEditor(self.file_manager)
 
     def _find_nodes_with_exclusive_callers(
         self,
@@ -1037,7 +1036,7 @@ class Translator:
     def translate(self) -> str:
         print(f"Found {len(self.analyzer.functions)} functions")
         nodes_and_exclusive_callers = self._find_nodes_with_exclusive_callers()
-        for node, exclusive_callers in nodes_and_exclusive_callers[3:4]:
+        for node, exclusive_callers in nodes_and_exclusive_callers[2:3]:
             self.file_manager.setup_project()
 
             # We set up files a subtree at a time
@@ -1046,6 +1045,8 @@ class Translator:
             )
             self.file_manager.setup_files(py_files)
             edits = self._translate_tree(node, exclusive_callers, py_files)
+
+            print(f"Edits ({len(edits)}): {edits.keys()}")
 
             # TODO (adam) Don't compute this twice
             # target_files = [
