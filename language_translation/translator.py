@@ -10,10 +10,11 @@ from typing import Dict, List, Set, Union
 import click
 from graphviz import Digraph
 
-from .code_editor import CodeEditor
-from .conversation import MODELS, Conversation
-from .file_map import FileMap
-from .llm_results_parser import Edit, LLMResultsParser
+from language_translation.code_editor import CodeEditor
+from language_translation.conversation import MODELS
+from language_translation.file_map import FileManager
+from language_translation.llm_results_parser import LLMResultsParser
+from language_translation.llm_translator import LLMTranslator
 
 # Map language names to file extensions
 LANGUAGE_EXTENSIONS = {"python": ".py", "swift": ".swift"}
@@ -537,6 +538,8 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         source_code = self._get_source_code(node, self.code)
         function_key = get_function_key(func_name, namespace, file)
 
+        rel_filename = Path(file).relative_to(self.project_path).as_posix()
+
         function_node = FunctionNode(
             name=func_name,
             namespace=namespace,
@@ -545,7 +548,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             lineno=node.lineno,
             end_lineno=node.end_lineno,
             node=node,
-            file=file,
+            file=rel_filename,
             source_code=source_code,  # Store the source code
             scope=self.current_scope,
         )
@@ -972,11 +975,11 @@ class Translator:
 
     def __init__(self, analyzer: CallGraphAnalyzer):
         self.analyzer = analyzer
-        self.llm = MODELS["claude"]()
-        self.conversation = Conversation(self.llm)
-        self.file_map = FileMap(self.analyzer.project_path)
+        self.llm = MODELS["claude"]()  # MODELS["gpt-4o"]()
+        self.file_manager = FileManager(self.analyzer.project_path)
+        self.llm_translator = LLMTranslator(self.llm, self.file_manager)
         self.llm_results_parser = LLMResultsParser()
-        self.code_editor = CodeEditor()
+        self.code_editor = CodeEditor(self.llm, self.file_manager)
 
     def _find_nodes_with_exclusive_callers(
         self,
@@ -1006,36 +1009,49 @@ class Translator:
         return nodes_and_exclusive_callers
 
     def _translate_tree(
-        self, node: FunctionNode, exclusive_callers: list[FunctionNode]
-    ) -> list[Edit]:
+        self,
+        node: FunctionNode,
+        exclusive_callers: list[FunctionNode],
+        py_files: list[Path],
+    ) -> dict[str, str]:
         code_snippets_by_file = collections.defaultdict(list)
         code_snippets_by_file[node.file].append(node.source_code)
 
         for caller in exclusive_callers:
             code_snippets_by_file[caller.file].append(caller.source_code)
 
-        translated_go_code = self.conversation.translate(
-            self.file_map.file_map, code_snippets_by_file
-        )
+        translated_go_code = self.llm_translator.translate(code_snippets_by_file)
+        print("\nTranslated Go code:")
         print(translated_go_code)
 
-        # return self.parse_translated_code(translated_go_code)
-        return self.llm_results_parser.get_edits(
-            translated_go_code,
-            valid_fnames=list(self.file_map.file_map.values()),
+        target_filenames = set(
+            self.file_manager.get_target_file_path(py_file).as_posix()
+            for py_file in py_files
+        )
+        print(f"\nTarget files: {target_filenames}")
+
+        return self.llm_results_parser.parse_translations(
+            translated_go_code, target_filenames
         )
 
     def translate(self) -> str:
         print(f"Found {len(self.analyzer.functions)} functions")
         nodes_and_exclusive_callers = self._find_nodes_with_exclusive_callers()
-        for node, exclusive_callers in nodes_and_exclusive_callers[:2]:
-            self.file_map.setup_project()
+        for node, exclusive_callers in nodes_and_exclusive_callers[3:4]:
+            self.file_manager.setup_project()
 
             # We set up files a subtree at a time
-            py_files = [Path(f.file) for f in exclusive_callers] + [Path(node.file)]
-            self.file_map.setup_files(py_files)
-            edits = self._translate_tree(node, exclusive_callers)
-            self.code_editor.apply_edits(edits)
+            py_files = set(
+                [Path(f.file) for f in exclusive_callers] + [Path(node.file)]
+            )
+            self.file_manager.setup_files(py_files)
+            edits = self._translate_tree(node, exclusive_callers, py_files)
+
+            # TODO (adam) Don't compute this twice
+            # target_files = [
+            #     self.file_map.get_target_file_path(py_file) for py_file in py_files
+            # ]
+            self.code_editor.apply_edits(edits)  # , target_files=target_files)
 
 
 @click.command()
