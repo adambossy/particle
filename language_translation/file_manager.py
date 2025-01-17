@@ -1,4 +1,5 @@
 import re
+import subprocess
 from pathlib import Path
 
 from git import Repo
@@ -12,6 +13,30 @@ class FileManager:
         self.go_project_path: Path = project_path.with_name(project_path.name + "_go")
         self.file_map: dict[Path, Path] = {}
 
+    def _init_go_module(self):
+        """Initialize a Go module in the target repository."""
+        module_name = self.go_project_path.name  # Use directory name as module name
+
+        try:
+            # Initialize go module if it doesn't already exist
+            if not (self.go_project_path / "go.mod").exists():
+                result = subprocess.run(
+                    ["go", "mod", "init", module_name],
+                    cwd=self.go_project_path,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                print(f"\nInitialized Go module: {module_name}")
+                print(result.stdout)
+
+        except subprocess.CalledProcessError as e:
+            print("\nFailed to initialize Go module:")
+            print(e.stdout)
+            print("\nError output:")
+            print(e.stderr)
+            raise  # Re-raise the exception to stop execution
+
     def setup_project(self):
         # Create the project directory if it doesn't exist
         self.go_project_path.mkdir(parents=True, exist_ok=True)
@@ -20,6 +45,9 @@ class FileManager:
         if not (self.go_project_path / ".git").exists():
             Repo.init(self.go_project_path)
             print(f"Initialized a new Git repository at {self.go_project_path}")
+
+        # Initialize the Go module
+        self._init_go_module()
 
     def _make_go_file_path(self, rel_py_file_path: Path) -> Path:
         if rel_py_file_path.name.startswith("test_"):
