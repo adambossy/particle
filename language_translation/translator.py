@@ -1130,6 +1130,8 @@ class Translator:
         )
 
     def translate(self) -> str:
+        self.file_manager.setup_project()
+
         nodes_and_callers, start_index = self._get_nodes_with_exclusive_callers()
         print(f"Found {len(nodes_and_callers)} nodes to translate")
 
@@ -1137,7 +1139,6 @@ class Translator:
             nodes_and_callers[start_index:], start=start_index
         ):
             print(f"\nTranslating node {i+1}/{len(nodes_and_callers)}: {node.name}")
-            self.file_manager.setup_project()
 
             # We set up files a subtree at a time
             py_files = set(
