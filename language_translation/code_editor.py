@@ -31,12 +31,13 @@ class CodeEditor(Conversation):
     The edits are derived from LLM responses and also made using LLMs."""
 
     def __init__(self, file_manager: FileManager):
-        llm = MODELS["claude"]()
-
-        super().__init__(llm)  # Initialize the parent Conversation class
+        super().__init__(MODELS["claude"]())  # Initialize the parent Conversation class
 
         # Bind the translation tool to the LLM
-        self.llm = self.llm.bind_tools([insert_code], tool_choice="insert_code")
+        self.llms = [
+            llm.bind_tools([insert_code], tool_choice="insert_code")
+            for llm in self.llms
+        ]
 
         self.system_prompt = """You are an expert Go programmer."""
         self.prompt = ChatPromptTemplate.from_messages(
@@ -44,13 +45,6 @@ class CodeEditor(Conversation):
                 SystemMessage(content=self.system_prompt),
                 MessagesPlaceholder(variable_name="input"),
             ]
-        )
-        self.chain = (
-            self.prompt
-            | self.llm
-            # | PydanticToolsParser(
-            #     tools=[insert_code],
-            # )
         )
 
         self.file_manager = file_manager
@@ -101,19 +95,15 @@ class CodeEditor(Conversation):
     ```
     """
 
-                print(f"\nPrompt:\n{prompt}")
+                def validate_insertion(response):
+                    return (
+                        not response.get("error")
+                        and response.get("new_source") is not None
+                    )
 
-                response = self.completion(prompt)
+                response = self.validated_completion(prompt, validate_insertion)
                 print(f"\nResponse:\n{response}")
 
-                # Check for errors in the response
-                if response.get("error"):
-                    raise Exception(f"Error in response: {response.get('error')}")
-
-                if not response.get("new_source"):
-                    raise Exception(f"No insertions found in response: {response}")
-
-                # Sort insertions in reverse order by line_number
                 new_source = response.get("new_source")
 
                 print(f"\nNew source:")

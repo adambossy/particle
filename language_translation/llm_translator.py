@@ -29,12 +29,13 @@ class LLMTranslator(Conversation):
         Args:
             llm: A LangChain chat model (ChatOpenAI, ChatAnthropic, etc.)
         """
-        llm = MODELS["claude"]()
-
-        super().__init__(llm)
+        super().__init__(MODELS["claude"]())
 
         # Bind the translation tool to the LLM
-        self.llm = self.llm.bind_tools([translate_code], tool_choice="translate_code")
+        self.llms = [
+            llm.bind_tools([translate_code], tool_choice="translate_code")
+            for llm in self.llms
+        ]
 
         self.file_map = file_manager
 
@@ -179,9 +180,6 @@ func TestFilterAndTransform(t *testing.T) {
             ]
         )
 
-        # Create chain without itemgetter
-        self.chain = self.prompt | self.llm
-
     def translate(self, code_snippets_by_file: dict[str, list[str]]) -> str:
         # Compose the prompt by appending each source code with its filename
         composed_prompt = self.prompt_template + "\n\nFile Mappings:\n"
@@ -201,22 +199,15 @@ func TestFilterAndTransform(t *testing.T) {
         print("\nComposed prompt:")
         print(composed_prompt)
 
-        # Call the completion method with the composed prompt
-        num_attempts = 0
-        while num_attempts < 5:
-            response = self.completion(composed_prompt)
-            if response.get("error") or not response.get("translated_source"):
-                print(
-                    f"Error in response after {num_attempts} attempts: {response.get('error')}"
-                )
-                num_attempts += 1
-                continue
-            break
+        def validate_translation(response):
+            return (
+                not response.get("error")
+                and response.get("translated_source") is not None
+            )
 
-        if num_attempts == 5:
-            raise Exception("Failed to translate code after 5 attempts")
-
-        return response["translated_source"]
+        return self.validated_completion(composed_prompt, validate_translation)[
+            "translated_source"
+        ]
 
 
 DEFAULT_SOURCE_AND_FILES = {
