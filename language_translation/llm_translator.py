@@ -3,35 +3,17 @@ from typing import Dict, List
 
 import click
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 from .conversation import Conversation
 from .file_manager import FileManager
 
 load_dotenv()
 
-# Define the function schema for translate_code
-TRANSLATE_CODE_FUNCTION = {
-    "type": "function",
-    "function": {
-        "name": "translate_code",
-        "description": "Response from Python to Go translation",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "translated_source": {
-                    "type": "string",
-                    "description": "The translated Go code",
-                },
-                "error": {
-                    "type": "string",
-                    "description": "Error message if translation failed",
-                    "default": "",
-                },
-            },
-            "required": ["translated_source"],
-        },
-    },
-}
+
+class TranslateCodeResponse(BaseModel):
+    translated_source: str
+    error: str = ""
 
 
 class LLMTranslator(Conversation):
@@ -193,12 +175,12 @@ File Mappings:\n"""
         print("\nComposed prompt:")
         print(composed_prompt)
 
-        def validate_translation(response: dict) -> bool:
+        def validate_translation(response: TranslateCodeResponse) -> bool:
             return (
-                not response.get("error")
-                and response.get("translated_source") is not None
-                and "package" in response["translated_source"]
-                and "func" in response["translated_source"]
+                not response.error
+                and response.translated_source is not None
+                and "package" in response.translated_source
+                and "func" in response.translated_source
             )
 
         # Create messages list with example conversation and new prompt
@@ -207,14 +189,10 @@ File Mappings:\n"""
         response = self.validated_completion(
             messages,
             validate_translation,
-            tools=[TRANSLATE_CODE_FUNCTION],
-            tool_choice={
-                "type": "function",
-                "function": {"name": "translate_code"},
-            },
+            response_model=TranslateCodeResponse,
         )
 
-        return response["translated_source"]
+        return response.translated_source
 
 
 DEFAULT_SOURCE_AND_FILES = {

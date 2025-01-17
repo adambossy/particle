@@ -1,32 +1,15 @@
 from pathlib import Path
 from typing import Dict, List
 
+from pydantic import BaseModel
+
 from .conversation import Conversation
 from .file_manager import FileManager
 
-# Define the function schema for insert_code
-INSERT_CODE_FUNCTION = {
-    "type": "function",
-    "function": {
-        "name": "insert_code",
-        "description": "LLM function for inserting code into a source file",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "new_source": {
-                    "type": "string",
-                    "description": "The new source file with the code inserted",
-                },
-                "error": {
-                    "type": "string",
-                    "description": "Error message if insertion failed",
-                    "default": "",
-                },
-            },
-            "required": ["new_source"],
-        },
-    },
-}
+
+class InsertCodeResponse(BaseModel):
+    new_source: str
+    error: str = ""
 
 
 class CodeEditor(Conversation):
@@ -83,25 +66,21 @@ Existing source file:
 ```
 """
 
-                def validate_insertion(response: dict) -> bool:
+                def validate_insertion(response: InsertCodeResponse) -> bool:
                     return (
-                        not response.get("error")
-                        and response.get("new_source") is not None
-                        and "package" in response["new_source"]
+                        not response.error
+                        and response.new_source is not None
+                        and "package" in response.new_source
                     )
 
                 response = self.validated_completion(
                     prompt,
                     validate_insertion,
-                    tools=[INSERT_CODE_FUNCTION],
-                    tool_choice={
-                        "type": "function",
-                        "function": {"name": "insert_code"},
-                    },
+                    response_model=InsertCodeResponse,
                 )
 
                 print(f"\nResponse:\n{response}")
-                new_source = response["new_source"]
+                new_source = response.new_source
 
                 print(f"\nNew source:")
                 print(new_source)
