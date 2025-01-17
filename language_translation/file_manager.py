@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
 
+from git import Repo
+
 
 class FileManager:
     """Specific for Python to Go translation"""
@@ -11,7 +13,13 @@ class FileManager:
         self.file_map: dict[Path, Path] = {}
 
     def setup_project(self):
+        # Create the project directory if it doesn't exist
         self.go_project_path.mkdir(parents=True, exist_ok=True)
+
+        # Initialize a Git repository if it doesn't already exist
+        if not (self.go_project_path / ".git").exists():
+            Repo.init(self.go_project_path)
+            print(f"Initialized a new Git repository at {self.go_project_path}")
 
     def _make_go_file_path(self, rel_py_file_path: Path) -> Path:
         if rel_py_file_path.name.startswith("test_"):
