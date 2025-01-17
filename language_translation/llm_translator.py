@@ -1,45 +1,47 @@
 from pathlib import Path
+from typing import Dict, List
 
 import click
 from dotenv import load_dotenv
-from langchain.chat_models.base import BaseChatModel
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import AIMessage, HumanMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from pydantic import BaseModel, Field
 
-from language_translation.conversation import MODELS, Conversation
-from language_translation.file_manager import FileManager
+from .conversation import Conversation
+from .file_manager import FileManager
 
 load_dotenv()
 
-
-class translate_code(BaseModel):
-    """Response from Python to Go translation."""
-
-    translated_source: str = Field(..., description="The translated Go code")
-    error: str = Field("", description="Error message if translation failed")
+# Define the function schema for translate_code
+TRANSLATE_CODE_FUNCTION = {
+    "type": "function",
+    "function": {
+        "name": "translate_code",
+        "description": "Response from Python to Go translation",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "translated_source": {
+                    "type": "string",
+                    "description": "The translated Go code",
+                },
+                "error": {
+                    "type": "string",
+                    "description": "Error message if translation failed",
+                    "default": "",
+                },
+            },
+            "required": ["translated_source"],
+        },
+    },
+}
 
 
 class LLMTranslator(Conversation):
     def __init__(self, file_manager: FileManager):
         """
-        Initialize LLMTranslator with any LangChain-compatible LLM.
-
-        Args:
-            llm: A LangChain chat model (ChatOpenAI, ChatAnthropic, etc.)
+        Initialize LLMTranslator with LiteLLM model.
         """
-        super().__init__(MODELS["claude"]())
-
-        # Bind the translation tool to the LLM
-        self.llms = [
-            llm.bind_tools([translate_code], tool_choice="translate_code")
-            for llm in self.llms
-        ]
-
+        super().__init__("anthropic/claude-3-sonnet-20240229")
         self.file_map = file_manager
 
-        # Define the system prompt
         self.system_prompt = """You are an expert AI assistant focused on translating Python code to Go.
 When translating Python code to Go:
 1. Produce idiomatic Go code that follows Go best practices and maintains test compatibility
@@ -65,38 +67,23 @@ When translating Python code to Go:
 
 Remember: The translated code must pass all provided tests after conversion.
 """
-
-        self.prompt_template = """Translate this Python code and its tests to Go. 
+        # Define the conversation with example
+        self.prompt = [
+            {"role": "system", "content": self.system_prompt},
+            {
+                "role": "user",
+                "content": """Translate this Python code and its tests to Go. 
 For each code snippet, prepend the translation with a comment containing the full relative file path
 in the new repo that it belongs to, followed by the translated code. Use the file mappings that are
 provided to map the file path to the new repo.
 
-The package name should be the same as the enclosing directory of the file."""
+The package name should be the same as the enclosing directory of the file.
 
-        # Create the conversation chain with example
-        self.prompt = ChatPromptTemplate.from_messages(
-            [
-                SystemMessage(content=self.system_prompt),
-                HumanMessage(
-                    content=self.prompt_template
-                    + """
 File Mappings:
 py_project/src/implementation.py -> go_project/src/implementation.go
 py_project/tests/test_implementation.py -> go_project/src/implementation_test.go
 
-Here are the *SEARCH/REPLACE* blocks:
-
-py_project/src/implementation.py
-```python
-<<<<<<< SEARCH
-from flask import Flask
-=======
-import math
-from flask import Flask
->>>>>>> REPLACE
-```
-
-
+# py_project/src/implementation.py
 def filter_and_transform(items):
     '''
     Filter out negative numbers and transform the remaining ones.
@@ -115,10 +102,11 @@ def test_filter_and_transform():
     assert filter_and_transform([]) == []
     
     # Test with all negative numbers
-    assert filter_and_transform([-1, -2, -3]) == []"""
-                ),
-                AIMessage(
-                    content="""// go_project/src/implementation.go
+    assert filter_and_transform([-1, -2, -3]) == []""",
+            },
+            {
+                "role": "assistant",
+                "content": """// go_project/src/implementation.go
 package main
 
 import "fmt"
@@ -174,21 +162,27 @@ func TestFilterAndTransform(t *testing.T) {
             }
         })
     }
-}"""
-                ),
-                MessagesPlaceholder(variable_name="input"),
-            ]
-        )
+}""",
+            },
+        ]
 
-    def translate(self, code_snippets_by_file: dict[str, list[str]]) -> str:
+    def translate(self, code_snippets_by_file: Dict[str, List[str]]) -> str:
         # Compose the prompt by appending each source code with its filename
-        composed_prompt = self.prompt_template + "\n\nFile Mappings:\n"
+        composed_prompt = """Translate this Python code and its tests to Go.
+For each code snippet, prepend the translation with a comment containing the full relative file path
+in the new repo that it belongs to, followed by the translated code. Use the file mappings that are
+provided to map the file path to the new repo.
+
+The package name should be the same as the enclosing directory of the file.
+
+File Mappings:\n"""
         for py_filename in code_snippets_by_file.keys():
             py_file_path = Path(py_filename)
             go_file_path = self.file_map.get_target_file_path(py_file_path)
             composed_prompt += (
                 f"{py_file_path.as_posix()} -> {go_file_path.as_posix()}\n"
             )
+
         composed_prompt += "\n"
         for filename, code_snippets in code_snippets_by_file.items():
             composed_prompt += f"# {filename}\n"
@@ -199,15 +193,28 @@ func TestFilterAndTransform(t *testing.T) {
         print("\nComposed prompt:")
         print(composed_prompt)
 
-        def validate_translation(response):
+        def validate_translation(response: dict) -> bool:
             return (
                 not response.get("error")
                 and response.get("translated_source") is not None
+                and "package" in response["translated_source"]
+                and "func" in response["translated_source"]
             )
 
-        return self.validated_completion(composed_prompt, validate_translation)[
-            "translated_source"
-        ]
+        # Create messages list with example conversation and new prompt
+        messages = self.prompt + [{"role": "user", "content": composed_prompt}]
+
+        response = self.validated_completion(
+            messages,
+            validate_translation,
+            tools=[TRANSLATE_CODE_FUNCTION],
+            tool_choice={
+                "type": "function",
+                "function": {"name": "translate_code"},
+            },
+        )
+
+        return response["translated_source"]
 
 
 DEFAULT_SOURCE_AND_FILES = {

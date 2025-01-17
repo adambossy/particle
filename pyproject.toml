@@ -22,6 +22,7 @@ python-dotenv = "^1.0.1"
 langchain-community = "^0.3.13"
 gitpython = "^3.1.44"
 langchain-google-genai = "^2.0.8"
+litellm = "^1.58.2"
 
 
 [build-system]

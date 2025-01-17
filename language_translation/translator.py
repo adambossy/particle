@@ -206,30 +206,22 @@ class Translator:
         """Run tests in the target repository."""
         repo_path = self.file_manager.get_target_repo_path()
 
-        try:
-            # Run go test on the changed files
-            result = subprocess.run(
-                ["go", "test", "./..."],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            print("\nTest Results:")
-            print(result.stdout)
+        # Run go test on the changed files
+        result = subprocess.run(
+            ["go", "test", "./..."],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        print("\nTest Results:")
+        print(result.stdout)
 
-            # Check if any tests failed (in case check=True didn't catch it)
-            if "FAIL" in result.stdout:
-                print("\nTests failed - stopping translation")
-                raise RuntimeError("Tests failed after translation")
-
-        except subprocess.CalledProcessError as e:
-            print("\nTests failed:")
-            print(e.stdout)
-            print("\nError output:")
-            print(e.stderr)
-            print("Warning: Tests failed after translation")
-            raise  # Re-raise the exception to stop execution
+        # Check if any tests failed
+        if result.returncode != 0:
+            print("\nTests failed - stopping translation")
+            print("Error output:")
+            print(result.stderr)
+            raise RuntimeError("Tests failed after translation")
 
     def translate(self) -> str:
         self.file_manager.setup_project()
