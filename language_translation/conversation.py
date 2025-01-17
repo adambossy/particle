@@ -8,14 +8,18 @@ load_dotenv()
 
 
 class Conversation:
-    def __init__(self, model: str):
+    def __init__(self):
         """
         Initialize Conversation with a LiteLLM-compatible model.
 
         Args:
             model: Model identifier (e.g. "anthropic/claude-3-sonnet-20240229")
         """
-        self.models = [model, "openai/gpt-4", "vertex_ai/gemini-1.5-pro"]
+        self.models = [
+            "anthropic/claude-3-sonnet-20240229",
+            "gpt-4o-2024-08-06",
+            "gemini/gemini-1.5-pro-latest",
+        ]
 
     def primary_model(self) -> str:
         return self.models[0]

@@ -33,7 +33,7 @@ class CodeEditor(Conversation):
     """Applies edits to files in a repo using LLMs."""
 
     def __init__(self, file_manager: FileManager):
-        super().__init__("anthropic/claude-3-sonnet-20240229")
+        super().__init__()
         self.system_prompt = "You are an expert Go programmer."
         self.file_manager = file_manager
 

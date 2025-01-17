@@ -39,7 +39,7 @@ class LLMTranslator(Conversation):
         """
         Initialize LLMTranslator with LiteLLM model.
         """
-        super().__init__("anthropic/claude-3-sonnet-20240229")
+        super().__init__()
         self.file_map = file_manager
 
         self.system_prompt = """You are an expert AI assistant focused on translating Python code to Go.
