@@ -30,6 +30,17 @@ class FileManager:
                 print(f"\nInitialized Go module: {module_name}")
                 print(result.stdout)
 
+                # Run go mod tidy after initializing the module
+                result = subprocess.run(
+                    ["go", "mod", "tidy"],
+                    cwd=self.go_project_path,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                print("\nRan go mod tidy:")
+                print(result.stdout)
+
         except subprocess.CalledProcessError as e:
             print("\nFailed to initialize Go module:")
             print(e.stdout)
