@@ -1,6 +1,9 @@
 import ast
 import collections
+import hashlib
+import json
 import pprint
+import subprocess
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -979,6 +982,96 @@ class Translator:
         self.llm_translator = LLMTranslator(self.file_manager)
         self.llm_results_parser = LLMResultsParser()
         self.code_editor = CodeEditor(self.file_manager)
+        self.project_path = self.analyzer.project_path
+
+    def _get_git_sha(self) -> str:
+        """Get the latest git SHA of the project."""
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=self.project_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return result.stdout.strip()[:8]  # Return first 8 chars of the SHA
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Could not get git SHA: {e}")
+            return "no_git"
+
+    def _get_cache_path(self) -> Path:
+        """Get the path to the translation cache file."""
+        git_sha = self._get_git_sha()
+        target_repo_path = self.file_manager.get_target_repo_path()  # Assuming file_manager is an instance of FileManager
+        return Path(target_repo_path) / f"translation_cache_{git_sha}.json"
+
+    def _serialize_node(self, node: FunctionNode) -> dict:
+        """Serialize a FunctionNode to a dict for JSON storage."""
+        return {
+            "name": node.name,
+            "file": node.file,
+            "namespace": node.namespace,
+            "key": node.key(),
+        }
+
+    def _get_nodes_with_exclusive_callers(
+        self,
+    ) -> tuple[list[tuple[FunctionNode, list[FunctionNode]]], int]:
+        """Get nodes with exclusive callers, using cache if available."""
+        cache_path = self._get_cache_path()
+
+        if cache_path.exists():
+            print(f"Found cache file at {cache_path}")
+            with open(cache_path) as f:
+                cache_data = json.load(f)
+
+            next_index = cache_data.get("next_index", 0)
+            next_node = cache_data.get("next_node_name")
+            print(f"Resuming translation from node {next_node} (index {next_index})")
+
+            return cache_data["nodes_and_callers"], next_index
+
+        # If no cache exists, compute the nodes and callers
+        nodes_and_callers = self._find_nodes_with_exclusive_callers()
+
+        # Create cache data structure
+        cache_data = {
+            "next_index": 0,
+            "next_node_name": (
+                nodes_and_callers[0][0].name if nodes_and_callers else None
+            ),
+            "nodes_and_callers": [
+                {
+                    "node": self._serialize_node(node),
+                    "exclusive_callers": [
+                        self._serialize_node(caller) for caller in callers
+                    ],
+                }
+                for node, callers in nodes_and_callers
+            ],
+        }
+
+        # Write cache to disk
+        with open(cache_path, "w") as f:
+            json.dump(cache_data, f, indent=2)
+
+        print(f"Created new cache file at {cache_path}")
+        return nodes_and_callers, 0
+
+    def _update_cache_index(self, index: int, nodes_and_callers: list):
+        """Update the current index in the cache file."""
+        cache_path = self._get_cache_path()
+
+        with open(cache_path) as f:
+            cache_data = json.load(f)
+
+        cache_data["next_index"] = index
+        cache_data["next_node_name"] = (
+            nodes_and_callers[index][0].name if index < len(nodes_and_callers) else None
+        )
+
+        with open(cache_path, "w") as f:
+            json.dump(cache_data, f, indent=2)
 
     def _find_nodes_with_exclusive_callers(
         self,
@@ -1034,9 +1127,13 @@ class Translator:
         )
 
     def translate(self) -> str:
-        print(f"Found {len(self.analyzer.functions)} functions")
-        nodes_and_exclusive_callers = self._find_nodes_with_exclusive_callers()
-        for node, exclusive_callers in nodes_and_exclusive_callers[2:3]:
+        nodes_and_callers, start_index = self._get_nodes_with_exclusive_callers()
+        print(f"Found {len(nodes_and_callers)} nodes to translate")
+
+        for i, (node, exclusive_callers) in enumerate(
+            nodes_and_callers[start_index:], start=start_index
+        ):
+            print(f"\nTranslating node {i+1}/{len(nodes_and_callers)}: {node.name}")
             self.file_manager.setup_project()
 
             # We set up files a subtree at a time
@@ -1047,12 +1144,10 @@ class Translator:
             edits = self._translate_tree(node, exclusive_callers, py_files)
 
             print(f"Edits ({len(edits)}): {edits.keys()}")
+            self.code_editor.apply_edits(edits)
 
-            # TODO (adam) Don't compute this twice
-            # target_files = [
-            #     self.file_map.get_target_file_path(py_file) for py_file in py_files
-            # ]
-            self.code_editor.apply_edits(edits)  # , target_files=target_files)
+            # Update cache with next index
+            self._update_cache_index(i + 1, nodes_and_callers)
 
 
 @click.command()

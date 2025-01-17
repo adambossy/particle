@@ -76,3 +76,7 @@ class FileManager:
     def rewrite_file(self, file_path: Path, new_source: str):
         with open(file_path, "w") as file:
             file.write(new_source)
+
+    def get_target_repo_path(self) -> Path:
+        """Return the path to the target Go project."""
+        return self.go_project_path
