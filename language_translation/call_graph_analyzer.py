@@ -3,7 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Optional, Set
 
 from graphviz import Digraph
 
@@ -38,8 +38,9 @@ class TranslatorNode:
     name: str
 
     # FIXME (adam) Deprecate node in favor of scope
-    node: ast.AST  # AST node that was used to create this entity
-    scope: Union["Scope", None] = None
+    # We make this option because the Translator doesn't need it for its processing
+    node: Optional[ast.AST] = None  # AST node that was used to create this entity
+    scope: Optional["Scope"] = None
 
     lineno: int = -1  # Line where function starts
     end_lineno: int = -1  # Line where function ends

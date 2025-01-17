@@ -52,13 +52,13 @@ class Translator:
         return {
             "name": node.name,
             "file": node.file,
-            "namespace": node.namespace,
-            "lineno": node.lineno,
-            "end_lineno": node.end_lineno,
-            "class_deps": list(node.class_deps),
-            "var_deps": list(node.var_deps),
+            # "namespace": node.namespace,
+            # "lineno": node.lineno,
+            # "end_lineno": node.end_lineno,
+            # "class_deps": list(node.class_deps),
+            # "var_deps": list(node.var_deps),
             "source_code": node.source_code,
-            "scope": node.scope.name if node.scope else None,
+            # "scope": node.scope.name if node.scope else None,
             # Add other attributes as needed
         }
 
@@ -69,11 +69,11 @@ class Translator:
         return FunctionNode(
             name=data["name"],
             file=data["file"],
-            namespace=data["namespace"],
-            lineno=data["lineno"],
-            end_lineno=data["end_lineno"],
-            class_deps=set(data["class_deps"]),
-            var_deps=set(data["var_deps"]),
+            # namespace=data["namespace"],
+            # lineno=data["lineno"],
+            # end_lineno=data["end_lineno"],
+            # class_deps=set(data["class_deps"]),
+            # var_deps=set(data["var_deps"]),
             source_code=data["source_code"],
             # You will need to handle the scope reconstruction
         )
