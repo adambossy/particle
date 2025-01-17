@@ -24,6 +24,7 @@ gitpython = "^3.1.44"
 langchain-google-genai = "^2.0.8"
 litellm = "^1.58.2"
 instructor = "^1.7.2"
+langfuse = "^2.57.10"
 
 
 [build-system]

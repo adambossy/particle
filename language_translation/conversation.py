@@ -1,12 +1,15 @@
-import json
+import os
 from typing import Any, Callable
 
 import instructor
+import litellm
 from dotenv import load_dotenv
-from litellm import completion
 from pydantic import BaseModel
 
 load_dotenv()
+
+litellm.success_callback = ["langfuse"]
+litellm.failure_callback = ["langfuse"]
 
 
 class Conversation:
@@ -23,7 +26,7 @@ class Conversation:
             "gpt-4o-2024-08-06",
             "gemini/gemini-1.5-pro-latest",
         ]
-        self.client = instructor.from_litellm(completion)
+        self.client = instructor.from_litellm(litellm.completion)
 
     def primary_model(self) -> str:
         return self.models[0]

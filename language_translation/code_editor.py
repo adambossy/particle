@@ -73,8 +73,13 @@ Existing source file:
                         and "package" in response.new_source
                     )
 
+                messages = [
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": prompt},
+                ]
+
                 response = self.validated_completion(
-                    prompt,
+                    messages,
                     validate_insertion,
                     response_model=InsertCodeResponse,
                 )
