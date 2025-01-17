@@ -3,7 +3,7 @@ from pathlib import Path
 
 from tree_sitter import Node
 
-from .translator import CallGraphAnalyzer
+from language_translation.call_graph_analyzer import CallGraphAnalyzer
 
 
 class TestCallGraphAnalyzerBase(unittest.TestCase):
