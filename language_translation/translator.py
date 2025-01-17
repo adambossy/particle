@@ -1009,13 +1009,35 @@ class Translator:
         return Path(target_repo_path) / f"translation_cache_{git_sha}.json"
 
     def _serialize_node(self, node: FunctionNode) -> dict:
-        """Serialize a FunctionNode to a dict for JSON storage."""
+        """Serialize a FunctionNode to a JSON-compatible dictionary."""
         return {
             "name": node.name,
             "file": node.file,
             "namespace": node.namespace,
-            "key": node.key(),
+            "lineno": node.lineno,
+            "end_lineno": node.end_lineno,
+            "class_deps": list(node.class_deps),
+            "var_deps": list(node.var_deps),
+            "source_code": node.source_code,
+            "scope": node.scope.name if node.scope else None,
+            # Add other attributes as needed
         }
+
+    def _deserialize_node(self, data: dict) -> FunctionNode:
+        """Deserialize a dictionary back to a FunctionNode."""
+        # Reconstruct the FunctionNode from the dictionary
+        # Note: You may need to handle the scope and other complex attributes separately
+        return FunctionNode(
+            name=data["name"],
+            file=data["file"],
+            namespace=data["namespace"],
+            lineno=data["lineno"],
+            end_lineno=data["end_lineno"],
+            class_deps=set(data["class_deps"]),
+            var_deps=set(data["var_deps"]),
+            source_code=data["source_code"],
+            # You will need to handle the scope reconstruction
+        )
 
     def _get_nodes_with_exclusive_callers(
         self,
@@ -1032,7 +1054,19 @@ class Translator:
             next_node = cache_data.get("next_node_name")
             print(f"Resuming translation from node {next_node} (index {next_index})")
 
-            return cache_data["nodes_and_callers"], next_index
+            # Deserialize nodes and exclusive callers
+            nodes_and_callers = [
+                (
+                    self._deserialize_node(node_data["node"]),
+                    [
+                        self._deserialize_node(caller)
+                        for caller in node_data["exclusive_callers"]
+                    ],
+                )
+                for node_data in cache_data["nodes_and_callers"]
+            ]
+
+            return nodes_and_callers, next_index
 
         # If no cache exists, compute the nodes and callers
         nodes_and_callers = self._find_nodes_with_exclusive_callers()
