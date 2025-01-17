@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Union
 
 import click
+from git import Repo
 from graphviz import Digraph
 
 from language_translation.code_editor import CodeEditor
@@ -1002,7 +1003,9 @@ class Translator:
     def _get_cache_path(self) -> Path:
         """Get the path to the translation cache file."""
         git_sha = self._get_git_sha()
-        target_repo_path = self.file_manager.get_target_repo_path()  # Assuming file_manager is an instance of FileManager
+        target_repo_path = (
+            self.file_manager.get_target_repo_path()
+        )  # Assuming file_manager is an instance of FileManager
         return Path(target_repo_path) / f"translation_cache_{git_sha}.json"
 
     def _serialize_node(self, node: FunctionNode) -> dict:
@@ -1148,6 +1151,23 @@ class Translator:
 
             # Update cache with next index
             self._update_cache_index(i + 1, nodes_and_callers)
+
+            # Commit the changes
+            self._commit_changes(node.name)
+
+    def _commit_changes(self, node_name: str):
+        """Commit changes to the git repository."""
+        repo_path = self.file_manager.get_target_repo_path()
+        repo = Repo(repo_path)
+
+        # Stage all changes
+        repo.git.add(A=True)
+
+        # Commit with a message including the node name
+        commit_message = f"Translated node: {node_name}"
+        repo.index.commit(commit_message)
+
+        print(f"Committed changes for node: {node_name}")
 
 
 @click.command()
