@@ -362,6 +362,9 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self._create_var_node(node, flattened_target_names)
         self.generic_visit(node)
 
+    def _current_rel_filename(self) -> str:
+        return Path(self.current_file).relative_to(self.project_path).as_posix()
+
     def _create_var_node(
         self,
         node: ast.Assign | ast.AnnAssign,
@@ -372,7 +375,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             var_node = VarNode(
                 name=target_name,
                 node=node,
-                file=self.current_file,
+                file=self._current_rel_filename(),
                 lineno=node.lineno,
                 end_lineno=node.end_lineno,
                 scope=self.current_scope,
@@ -442,9 +445,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         func_name = node.name
         # FIXME (adam) This is a hack to get the namespace to work for now
         namespace = ".".join(self.current_namespace[:-1])
-        function_node = self._create_function_node(
-            node, func_name, namespace=namespace, file=self.current_file
-        )
+        function_node = self._create_function_node(node, func_name, namespace=namespace)
         function_node.lineno = node.lineno
         function_node.end_lineno = node.end_lineno
 
@@ -494,6 +495,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     end_lineno=arg.end_lineno,
                     scope=self.current_scope,
                     type=arg.annotation,
+                    file=self._current_rel_filename(),
                 )
             )
 
@@ -506,6 +508,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     end_lineno=node.args.kwarg.end_lineno,
                     scope=self.current_scope,
                     type=None,
+                    file=self._current_rel_filename(),
                 )
             )
 
@@ -518,6 +521,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     end_lineno=node.args.vararg.end_lineno,
                     scope=self.current_scope,
                     type=None,
+                    file=self._current_rel_filename(),
                 )
             )
 
@@ -528,12 +532,9 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         node: ast.FunctionDef,
         func_name: str,
         namespace: str = None,
-        file: str = "UNKNOWN",
     ) -> FunctionNode:
         source_code = self._get_source_code(node, self.code)
-        function_key = get_function_key(func_name, namespace, file)
-
-        rel_filename = Path(file).relative_to(self.project_path).as_posix()
+        function_key = get_function_key(func_name, namespace, self.current_file)
 
         function_node = FunctionNode(
             name=func_name,
@@ -543,7 +544,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             lineno=node.lineno,
             end_lineno=node.end_lineno,
             node=node,
-            file=rel_filename,
+            file=self._current_rel_filename(),
             source_code=source_code,  # Store the source code
             scope=self.current_scope,
         )
@@ -577,10 +578,10 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         class_info = ClassNode(
             name=class_name,
             node=node,
-            file=self.current_file,
+            file=self._current_rel_filename(),
             lineno=node.lineno,
             end_lineno=node.end_lineno,
-            scope=self.current_scope,
+            scope=self.current_scope,  # .parent if self.current_scope else None,
         )
         # TODO (adam) Should probably get rid of self.classes
         self.classes[class_info.key()] = class_info
