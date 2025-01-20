@@ -915,22 +915,22 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         processed_var_edges: Set[tuple[str, str]] = set()
 
         # Helper function to add nodes and edges recursively
-        def add_node_and_edges(namespace: str, processed_func_keys: Set[str]):
-            stack = [namespace]
+        def add_node_and_edges(root_node_key: str, processed_func_keys: Set[str]):
+            stack = [root_node_key]
 
             while stack:
-                current_namespace = stack.pop()
-                if current_namespace in processed_func_keys:
+                current_node_key = stack.pop()
+                if current_node_key in processed_func_keys:
                     continue
 
-                func_node = self.functions.get(current_namespace)
+                func_node = self.functions.get(current_node_key)
                 if not func_node:
                     continue
 
                 # Add the current node
-                node_label = f"func={func_node.name}\nnamespace={func_node.namespace}\nfile={func_node.file}"
-                dot.node(current_namespace, node_label)
-                processed_func_keys.add(current_namespace)
+                node_label = f"node_key={current_node_key}\nfunc={func_node.name}\nscope={func_node.scope.name}\nnamespace={func_node.namespace}\nfile={func_node.file}"
+                dot.node(current_node_key, node_label)
+                processed_func_keys.add(current_node_key)
 
                 # Add edges for each function call
                 for called_func in func_node.calls:
@@ -938,38 +938,38 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     if called_func.key() not in processed_func_keys:
                         called_node = self.functions.get(called_func.key())
                         if called_node:
-                            called_label = f"func={called_node.name}\nnamespace={called_node.namespace}\nfile={called_node.file}"
+                            called_label = f"node_key={called_node.key()}\nfunc={called_node.name}\nscope={called_node.scope.name}\nnamespace={called_node.namespace}\nfile={called_node.file}"
                             dot.node(called_func.key(), called_label)
 
                     # Add the edge
-                    dot.edge(current_namespace, called_func.key())
+                    dot.edge(current_node_key, called_func.key())
 
                     # Add the called function to the stack for further processing
                     stack.append(called_func.key())
 
                 for node in func_node.deps:
-                    if (current_namespace, node.key()) not in processed_var_edges:
+                    if (current_node_key, node.key()) not in processed_var_edges:
                         if isinstance(node, ClassNode):
                             short_type = "class"
                         elif isinstance(node, VarNode):
                             short_type = "var"
                         else:
                             short_type = "other"
-                        node_label = f"{short_type}={node.name}\nscope={node.scope.name}\nfile={node.file}"
+                        node_label = f"node_key={node.key()}\n{short_type}={node.name}\nscope={node.scope.name}\nfile={node.file}"
                         dot.node(node.key(), node_label)
-                        dot.edge(current_namespace, node.key())
-                        processed_var_edges.add((current_namespace, node.key()))
+                        dot.edge(current_node_key, node.key())
+                        processed_var_edges.add((current_node_key, node.key()))
 
-                processed_func_keys.add(current_namespace)
+                processed_func_keys.add(current_node_key)
 
         # Start with root nodes (functions that aren't called by others)
-        root_nodes = {
-            name for name, node in self.functions.items() if not node.called_by
+        root_node_keys = {
+            node_key for node_key, node in self.functions.items() if not node.called_by
         }
 
         # Process each root node
-        for root in root_nodes:
-            add_node_and_edges(root, processed_func_keys)
+        for node_key in root_node_keys:
+            add_node_and_edges(node_key, processed_func_keys)
 
         # Set graph attributes for better visualization
         dot.attr("node", shape="box", style="rounded")
