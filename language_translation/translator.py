@@ -300,13 +300,13 @@ def main(project_path, files, language):
     )
     analyzer.analyze()
 
-    translator = Translator(analyzer)
-    translator.translate()
+    # translator = Translator(analyzer)
+    # translator.translate()
 
-    # analyzer.print_call_graph()
+    analyzer.print_call_graph()
 
-    # print("Generating graph...")
-    # analyzer.visualize_graph()
+    print("Generating graph...")
+    analyzer.visualize_graph()
 
     print("Done.")
 

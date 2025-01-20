@@ -3,7 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Union
 
 from graphviz import Digraph
 
@@ -41,6 +41,7 @@ class TranslatorNode:
     # We make this option because the Translator doesn't need it for its processing
     node: Optional[ast.AST] = None  # AST node that was used to create this entity
     scope: Optional["Scope"] = None
+    file: str = None  # Path to the file containing this entity
 
     lineno: int = -1  # Line where function starts
     end_lineno: int = -1  # Line where function ends
@@ -61,8 +62,6 @@ class TranslatorNode:
 class ClassNode(TranslatorNode):
     """Store information about a class"""
 
-    file: str = None  # Path to the file containing this entity
-
     # No additional fields needed for now, but can be extended in the future
 
     def key(self) -> str:
@@ -73,6 +72,10 @@ class ClassNode(TranslatorNode):
         """Determine if a class is a test class based on its name."""
         return self.name.startswith("Test")
 
+    def __hash__(self) -> int:
+        """Return the hash of the node, using its unique key."""
+        return hash(self.key())
+
 
 @dataclass
 class VarNode(TranslatorNode):
@@ -81,12 +84,15 @@ class VarNode(TranslatorNode):
     def key(self) -> str:
         return f"{self.scope.name}.{self.name}"
 
+    def __hash__(self) -> int:
+        """Return the hash of the node, using its unique key."""
+        return hash(self.key())
+
 
 @dataclass
 class FunctionNode(TranslatorNode):
     """Store information about a function/method"""
 
-    file: str = None  # Path to the file containing this entity
     namespace: str | None = None  # Full namespace path
     calls: Set["FunctionNode"] = field(
         default_factory=set
@@ -94,6 +100,10 @@ class FunctionNode(TranslatorNode):
     called_by: Set[str] = field(
         default_factory=set
     )  # Set of fully qualified function names that call this function
+    symbol_refs: Set[str] = field(default_factory=set)
+
+    # These refer to non-function deps, and we may be able to consolidate them with calls, but unclear yet
+    deps: Set[Union["VarNode", "ClassNode"]] = field(default_factory=set)
 
     def key(self) -> str:
         """Return a unique key for the node, combining namespace and name."""
@@ -225,13 +235,13 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.current_namespace: List[str] = []
         self.current_class = None
         self.current_function = None
+        self.current_function_node = None
         self.current_scope = None
         self.tree: ast.AST = None  # Store the current AST
         self.code = None
         self.current_file = None
         self.classes: Dict[str, ClassNode] = {}
         self.calls: Dict[str, CallNode] = {}
-        self.vars: Dict[str, VarNode] = {}
         self.scopes: list[Scope] = []
 
     def analyze(self):
@@ -312,6 +322,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             # TODO (adam) May want to pack class and function tracking into the scope object
             if isinstance(node, ast.FunctionDef):
                 self.current_function = None
+                self.current_function_node = None
 
             if isinstance(node, ast.ClassDef):
                 self.current_class = None
@@ -357,24 +368,17 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         target_names: list[str],
         annotation: str | None = None,
     ) -> str:
-        scope = ".".join(self.current_namespace)
-
-        # TODO (adam) Should probably get rid of self.vars
-        if scope not in self.vars:
-            self.vars[scope] = []
-
         for target_name in target_names:
             var_node = VarNode(
                 name=target_name,
                 node=node,
+                file=self.current_file,
                 lineno=node.lineno,
                 end_lineno=node.end_lineno,
                 scope=self.current_scope,
                 type=annotation,
             )
             self.current_scope.add_var(var_node)
-            # TODO (adam) Should probably get rid of self.vars
-            self.vars[scope].append(var_node)
 
     def _resolve_generic(self, node: ast.AST) -> str:
         if isinstance(node, ast.Call):
@@ -479,7 +483,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         #     'end_col_offset': 30
         # }
 
-        scope = ".".join(self.current_namespace)
         vars = []
 
         for arg in node.args.args:
@@ -513,7 +516,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     node=node.args.vararg,
                     lineno=node.args.vararg.lineno,
                     end_lineno=node.args.vararg.end_lineno,
-                    scope=scope,
+                    scope=self.current_scope,
                     type=None,
                 )
             )
@@ -544,6 +547,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             source_code=source_code,  # Store the source code
             scope=self.current_scope,
         )
+        self.current_function_node = function_node
 
         parent_scope = self.current_scope.parent
         parent_scope.add_function(function_node)
@@ -558,6 +562,12 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.functions[function_key] = function_node
 
         return function_node
+
+    def visit_Name(self, node: ast.Name):
+        # TODO (adam) maybe handle class- or module-level references
+
+        if isinstance(node.ctx, ast.Load) and self.current_function:
+            self.current_function_node.symbol_refs.add(node.id)
 
     def visit_ClassDef(self, node: ast.ClassDef):
         # Process class definitions
@@ -600,10 +610,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
     def _resolve_call(self, node: ast.Call) -> CallNode:
         method_name = self._resolve_generic(node.func)
-        # if isinstance(method_name, CallNode):
-        #     import pdb
-
-        #     pdb.set_trace()
 
         if self.current_function:
             calling_node = self.current_function
@@ -619,15 +625,6 @@ class CallGraphAnalyzer(ast.NodeVisitor):
             scope=self.current_scope,
             calling_node=calling_node,
         )
-
-    def _find_node(self, attribute: str, scope: Scope) -> TranslatorNode | None:
-        if attribute in scope.get_local_symbols():
-            return scope.get_node(attribute)
-        elif attribute in scope.get_enclosing_symbols():
-            return scope.get_node(attribute)
-        elif attribute in scope.get_global_symbols():
-            return scope.get_node(attribute)
-        return None
 
     def _resolve_imports(self):
         print("Resolving imports")
@@ -661,14 +658,14 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         attributes = attribute_chain.split(".")
         for attribute in attributes:
 
-            # May want to treat "self" as a special case
-            # May want to treat "None" as a special case
-            # Discern between "terminal" attributes and attributes in a chain
+            # TODO (adam) May want to treat "self" as a special case
+            # TODO (adam) May want to treat "None" as a special case
+            # TODO (adam) Discern between "terminal" attributes and attributes in a chain
 
-            matched_node = self._find_node(attribute, scope)
+            matched_node = scope.get_node(attribute)
             if matched_node:
                 if isinstance(matched_node, VarNode) and matched_node.type:
-                    type_node = self._find_node(matched_node.type, matched_node.scope)
+                    type_node = matched_node.scope.get_node(matched_node.type)
                     if type_node:
                         scope = type_node.scope
         return matched_node
@@ -677,12 +674,18 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         function_nodes_by_name = defaultdict(list)
         for f in self.functions.values():
             function_nodes_by_name[f.name].append(f)
+            for symbol_ref in f.symbol_refs:
+                resolved_node = f.scope.get_node(symbol_ref)
+                if resolved_node:
+                    is_external = resolved_node.scope != f.scope
+                    if is_external and not isinstance(resolved_node, FunctionNode):
+                        f.deps.add(resolved_node)
 
         class_nodes_by_name = defaultdict(list)
         for c in self.classes.values():
             class_nodes_by_name[c.name].append(c)
 
-        print("\nCalls:")
+        # print("\nCalls:")
         for caller, calls in self.calls.items():
             for call in calls:
                 # FIXME (adam) I'm not sure yet what to do with nested calls,
@@ -703,24 +706,25 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     # LEGB - Local, Enclosing, Global, Built-in
                     scope = call.scope
 
-                    print("\n--------------------------------")
-                    print(f"{len(matches)} matches for {func_name}")
+                    # print("\n--------------------------------")
+                    # print(f"{len(matches)} matches for {func_name}")
 
-                    print(f"\nCaller: {caller}")
-                    print(f"\nCall: {call.name}")
-                    print(f"\nMatches:")
-                    for match in matches:
-                        print(f"  Name: {match.name}")
-                        print(f"  File: {match.file}")
+                    # print(f"\nCaller: {caller}")
+                    # print(f"\nCall: {call.name}")
+                    # print(f"\nMatches:")
+                    # for match in matches:
+                    #     print(f"  Name: {match.name}")
+                    #     print(f"  File: {match.file}")
 
                     node = self._resolve_attribute_chain(call.name, scope)
 
-                    # Add deps with real, resolved nodes, including var_deps and class_deps eventually
-                    print(f"NODE---------------> {node}")
-                    print(f"CALLING NODE-------> {call.calling_node}")
+                    # TODO (adam) Add deps with real, resolved nodes, including var_deps and class_deps eventually
 
-                    if not call.calling_node:
-                        print(f"Function {call.name} called at the module level")
+                    # print(f"NODE---------------> {node}")
+                    # print(f"CALLING NODE-------> {call.calling_node}")
+
+                    # if not call.calling_node:
+                    #     print(f"Function {call.name} called at the module level")
 
                     if node and isinstance(node, FunctionNode) and call.calling_node:
                         calling_node = self._resolve_attribute_chain(
@@ -732,9 +736,14 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                         elif isinstance(calling_node, ClassNode):
                             calling_node.calls.add(node)
                             node.called_by.add(calling_node)
+                        else:
+                            print(
+                                f"  !!! Calling node is not a function or class: {calling_node}"
+                            )
 
                 elif not matches:
-                    print(f"Unmatched call {call.name}")
+                    # print(f"Unmatched call {call.name}")
+                    pass
 
     def print_scope_tree(self, scope: Scope, indent: int = 0):
         print(f"\n{indent * '  '}Scope: {scope.name}")
@@ -901,15 +910,16 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         dot.attr(rankdir="TB")  # Top to bottom layout
 
         # Track processed nodes to avoid duplicates
-        processed: Set[str] = set()
+        processed_func_keys: Set[str] = set()
+        processed_var_edges: Set[tuple[str, str]] = set()
 
         # Helper function to add nodes and edges recursively
-        def add_node_and_edges(namespace: str, processed: Set[str]):
+        def add_node_and_edges(namespace: str, processed_func_keys: Set[str]):
             stack = [namespace]
 
             while stack:
                 current_namespace = stack.pop()
-                if current_namespace in processed:
+                if current_namespace in processed_func_keys:
                     continue
 
                 func_node = self.functions.get(current_namespace)
@@ -917,17 +927,17 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     continue
 
                 # Add the current node
-                node_label = f"name={func_node.name}\nnamespace={func_node.namespace}\nfile={func_node.file}"
+                node_label = f"func={func_node.name}\nnamespace={func_node.namespace}\nfile={func_node.file}"
                 dot.node(current_namespace, node_label)
-                processed.add(current_namespace)
+                processed_func_keys.add(current_namespace)
 
                 # Add edges for each function call
                 for called_func in func_node.calls:
                     # Add the called function node if it hasn't been processed
-                    if called_func.key() not in processed:
+                    if called_func.key() not in processed_func_keys:
                         called_node = self.functions.get(called_func.key())
                         if called_node:
-                            called_label = f"name={called_node.name}\nnamespace={called_node.namespace}\nfile={called_node.file}"
+                            called_label = f"func={called_node.name}\nnamespace={called_node.namespace}\nfile={called_node.file}"
                             dot.node(called_func.key(), called_label)
 
                     # Add the edge
@@ -936,7 +946,20 @@ class CallGraphAnalyzer(ast.NodeVisitor):
                     # Add the called function to the stack for further processing
                     stack.append(called_func.key())
 
-                processed.add(current_namespace)
+                for node in func_node.deps:
+                    if (current_namespace, node.key()) not in processed_var_edges:
+                        if isinstance(node, ClassNode):
+                            short_type = "class"
+                        elif isinstance(node, VarNode):
+                            short_type = "var"
+                        else:
+                            short_type = "other"
+                        node_label = f"{short_type}={node.name}\nscope={node.scope.name}\nfile={node.file}"
+                        dot.node(node.key(), node_label)
+                        dot.edge(current_namespace, node.key())
+                        processed_var_edges.add((current_namespace, node.key()))
+
+                processed_func_keys.add(current_namespace)
 
         # Start with root nodes (functions that aren't called by others)
         root_nodes = {
@@ -945,7 +968,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
 
         # Process each root node
         for root in root_nodes:
-            add_node_and_edges(root, processed)
+            add_node_and_edges(root, processed_func_keys)
 
         # Set graph attributes for better visualization
         dot.attr("node", shape="box", style="rounded")
