@@ -100,6 +100,8 @@ class FunctionNode(TranslatorNode):
     called_by: Set[str] = field(
         default_factory=set
     )  # Set of fully qualified function names that call this function
+
+    # Unresolved symbol references that become resolved when added to deps
     symbol_refs: Set[str] = field(default_factory=set)
 
     # These refer to non-function deps, and we may be able to consolidate them with calls, but unclear yet

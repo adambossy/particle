@@ -171,6 +171,13 @@ class Translator:
                 print(
                     f"  Scope: {node.scope} module_level? {node.scope.parent and node.scope.parent.is_module()}"
                 )
+
+                # FIXME (adam) NOTE that this will result in duplicate deps since we're not checking whether they're exclusive
+                # or whether they've been added before
+                for dep in node.deps:
+                    print(f"  Piggybacking dep: {dep.name}")
+                    nodes_and_exclusive_callers.append((dep, [node]))
+
                 nodes_and_exclusive_callers.append((node, exclusive_callers))
             for caller in exclusive_callers:
                 print(f"  Exclusive caller: {caller.name}")
