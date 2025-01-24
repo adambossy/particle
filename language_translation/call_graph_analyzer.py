@@ -265,7 +265,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         self.calls.clear()
 
         for file_path in files:
-            print(f"\nAnalyzing file: {file_path}")
+            print(f"Analyzing file: {file_path}")
             tree = self.parse_file(str(file_path))
             if tree:
                 self.visit(tree)
@@ -630,7 +630,7 @@ class CallGraphAnalyzer(ast.NodeVisitor):
         )
 
     def _resolve_imports(self):
-        print("Resolving imports")
+        print("\nResolving imports")
 
         for scope in self.scopes:
             print(f"\nScope: {scope.name}")

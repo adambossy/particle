@@ -23,23 +23,21 @@ class FileManager:
                 result = subprocess.run(
                     ["go", "mod", "init", module_name],
                     cwd=self.go_project_path,
-                    capture_output=True,
+                    capture_output=False,
                     text=True,
                     check=True,
                 )
-                print(f"\nInitialized Go module: {module_name}")
-                print(result.stdout)
+                print(f"Initialized Go mod: {module_name}")
 
                 # Run go mod tidy after initializing the module
                 result = subprocess.run(
                     ["go", "mod", "tidy"],
                     cwd=self.go_project_path,
-                    capture_output=True,
+                    capture_output=False,
                     text=True,
                     check=True,
                 )
-                print("\nRan go mod tidy:")
-                print(result.stdout)
+                print("Ran go mod tidy")
 
         except subprocess.CalledProcessError as e:
             print("\nFailed to initialize Go module:")
@@ -68,6 +66,24 @@ class FileManager:
         else:
             return rel_py_file_path.with_suffix(".go")
 
+    def setup_sandbox(self):
+        if not self.go_project_path.exists():
+            self.setup_project()
+
+        sandbox_path = self.go_project_path / "sandbox"
+        sandbox_path.mkdir(parents=True, exist_ok=True)
+
+    def setup_sandbox_files(self, py_files: list[Path]):
+        self.setup_sandbox()
+
+        for rel_py_file_path in py_files:
+            go_file_path = (
+                self.go_project_path
+                / "sandbox"
+                / self._make_go_file_path(rel_py_file_path).name
+            )
+            go_file_path.touch(exist_ok=True)
+
     # TODO (adam) This could be renamed "add_files"
     def setup_files(self, py_files: list[Path]):
         for rel_py_file_path in py_files:
@@ -76,15 +92,10 @@ class FileManager:
             rel_go_file_path: Path = self._make_go_file_path(rel_py_file_path)
 
             self.file_map[rel_py_file_path] = rel_go_file_path
-            print(f"Creating {rel_go_file_path} for {rel_py_file_path}")
 
             full_go_file_path = self.go_project_path / rel_go_file_path
             full_go_file_path.parent.mkdir(parents=True, exist_ok=True)
-            if not full_go_file_path.exists():
-                with open(full_go_file_path, "w") as new_file:
-                    new_file.write("")
-
-        # TODO (adam) Init git repo, setup go.mod, etc.
+            full_go_file_path.touch()
 
     def get_translated_file_path(self, py_file_path: str) -> Path:
         cleaned_path = Path(py_file_path).relative_to(self.py_project_path)
@@ -127,3 +138,16 @@ class FileManager:
     def get_target_repo_path(self) -> Path:
         """Return the path to the target Go project."""
         return self.go_project_path
+
+    def reset_git(self):
+        """Reset changes to the git repository."""
+        repo_path = self.get_target_repo_path()
+        repo = Repo(repo_path)
+        repo.git.reset(hard=True)
+        repo.git.clean(f=True)
+
+    def commit_all(self, commit_msg: str):
+        repo_path = self.get_target_repo_path()
+        repo = Repo(repo_path)
+        repo.git.add(A=True)
+        repo.index.commit(commit_msg)

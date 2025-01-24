@@ -1,28 +1,49 @@
+import json
+import pprint
 from pathlib import Path
-from typing import Dict, List
 
 import click
+import instructor
+import litellm
 from dotenv import load_dotenv
-from pydantic import BaseModel
 
-from .conversation import Conversation
+from language_translation.utils import (
+    get_assistant_message_from_tool_call,
+    get_user_message_from_tool_call,
+)
+
 from .file_manager import FileManager
 
 load_dotenv()
 
+litellm.set_verbose = True
+litellm.success_callback = ["langfuse"]
+litellm.failure_callback = ["langfuse"]
 
-class TranslateCodeResponse(BaseModel):
-    translated_source: str
-    error: str = ""
+
+def translate_code(translated_source: str, error: str) -> str:
+    """
+    Translate the code and return the updated translated source.
+    """
+    pass
 
 
-class LLMTranslator(Conversation):
-    def __init__(self, file_manager: FileManager):
-        """
-        Initialize LLMTranslator with LiteLLM model.
-        """
+translate_code_tool = {
+    "type": "function",
+    "function": litellm.utils.function_to_dict(translate_code),
+}
+
+
+class LLMTranslator:
+    def __init__(self, model: str, file_manager: FileManager):
         super().__init__()
-        self.file_map = file_manager
+
+        print(f"SUPPORTS FUNCTION CALLING? {litellm.supports_function_calling(model)}")
+
+        self.model = model
+        self.file_manager = file_manager
+
+        self.client = instructor.from_litellm(litellm.completion)
 
         self.system_prompt = """You are an expert AI assistant focused on translating Python code to Go.
 When translating Python code to Go:
@@ -49,12 +70,8 @@ When translating Python code to Go:
 
 Remember: The translated code must pass all provided tests after conversion.
 """
-        # Define the conversation with example
-        self.prompt = [
-            {"role": "system", "content": self.system_prompt},
-            {
-                "role": "user",
-                "content": """Translate this Python code and its tests to Go. 
+
+        self.one_shot_user_message = """Translate this Python code and its tests to Go.
 For each code snippet, prepend the translation with a comment containing the full relative file path
 in the new repo that it belongs to, followed by the translated code. Use the file mappings that are
 provided to map the file path to the new repo.
@@ -75,6 +92,7 @@ def filter_and_transform(items):
 
 # py_project/tests/test_implementation.py
 import pytest
+from . import implementation
 
 def test_filter_and_transform():
     # Test with mixed positive and negative numbers
@@ -84,12 +102,10 @@ def test_filter_and_transform():
     assert filter_and_transform([]) == []
     
     # Test with all negative numbers
-    assert filter_and_transform([-1, -2, -3]) == []""",
-            },
-            {
-                "role": "assistant",
-                "content": """// go_project/src/implementation.go
-package main
+    assert filter_and_transform([-1, -2, -3]) == []"""
+
+        self.one_shot_assistant_message = """// go_project/src/implementation.go
+package src
 
 import "fmt"
 
@@ -106,7 +122,7 @@ func filterAndTransform(items []int) []string {
 }
 
 // go_project/src/implementation_test.go
-package main
+package src
 
 import (
     "reflect"
@@ -144,12 +160,11 @@ func TestFilterAndTransform(t *testing.T) {
             }
         })
     }
-}""",
-            },
-        ]
+}"""
 
-    def translate(self, code_snippets_by_file: Dict[str, List[str]]) -> str:
-        # Compose the prompt by appending each source code with its filename
+        self.clear_messages()
+
+    def compose_prompt(self, code_snippets_by_file: dict[str, list[str]]) -> str:
         composed_prompt = """Translate this Python code and its tests to Go.
 For each code snippet, prepend the translation with a comment containing the full relative file path
 in the new repo that it belongs to, followed by the translated code. Use the file mappings that are
@@ -160,7 +175,7 @@ The package name should be the same as the enclosing directory of the file.
 File Mappings:\n"""
         for py_filename in code_snippets_by_file.keys():
             py_file_path = Path(py_filename)
-            go_file_path = self.file_map.get_target_file_path(py_file_path)
+            go_file_path = self.file_manager.get_target_file_path(py_file_path)
             composed_prompt += (
                 f"{py_file_path.as_posix()} -> {go_file_path.as_posix()}\n"
             )
@@ -172,27 +187,69 @@ File Mappings:\n"""
                 composed_prompt += f"{code_snippet}\n\n"
             composed_prompt += "\n"
 
-        print("\nComposed prompt:")
-        print(composed_prompt)
+        return composed_prompt
 
-        def validate_translation(response: TranslateCodeResponse) -> bool:
-            return (
-                not response.error
-                and response.translated_source is not None
-                and "package" in response.translated_source
-                and "func" in response.translated_source
-            )
+    def completion(self, node_name: str) -> None:
+        trace_id = f"translate-{node_name}-{self.model}"
 
-        # Create messages list with example conversation and new prompt
-        messages = self.prompt + [{"role": "user", "content": composed_prompt}]
+        print(f"\n--- PROMPT ---")
+        print(self.messages[-1]["content"])
+        print(f"--- END PROMPT ---")
 
-        response = self.validated_completion(
-            messages,
-            validate_translation,
-            response_model=TranslateCodeResponse,
+        completion = litellm.completion(
+            messages=self.messages,
+            model=self.model,
+            tools=[translate_code_tool],
+            tool_choice="required",
         )
 
-        return response.translated_source
+        self.last_completion = completion  # HACK?
+
+        print(f"\n--- COMPLETION ---")
+        print(completion)
+        print(f"--- END COMPLETION ---")
+
+        self.messages.append(
+            get_assistant_message_from_tool_call(self.model, completion)
+        )
+
+        tool_call = completion.choices[0].message.tool_calls[0]
+        arguments = json.loads(tool_call.function.arguments)
+        return arguments
+
+    def translate(
+        self,
+        code_snippets_by_file: dict[str, list[str]],
+        node_name: str,
+    ) -> str:
+        composed_prompt = self.compose_prompt(code_snippets_by_file)
+        self.messages.append({"role": "user", "content": composed_prompt})
+
+        translate_code_response = self.completion(node_name)
+        return translate_code_response["translated_source"]
+
+    def retry(self, last_test_output: str, node_name: str) -> str:
+        self.messages.append(
+            get_user_message_from_tool_call(
+                self.model,
+                self.last_completion,
+                last_test_output,
+                is_error=True,
+            )
+        )
+
+        response = self.completion(None)
+        return response["translated_source"]
+
+    def initialize_messages(self) -> None:
+        self.messages = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": self.one_shot_user_message},
+            {"role": "assistant", "content": self.one_shot_assistant_message},
+        ]
+
+    def clear_messages(self) -> None:
+        self.initialize_messages()
 
 
 DEFAULT_SOURCE_AND_FILES = {

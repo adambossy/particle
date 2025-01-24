@@ -22,11 +22,7 @@ class LLMResultsParser:
     def __init__(self):
         pass
 
-    def parse_translations(
-        self,
-        translated_code: str,
-        target_filenames: set[str],
-    ) -> dict[str, str]:
+    def parse_translations(self, translated_code: str) -> dict[str, str]:
         # TODO (adam) May want to use a sentinel that can't appear in code to avoid false positives
         file_pattern = re.compile(r"//\s*(.+\.go)")
         file_to_code_chunks = {}
@@ -45,23 +41,3 @@ class LLMResultsParser:
             file_to_code_chunks[file] = "\n".join(file_to_code_chunks[file])
 
         return file_to_code_chunks
-        # file_pattern = re.compile(r"//\s*(.+\.go)")
-        # rel_fname_to_code = {}
-        # current_rel_fname = None
-
-        # for line in translated_code.splitlines():
-        #     match = file_pattern.match(line)
-        #     if match:
-        #         current_rel_fname = match.group(1)
-        #     elif current_rel_fname:
-        #         if current_rel_fname in rel_fname_to_code:
-        #             raise ValueError(
-        #                 f"Multiple translations for file {current_rel_fname}. Please investigate"
-        #             )
-        #         rel_fname_to_code[current_rel_fname] = line
-
-        # # Convert lists of lines into single code chunks
-        # for rel_fname in rel_fname_to_code:
-        #     rel_fname_to_code[rel_fname] = "\n".join(rel_fname_to_code[rel_fname])
-
-        # return rel_fname_to_code
