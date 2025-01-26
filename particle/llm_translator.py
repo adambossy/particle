@@ -7,7 +7,7 @@ import instructor
 import litellm
 from dotenv import load_dotenv
 
-from language_translation.utils import (
+from particle.utils import (
     get_assistant_message_from_tool_call,
     get_user_message_from_tool_call,
 )

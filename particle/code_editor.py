@@ -2,7 +2,7 @@ import instructor
 import litellm
 from pydantic import BaseModel
 
-from language_translation.utils import get_assistant_message_from_tool_call
+from particle.utils import get_assistant_message_from_tool_call
 
 from .file_manager import FileManager
 

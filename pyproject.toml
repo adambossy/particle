@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "language-translation"
+name = "particle"
 version = "0.1.0"
 description = ""
 authors = ["Adam Bossy <adambossy@gmail.com>"]

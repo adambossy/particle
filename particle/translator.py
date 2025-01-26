@@ -10,12 +10,12 @@ from pathlib import Path
 import click
 from git import Repo
 
-from language_translation.call_graph_analyzer import CallGraphAnalyzer, FunctionNode
-from language_translation.code_editor import CodeEditor
-from language_translation.file_manager import FileManager
-from language_translation.llm_results_parser import LLMResultsParser
-from language_translation.llm_translator import LLMTranslator
-from language_translation.utils import prompt_user_to_continue
+from particle.call_graph_analyzer import CallGraphAnalyzer, FunctionNode
+from particle.code_editor import CodeEditor
+from particle.file_manager import FileManager
+from particle.llm_results_parser import LLMResultsParser
+from particle.llm_translator import LLMTranslator
+from particle.utils import prompt_user_to_continue
 
 
 class Translator:

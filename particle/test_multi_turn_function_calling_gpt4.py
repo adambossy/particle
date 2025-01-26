@@ -1,5 +1,6 @@
 import json
 import pprint
+import uuid
 
 import dotenv
 import litellm
@@ -72,11 +73,16 @@ messages.append(
     }
 )
 
+trace_id = "test-multi-turn-function-calling-gpt4-" + str(uuid.uuid4())
+
 response = litellm.completion(
     model="gpt-4o-2024-08-06",
     messages=messages,
     tools=tools,
     tool_choice="required",
+    metadata={
+        "trace_id": trace_id,
+    },
 )
 
 print_tools_response(response)
@@ -115,6 +121,9 @@ response = litellm.completion(
     messages=messages,
     tools=tools,
     tool_choice="required",
+    metadata={
+        "trace_id": trace_id,
+    },
 )
 
 print_tools_response(response)

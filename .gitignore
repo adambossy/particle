@@ -10,4 +10,4 @@ swift/tree-sitter*
 
 *.pdf
 logs/*
-language_translation/logs/*
+particle/logs/*
