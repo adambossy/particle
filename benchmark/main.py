@@ -100,12 +100,19 @@ class ExercismSampleCollector(SampleCollector):
             if target_ex_path.exists():
                 yield source_ex_path, target_ex_path
 
-    def get_code_samples(self) -> Generator[CodeSample, None, None]:
+    def get_code_samples(
+        self, num_samples: int = None
+    ) -> Generator[CodeSample, None, None]:
         """Generate CodeSample instances for matching exercises."""
         source_ext = self.LANGUAGE_EXTENSIONS[self.source_lang]
         target_ext = self.LANGUAGE_EXTENSIONS[self.target_lang]
 
+        samples_yielded = 0
+
         for source_ex_path, target_ex_path in self._get_exercise_pairs():
+            if num_samples is not None and samples_yielded >= num_samples:
+                break
+
             exercise_name = source_ex_path.name
 
             # Source code path (example implementation)
@@ -135,6 +142,7 @@ class ExercismSampleCollector(SampleCollector):
                     test_code=test_code,
                     test_path=str(test_rel_path),
                 )
+                samples_yielded += 1
 
             except (IOError, OSError) as e:
                 print(f"Error processing {exercise_name}: {e}")
@@ -327,7 +335,9 @@ async def process_sample(
             f.write(f"Unexpected error: {str(e)}\n")
 
 
-async def evaluate(model: str, source_lang: str, target_lang: str) -> None:
+async def evaluate(
+    model: str, source_lang: str, target_lang: str, num_samples: int = None
+) -> None:
     """Evaluate model performance on code translation task."""
     # Create temporary sandbox directory
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -342,7 +352,7 @@ async def evaluate(model: str, source_lang: str, target_lang: str) -> None:
 
         # Create tasks for parallel processing
         tasks = []
-        for sample in collector.get_code_samples():
+        for sample in collector.get_code_samples(num_samples):
             task = process_sample(
                 sample,
                 sandbox_dir,
@@ -386,15 +396,23 @@ def cli():
     default="go",
     help="Target programming language (default: go)",
 )
-def translate(models, source, target):
+@click.option(
+    "--num-samples",
+    "-n",
+    type=int,
+    default=None,
+    help="Number of samples to process (default: all available)",
+)
+def translate(models, source, target, num_samples):
     """Translate code from one programming language to another using specified LLMs."""
     click.echo(f"Models selected: {', '.join(models)}")
     click.echo(f"Source language: {source}")
     click.echo(f"Target language: {target}")
+    click.echo(f"Number of samples: {'all' if num_samples is None else num_samples}")
 
     for model in models:
         click.echo(f"\nTranslating with {model}...")
-        asyncio.run(evaluate(model, source, target))
+        asyncio.run(evaluate(model, source, target, num_samples))
 
 
 if __name__ == "__main__":
