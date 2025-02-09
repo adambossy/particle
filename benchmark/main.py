@@ -176,6 +176,7 @@ class ExercismSampleCollector(SampleCollector):
                 source_test_rel_path = source_test_file.relative_to(
                     self.source_repo_path
                 )
+                target_rel_path = target_code_file.relative_to(self.target_repo_path)
                 test_rel_path = target_test_file.relative_to(self.target_repo_path)
                 cases_test_rel_path = cases_test_file.relative_to(self.target_repo_path)
 
@@ -186,6 +187,7 @@ class ExercismSampleCollector(SampleCollector):
                     source_test_code=source_test_code,
                     source_test_path=str(source_test_rel_path),
                     target_interface=target_interface,
+                    target_path=str(target_rel_path),
                     target_test_code=target_test_code,
                     target_test_path=str(test_rel_path),
                     cases_test_code=cases_test_code,
@@ -373,29 +375,18 @@ async def process_sample(
     """Process a single code sample."""
     # Create necessary directories
     # TODO (adam) Have Sandbox manage the portion before the try/except block
-    source_file = workspace_dir / sample.source_path
-    test_file = workspace_dir / "sandbox" / Path(sample.target_test_path).name
-    cases_test_file = workspace_dir / "sandbox" / Path(sample.cases_test_path).name
-    translated_file = (
-        workspace_dir
-        / "sandbox"
-        / f"{test_file.stem.replace('_test', '')}.{ExercismSampleCollector.LANGUAGE_EXTENSIONS[target_lang]}"
-    )
-
-    print(f"Source file: {source_file}")
-    print(f"Test file: {test_file}")
+    test_file = workspace_dir / "sandbox" / sample.target_test_path
+    cases_test_file = workspace_dir / "sandbox" / sample.cases_test_path
+    translated_file = workspace_dir / "sandbox" / sample.target_path
 
     print(f"\nSandbox:")
     print(f"Translated file: {translated_file}")
     print(f"Copied test file: {test_file}")
 
-    os.makedirs(os.path.dirname(source_file), exist_ok=True)
     os.makedirs(os.path.dirname(test_file), exist_ok=True)
     os.makedirs(os.path.dirname(cases_test_file), exist_ok=True)
 
     # Write source and test files
-    with open(source_file, "w") as f:
-        f.write(sample.source_code)
     with open(test_file, "w") as f:
         f.write(sample.target_test_code)
     with open(cases_test_file, "w") as f:
@@ -433,12 +424,9 @@ Ensure that the function name in the source code gets translated using the funct
 
         # Run tests using TestRunner
         result = sandbox.run_tests(test_file)
-        print(f"Test result: {result}")
-        print(f"Test Output (stdout): {result.stdout}")
-        print(f"Test Output (stderr): {result.stderr}")
 
         # Create results file
-        exercise_name = source_file.parent.name
+        exercise_name = translated_file.parent.name
         result_file = results_dir / f"{exercise_name}_results.txt"
 
         with open(result_file, "w") as f:
