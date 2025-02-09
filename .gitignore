@@ -11,3 +11,4 @@ swift/tree-sitter*
 *.pdf
 logs/*
 viz/*
+results/*

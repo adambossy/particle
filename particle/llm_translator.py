@@ -1,4 +1,5 @@
 import json
+import os
 import pprint
 from pathlib import Path
 
@@ -16,29 +17,50 @@ from .file_manager import FileManager
 
 load_dotenv()
 
-litellm.set_verbose = True
+os.environ["LITELLM_LOG"] = "DEBUG"
+
 litellm.success_callback = ["langfuse"]
 litellm.failure_callback = ["langfuse"]
 
 
-def translate_code(translated_source: str, error: str) -> str:
-    """
-    Translate the code and return the updated translated source.
-    """
-    pass
+# def translate_code(translated_source: str, error: str) -> str:
+#     """
+#     Translate the code and return the updated translated source.
+#     """
+#     pass
 
 
+# # Use this for gpt-4o
+# translate_code_tool = {
+#     "type": "function",
+#     "function": litellm.utils.function_to_dict(translate_code),
+# }
+
+
+# NOTE (adam) This is Claude-specific and will break for other models
 translate_code_tool = {
-    "type": "function",
-    "function": litellm.utils.function_to_dict(translate_code),
+    "name": "translate_code",
+    "description": "Translate the code from Python to Go and return the updated translated source.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "translated_code": {
+                "type": "string",
+                "description": "The source code that has been translated from Python to Go.",
+            },
+            "error": {
+                "type": "string",
+                "description": "The error message, if any, encountered during translation.",
+            },
+        },
+        "required": ["source_code"],
+    },
 }
 
 
 class LLMTranslator:
     def __init__(self, model: str, file_manager: FileManager):
         super().__init__()
-
-        print(f"SUPPORTS FUNCTION CALLING? {litellm.supports_function_calling(model)}")
 
         self.model = model
         self.file_manager = file_manager
@@ -164,18 +186,26 @@ func TestFilterAndTransform(t *testing.T) {
 
         self.clear_messages()
 
-    def compose_prompt(self, code_snippets_by_file: dict[str, list[str]]) -> str:
-        composed_prompt = """Translate this Python code and its tests to Go.
+    def compose_prompt(
+        self,
+        code_snippets_by_file: dict[str, list[str]],
+        special_instructions: str | None = None,
+    ) -> str:
+        special_instructions = (
+            (special_instructions + "\n\n") if special_instructions else ""
+        )
+
+        composed_prompt = f"""Translate this Python code and its tests to Go.
 For each code snippet, prepend the translation with a comment containing the full relative file path
 in the new repo that it belongs to, followed by the translated code. Use the file mappings that are
 provided to map the file path to the new repo.
 
 The package name should be the same as the enclosing directory of the file.
-
+{special_instructions}
 File Mappings:\n"""
         for py_filename in code_snippets_by_file.keys():
             py_file_path = Path(py_filename)
-            go_file_path = self.file_manager.get_target_file_path(py_file_path)
+            go_file_path = self.file_manager.make_go_file_path(py_file_path)
             composed_prompt += (
                 f"{py_file_path.as_posix()} -> {go_file_path.as_posix()}\n"
             )
@@ -189,9 +219,7 @@ File Mappings:\n"""
 
         return composed_prompt
 
-    def completion(self, node_name: str) -> None:
-        trace_id = f"translate-{node_name}-{self.model}"
-
+    def completion(self) -> None:
         print(f"\n--- PROMPT ---")
         print(self.messages[-1]["content"])
         print(f"--- END PROMPT ---")
@@ -200,13 +228,14 @@ File Mappings:\n"""
             messages=self.messages,
             model=self.model,
             tools=[translate_code_tool],
-            tool_choice="required",
+            tool_choice={"type": "function", "function": {"name": "translate_code"}},
+            temperature=1.0,
         )
 
         self.last_completion = completion  # HACK?
 
         print(f"\n--- COMPLETION ---")
-        print(completion)
+        pprint.pprint(completion.choices)
         print(f"--- END COMPLETION ---")
 
         self.messages.append(
@@ -220,26 +249,30 @@ File Mappings:\n"""
     def translate(
         self,
         code_snippets_by_file: dict[str, list[str]],
-        node_name: str,
+        special_instructions: str | None = None,
     ) -> str:
-        composed_prompt = self.compose_prompt(code_snippets_by_file)
+        composed_prompt = self.compose_prompt(
+            code_snippets_by_file,
+            special_instructions,
+        )
         self.messages.append({"role": "user", "content": composed_prompt})
 
-        translate_code_response = self.completion(node_name)
-        return translate_code_response["translated_source"]
+        translate_code_response = self.completion()
+        return translate_code_response["source_code"]
 
-    def retry(self, last_test_output: str, node_name: str) -> str:
+    def retry(self, last_test_output: str, test_code: str | None = None) -> str:
         self.messages.append(
             get_user_message_from_tool_call(
                 self.model,
                 self.last_completion,
                 last_test_output,
+                test_code,
                 is_error=True,
             )
         )
 
-        response = self.completion(None)
-        return response["translated_source"]
+        response = self.completion()
+        return response["source_code"]
 
     def initialize_messages(self) -> None:
         self.messages = [

@@ -62,13 +62,19 @@ def get_user_message_from_tool_call(
     model: str,
     completion: ModelResponse,
     test_output: str,
+    test_code: str,
     is_error: bool,
 ) -> None:
     tool_call = completion.choices[0].message.tool_calls[0]
     return {
         "role": "tool",
         "tool_call_id": tool_call.id,
-        "content": test_output + "\n Modify your results to fix this error.",
+        "content": f"""{test_code}
+
+The translated code resulted in one or more errors while running tests, listed
+below. The tests that ran are listed above. Modify the code produced above to ensure tests pass.
+
+{test_output}""",
         # "name": tool_call.function.name,
     }
     # if model == "anthropic/claude-3-sonnet-20240229":

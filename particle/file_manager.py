@@ -8,9 +8,11 @@ from git import Repo
 class FileManager:
     """Specific for Python to Go translation"""
 
-    def __init__(self, project_path: Path):
+    def __init__(self, project_path: Path, target_project_path: Path | None = None):
         self.py_project_path: Path = project_path
-        self.go_project_path: Path = project_path.with_name(project_path.name + "_go")
+        self.go_project_path: Path = target_project_path or project_path.with_name(
+            project_path.name + "_go"
+        )
         self.file_map: dict[Path, Path] = {}
 
     def _init_go_module(self):
@@ -58,69 +60,50 @@ class FileManager:
         # Initialize the Go module
         self._init_go_module()
 
-    def _make_go_file_path(self, rel_py_file_path: Path) -> Path:
-        if rel_py_file_path.name.startswith("test_"):
+    def make_go_file_path(self, rel_py_path: Path | str) -> Path:
+        if isinstance(rel_py_path, str):
+            rel_py_path = Path(rel_py_path)
+
+        if rel_py_path.name.startswith("test_"):
             # Remove "test_" prefix if it exists and append "_test" before the extension
-            new_filename = re.sub(r"^test_", "", rel_py_file_path.stem) + "_test"
-            return rel_py_file_path.with_name(new_filename).with_suffix(".go")
+            new_filename = re.sub(r"^test_", "", rel_py_path.stem) + "_test"
+            return rel_py_path.with_name(new_filename).with_suffix(".go")
         else:
-            return rel_py_file_path.with_suffix(".go")
-
-    def setup_sandbox(self):
-        if not self.go_project_path.exists():
-            self.setup_project()
-
-        sandbox_path = self.go_project_path / "sandbox"
-        sandbox_path.mkdir(parents=True, exist_ok=True)
-
-    def setup_sandbox_files(self, py_files: list[Path]):
-        self.setup_sandbox()
-
-        for rel_py_file_path in py_files:
-            go_file_path = (
-                self.go_project_path
-                / "sandbox"
-                / self._make_go_file_path(rel_py_file_path).name
-            )
-            go_file_path.touch(exist_ok=True)
+            return rel_py_path.with_suffix(".go")
 
     # TODO (adam) This could be renamed "add_files"
-    def setup_files(self, py_files: list[Path]):
-        for rel_py_file_path in py_files:
+    def setup_files(self, py_files: list[Path | str]):
+        for rel_py_path in py_files:
+            if isinstance(rel_py_path, str):
+                rel_py_path = Path(rel_py_path)
+
             # For each file, we'll create a new file in the project_path
             # with the same name but with a .go extension
-            rel_go_file_path: Path = self._make_go_file_path(rel_py_file_path)
+            rel_go_file_path: Path = self.make_go_file_path(rel_py_path)
 
-            self.file_map[rel_py_file_path] = rel_go_file_path
+            self.file_map[rel_py_path] = rel_go_file_path
 
             full_go_file_path = self.go_project_path / rel_go_file_path
             full_go_file_path.parent.mkdir(parents=True, exist_ok=True)
             full_go_file_path.touch()
 
-    def get_translated_file_path(self, py_file_path: str) -> Path:
-        cleaned_path = Path(py_file_path).relative_to(self.py_project_path)
-        return self.file_map[cleaned_path]
+    def get_abs_source_file_path(self, rel_py_file_path: Path) -> Path:
+        return self.py_project_path / rel_py_file_path
 
-    def get_abs_py_file_path(self, py_file_path: Path) -> Path:
-        return py_file_path.absolute()
+    def get_abs_target_path(self, rel_go_file_path: Path) -> Path:
+        return self.go_project_path / rel_go_file_path
 
-    def get_abs_go_file_path(self, go_file_path: Path) -> Path:
-        return go_file_path.absolute()
+    def get_rel_source_file_path(self, abs_py_file_path: Path) -> Path:
+        return abs_py_file_path.relative_to(self.py_project_path)
 
-    def get_rel_py_file_path(self, py_file_path: Path) -> Path:
-        return py_file_path.relative_to(self.py_project_path)
-
-    def get_rel_go_file_path(self, go_file_path: Path) -> Path:
-        return go_file_path.relative_to(self.go_project_path)
+    def get_rel_target_file_path(self, abs_go_file_path: Path) -> Path:
+        return abs_go_file_path.relative_to(self.go_project_path)
 
     def get_source_repo_file_paths(self) -> list[Path]:
         return list(self.file_map.keys())
 
     def get_target_repo_file_paths(self) -> list[Path]:
         return list(self.file_map.values())
-
-    def get_target_file_path(self, py_file_path: Path) -> Path:
-        return self.file_map[py_file_path]
 
     def insert_code(self, file_path: Path, code: str, line_number: int):
         with open(file_path, "r") as file:

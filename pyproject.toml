@@ -8,9 +8,6 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 cloc = "^0.2.5"
-tree-sitter-swift = { git = "https://github.com/alex-pinkus/tree-sitter-swift.git" }
-tree-sitter = "^0.23.2"
-tree-sitter-python = "^0.23.6"
 click = "^8.1.8"
 pytest = "^8.3.4"
 graphviz = "^0.20.3"
