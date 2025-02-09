@@ -4,6 +4,7 @@ import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Generator
 
@@ -492,7 +493,14 @@ async def evaluate(
     """Evaluate model performance on code translation task."""
     # Create temporary sandbox directory
     workspace_dir = Path(tempfile.mkdtemp())
-    results_dir = Path("results") / f"{model}_{source_lang}_to_{target_lang}"
+
+    # Get current date and time
+    current_time = datetime.now().strftime("%Y%m%d_%I%M%p")
+    model_name = model.split("/")[-1]
+    results_dir = (
+        Path("results") / f"{model_name}_{source_lang}_to_{target_lang}_{current_time}"
+    )
+
     os.makedirs(results_dir, exist_ok=True)
 
     print("Set workspace dir to", workspace_dir)
