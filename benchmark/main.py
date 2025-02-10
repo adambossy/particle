@@ -467,6 +467,25 @@ Ensure that the function name in the source code gets translated using the funct
         return exercise_name, num_retries, 1
 
 
+async def collect_results(results_dir: Path) -> None:
+    """Collect and aggregate results from individual exercise files into a single results.txt file.
+
+    Args:
+        results_dir: Path to the directory containing individual result files
+    """
+    results_file = results_dir / "results.txt"
+
+    # Write CSV header
+    with open(results_file, "w") as f:
+        f.write("Exercise Name,Num Attempts,Return Code\n")
+
+        # Read and aggregate all result files except results.txt
+        for file_path in results_dir.glob("*.txt"):
+            if file_path.name != "results.txt":
+                content = file_path.read_text().strip()
+                f.write(f"{content}\n")
+
+
 async def evaluate(
     model: str, source_lang: str, target_lang: str, num_samples: int = None
 ) -> None:
@@ -524,6 +543,23 @@ async def evaluate(
     await collect_results(results_dir)
 
 
+def get_latest_results_dir() -> Path:
+    """Get the most recently created results directory.
+
+    Returns:
+        Path to the most recent results directory
+    """
+    results_dir = Path("results")
+    if not results_dir.exists():
+        raise click.ClickException("No results directory found")
+
+    dirs = [(d.stat().st_mtime, d) for d in results_dir.iterdir() if d.is_dir()]
+    if not dirs:
+        raise click.ClickException("No result directories found")
+
+    return sorted(dirs, key=lambda x: x[0], reverse=True)[0][1]
+
+
 @click.group()
 def cli():
     """Benchmark different LLMs for code translation tasks."""
@@ -570,6 +606,26 @@ def translate(models, source, target, num_samples):
     for model in models:
         click.echo(f"\nTranslating with {model}...")
         asyncio.run(evaluate(model, source, target, num_samples))
+
+
+@cli.command()
+@click.option(
+    "--directory",
+    "-d",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    help="Directory containing results to collect (default: most recent)",
+)
+def collect(directory: Path | None) -> None:
+    """Collect and aggregate results from individual exercise files.
+
+    If no directory is specified, uses the most recently created results directory.
+    """
+    if directory is None:
+        directory = get_latest_results_dir()
+
+    click.echo(f"Collecting results from {directory}")
+    asyncio.run(collect_results(directory))
+    click.echo("Results collected to results.txt")
 
 
 if __name__ == "__main__":
