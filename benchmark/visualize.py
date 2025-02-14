@@ -1,8 +1,29 @@
+import argparse
+import csv
+import os
 from collections import Counter
 from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+def load_results(filepath: str) -> Dict[str, List[Tuple[str, int, int]]]:
+    # Extract model name from parent directory
+    dirname = os.path.basename(os.path.dirname(filepath))
+    # Split by underscore and take the first part (model name)
+    model_name = dirname.split("_")[0]
+
+    results = []
+    with open(filepath, "r") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            exercise = row["Exercise Name"]
+            attempts = int(row["Num Attempts"])
+            status = int(row["Return Code"])
+            results.append((exercise, attempts, status))
+
+    return {model_name: results}
 
 
 def visualize(results: Dict[str, List[Tuple[str, int, int]]]) -> None:
@@ -88,7 +109,7 @@ def visualize(results: Dict[str, List[Tuple[str, int, int]]]) -> None:
     ax.set_ylabel("Percent of exercises completed successfully")
     ax.set_title("Model Performance by Retry Count")
     ax.set_xticks(x)
-    ax.set_xticklabels(models, rotation=45, ha="right")
+    ax.set_xticklabels(models, rotation=0, ha="center")
     ax.set_ylim(0, 100)
     ax.legend(title="Retry Groups")
 
@@ -97,21 +118,10 @@ def visualize(results: Dict[str, List[Tuple[str, int, int]]]) -> None:
 
 
 if __name__ == "__main__":
-    # Example usage
-    sample_data = {
-        "model-A": [
-            ("ex1", 0, 0),
-            ("ex2", 1, 0),
-            ("ex3", 0, 0),
-            ("ex4", 2, 0),
-            ("ex5", 10, 1),  # failed
-        ],
-        "model-B": [
-            ("ex1", 0, 0),
-            ("ex2", 0, 0),
-            ("ex3", 1, 0),
-            ("ex4", 10, 1),  # failed
-        ],
-    }
-    visualize(sample_data)
-    visualize(sample_data)
+    parser = argparse.ArgumentParser(description="Visualize model results")
+    parser.add_argument("results_file", help="Path to results.txt file")
+    args = parser.parse_args()
+
+    results = load_results(args.results_file)
+    visualize(results)
+    visualize(results)
