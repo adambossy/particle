@@ -62,14 +62,19 @@ def visualize(results: Dict[str, List[Tuple[str, int, int]]]) -> None:
 
     # Create stacked bars
     bottom = np.zeros(len(models))
-    # Replace viridis colormap with custom colors
+    # Colors from team activity visualization gradient
     colors = [
-        "#1f77b4",
-        "#ff7f0e",
-        "#2ca02c",
-        "#d62728",
-        "#9467bd",
-    ]  # Blue to orange gradient from image
+        "#290958",  # darkest purple
+        "#4D1B8C",  # deep purple
+        "#8034B8",  # medium purple
+        "#B84B8C",  # purple-pink
+        "#E65F8B",  # dark pink
+        "#EA7369",  # salmon pink
+        "#F0988F",  # light coral
+        "#F5B4B2",  # pale coral
+        "#FAD1D6",  # light pink
+        "#FFE9E9",  # lightest pink
+    ]  # Purple to pink gradient
 
     for retry_idx in range(
         max(len(stats["retries"]) for stats in model_stats.values())
@@ -106,7 +111,7 @@ def visualize(results: Dict[str, List[Tuple[str, int, int]]]) -> None:
         bottom += heights
 
     # Labels and formatting
-    ax.set_ylabel("Percent of exercises completed successfully")
+    ax.set_ylabel("Percent of exercises translated successfully")
     ax.set_title("Model Performance by Retry Count")
     ax.set_xticks(x)
     ax.set_xticklabels(models, rotation=0, ha="center")
