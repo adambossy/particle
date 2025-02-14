@@ -3,7 +3,7 @@ import asyncio
 import os
 import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Generator
@@ -46,8 +46,8 @@ class CodeSample:
 
     # NOTE (adam) Exercism-specific test code that's auto-generated into a separate file for each
     # exercise
-    cases_test_code: str | None = None
-    cases_test_path: str | None = None
+    extra_test_code: list[str] = field(default_factory=list)
+    extra_test_paths: list[str] = field(default_factory=list)
 
 
 class SampleCollector(abc.ABC):
@@ -101,6 +101,8 @@ class ExercismSampleCollector(SampleCollector):
         target_exercises = self.target_repo_path / "exercises" / "practice"
 
         # Get all exercise directories in source repo
+        exercises_glob = list(source_exercises.glob("*"))
+        print(f"Found {len(exercises_glob)} exercises in source repo")
         for source_ex_path in source_exercises.glob("*"):
             if not source_ex_path.is_dir():
                 continue
@@ -126,36 +128,63 @@ class ExercismSampleCollector(SampleCollector):
                 break
 
             exercise_name = source_ex_path.name
+            exercise_name_snake = exercise_name.replace("-", "_")
 
             # Contains solution code to translate
             source_file = source_ex_path / ".meta" / f"example.{source_ext}"
             if not source_file.exists():
+                print(
+                    f"Skipping {exercise_name} because source file {source_file} doesn't exist in source repo"
+                )
                 continue
 
             # Contains interface stub
-            source_interface = source_ex_path / f"{exercise_name}.{source_ext}"
+            source_interface = source_ex_path / f"{exercise_name_snake}.{source_ext}"
             if not source_interface.exists():
+                print(
+                    f"Skipping {exercise_name} because interface file {source_interface} doesn't exist in source repo"
+                )
                 continue
 
             # Contains tests to help translation along
-            source_test_file = source_ex_path / f"{exercise_name}_test.{source_ext}"
+            source_test_file = (
+                source_ex_path / f"{exercise_name_snake}_test.{source_ext}"
+            )
             if not source_test_file.exists():
+                print(
+                    f"Skipping {exercise_name} because test file {source_test_file} doesn't exist in source repo"
+                )
                 continue
 
             # Contains interface stub
-            target_code_file = target_ex_path / f"{exercise_name}.{target_ext}"
+            target_code_file = target_ex_path / f"{exercise_name_snake}.{target_ext}"
             if not target_code_file.exists():
+                print(
+                    f"Skipping {exercise_name} because target code file {target_code_file} doesn't exist in target repo"
+                )
                 continue
 
             # Contains tests that translated code must pass
-            target_test_file = target_ex_path / f"{exercise_name}_test.{target_ext}"
+            target_test_file = (
+                target_ex_path / f"{exercise_name_snake}_test.{target_ext}"
+            )
             if not target_test_file.exists():
+                print(
+                    f"Skipping {exercise_name} because target test file {target_test_file} doesn't exist in target repo"
+                )
                 continue
 
-            # Contains tests that translated code must pass
-            cases_test_file = target_ex_path / f"cases_test.{target_ext}"
-            if not cases_test_file.exists():
-                continue
+            # Collect additional test files with a different prefix
+            extra_test_files = []
+            for test_file in target_ex_path.glob(f"*_test.{source_ext}"):
+                prefix = test_file.stem.split("_test")[0]
+                if prefix != exercise_name_snake:
+                    extra_test_files.append(
+                        test_file.relative_to(self.target_repo_path)
+                    )
+
+            # Store the relative paths of these extra test files
+            extra_test_paths = [str(path) for path in extra_test_files]
 
             try:
                 # Read source and test files
@@ -169,8 +198,11 @@ class ExercismSampleCollector(SampleCollector):
                     target_interface = f.read()
                 with open(target_test_file) as f:
                     target_test_code = f.read()
-                with open(cases_test_file) as f:
-                    cases_test_code = f.read()
+
+                extra_test_code = []
+                for extra_test_path in extra_test_paths:
+                    with open(extra_test_path) as f:
+                        extra_test_code.append(f.read())
 
                 # Create relative paths from workspace directory
                 source_rel_path = source_file.relative_to(self.source_repo_path)
@@ -179,7 +211,6 @@ class ExercismSampleCollector(SampleCollector):
                 )
                 target_rel_path = target_code_file.relative_to(self.target_repo_path)
                 test_rel_path = target_test_file.relative_to(self.target_repo_path)
-                cases_test_rel_path = cases_test_file.relative_to(self.target_repo_path)
 
                 yield CodeSample(
                     source_code=source_code,
@@ -191,8 +222,8 @@ class ExercismSampleCollector(SampleCollector):
                     target_path=str(target_rel_path),
                     target_test_code=target_test_code,
                     target_test_path=str(test_rel_path),
-                    cases_test_code=cases_test_code,
-                    cases_test_path=str(cases_test_rel_path),
+                    extra_test_code=extra_test_code,
+                    extra_test_paths=extra_test_paths,
                 )
                 samples_yielded += 1
 
@@ -254,15 +285,6 @@ class Sandbox:
         Returns:
             Path to the created test file
         """
-        if isinstance(rel_path, str):
-            rel_path = Path(rel_path)
-
-        file_path = self.sandbox_path / rel_path.name
-        file_path.write_text(test_code)
-        return file_path
-
-    # NOTE (adam) This function is Exercism-specific
-    def create_cases_test_file(self, rel_path: Path | str, test_code: str) -> Path:
         if isinstance(rel_path, str):
             rel_path = Path(rel_path)
 
@@ -377,7 +399,9 @@ async def process_sample(
     # Create necessary directories
     # TODO (adam) Have Sandbox manage the portion before the try/except block
     test_file = workspace_dir / "sandbox" / sample.target_test_path
-    cases_test_file = workspace_dir / "sandbox" / sample.cases_test_path
+    extra_test_files = []
+    for extra_test_path in sample.extra_test_paths:
+        extra_test_files.append(workspace_dir / "sandbox" / extra_test_path)
     translated_file = workspace_dir / "sandbox" / sample.target_path
 
     # TODO (adam) move into CodeSample object
@@ -390,13 +414,18 @@ async def process_sample(
     print(f"Results file: {result_file}")
 
     os.makedirs(os.path.dirname(test_file), exist_ok=True)
-    os.makedirs(os.path.dirname(cases_test_file), exist_ok=True)
+
+    for extra_test_file in extra_test_files:
+        os.makedirs(os.path.dirname(extra_test_file), exist_ok=True)
 
     # Write source and test files
     with open(test_file, "w") as f:
         f.write(sample.target_test_code)
-    with open(cases_test_file, "w") as f:
-        f.write(sample.cases_test_code)
+    for extra_test_file, extra_test_code in zip(
+        extra_test_files, sample.extra_test_code
+    ):
+        with open(extra_test_file, "w") as f:
+            f.write(extra_test_code)
 
     # Initialize translator and translate code
     translator = LLMTranslator(model, file_manager)
@@ -524,6 +553,7 @@ async def evaluate(
     # Create tasks for parallel processing
     tasks = []
     for sample in collector.get_code_samples(num_samples):
+        print(f"Processing sample: {sample.source_path}")
         task = process_sample(
             sample,
             workspace_dir,
