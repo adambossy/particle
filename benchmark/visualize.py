@@ -26,7 +26,7 @@ def load_results(filepath: str) -> Dict[str, List[Tuple[str, int, int]]]:
     return {model_name: results}
 
 
-def visualize(results: Dict[str, List[Tuple[str, int, int]]]) -> None:
+def visualize(results: Dict[str, List[Tuple[str, int, int]]], output_path: str) -> None:
     # Process data
     model_stats = {}
     for model, exercises in results.items():
@@ -119,6 +119,8 @@ def visualize(results: Dict[str, List[Tuple[str, int, int]]]) -> None:
     ax.legend(title="Retry Groups")
 
     plt.tight_layout()
+    # Save the plot instead of showing it
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.show()
 
 
@@ -127,6 +129,9 @@ if __name__ == "__main__":
     parser.add_argument("results_file", help="Path to results.txt file")
     args = parser.parse_args()
 
+    # Get the directory of the input file
+    output_dir = os.path.dirname(args.results_file)
+    output_path = os.path.join(output_dir, "visualization.png")
+
     results = load_results(args.results_file)
-    visualize(results)
-    visualize(results)
+    visualize(results, output_path)
