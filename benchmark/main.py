@@ -368,11 +368,6 @@ class Sandbox:
         if not cmd:
             raise ValueError(f"Unsupported target language: {self.target_lang}")
 
-        # Run tests
-        print("\n--- RUNNING TESTS ---")
-        print("  CWD:", run_kwargs["cwd"])
-        print("  CMD:", " ".join(cmd))
-
         # Run the command in an executor to avoid blocking
         result = await asyncio.get_event_loop().run_in_executor(
             None,
@@ -384,11 +379,6 @@ class Sandbox:
         result.stdout = result.stdout or ""
         result.stderr = result.stderr or ""
 
-        print("Return code:", result.returncode)
-        print(result.stdout)
-        print(result.stderr)
-        print("--- END RUNNING TESTS ---")
-
         return result
 
 
@@ -398,9 +388,8 @@ async def process_sample(
     file_manager: FileManager,
     sandbox: Sandbox,
     model: str,
-    source_lang: str,
-    target_lang: str,
     results_dir: Path,
+    output_dir: Path,
 ) -> tuple[str, int, int]:
     """Process a single code sample."""
     # Create necessary directories
@@ -414,11 +403,9 @@ async def process_sample(
     # TODO (adam) move into CodeSample object
     exercise_name = translated_file.parent.name
     result_file = results_dir / f"{exercise_name}.txt"
+    output_file = output_dir / f"{exercise_name}.txt"
 
-    print(f"\nSandbox:")
-    print(f"Translated file: {translated_file}")
-    print(f"Copied test file: {test_file}")
-    print(f"Results file: {result_file}")
+    print(f"Processing sample {exercise_name}")
 
     os.makedirs(os.path.dirname(test_file), exist_ok=True)
 
@@ -454,21 +441,44 @@ Ensure that the function name in the source code gets translated using the funct
 
     num_retries = 0
     result = None
+    output_content = []
 
     try:
+        # Record initial state
+        output_content.append("=== Initial Source Code ===")
+        output_content.append(f"Source file: {sample.source_path}")
+        output_content.append(sample.source_code)
+        output_content.append("\n=== Source Interface ===")
+        output_content.append(sample.source_interface)
+        output_content.append("\n=== Target Interface ===")
+        output_content.append(sample.target_interface)
+        output_content.append("\n=== Source Test Code ===")
+        output_content.append(sample.source_test_code)
+        output_content.append("\n=== Target Test Code ===")
+        output_content.append(sample.target_test_code)
+
         # Translate the code
         translated_code = await translator.translate(
             code_snippets,
             special_instructions=special_instructions,
         )
 
+        # Record translation
+        output_content.append("\n=== Initial Translation ===")
+        output_content.append(translated_code)
+
         # Write translated code
-        print(f"Writing translated code to {translated_file}")
         async with aiofiles.open(translated_file, "w") as f:
             await f.write(translated_code)
 
         # Run tests using TestRunner
         result = await sandbox.run_tests(test_file)
+        output_content.append("\n=== Initial Test Results ===")
+        output_content.append(f"Return code: {result.returncode}")
+        output_content.append("=== STDOUT ===")
+        output_content.append(result.stdout)
+        output_content.append("=== STDERR ===")
+        output_content.append(result.stderr)
 
         while result.returncode != 0 and num_retries < 10:
             # If tests failed, try to translate again with the error output
@@ -478,30 +488,65 @@ Ensure that the function name in the source code gets translated using the funct
                 sample.target_test_code,
             )
 
+            # Record retry attempt
+            output_content.append(f"\n=== Retry Attempt {num_retries + 1} ===")
+            output_content.append(translated_code)
+
             # Write the retried translation
             async with aiofiles.open(translated_file, "w") as f:
                 await f.write(translated_code)
 
             # Run tests again
             result = await sandbox.run_tests(test_file)
+            output_content.append(f"\n=== Test Results (Attempt {num_retries + 1}) ===")
+            output_content.append(f"Return code: {result.returncode}")
+            output_content.append("=== STDOUT ===")
+            output_content.append(result.stdout)
+            output_content.append("=== STDERR ===")
+            output_content.append(result.stderr)
 
             num_retries += 1
 
         if result.returncode == 0:
             print(f"Tests passed successfully after {num_retries} retries!")
+            output_content.append("\n=== FINAL STATUS: SUCCESS ===")
         else:
             print(f"Tests failed after {num_retries} retries!")
+            output_content.append("\n=== FINAL STATUS: FAILED ===")
 
+        # Write detailed output
+        async with aiofiles.open(output_file, "w") as f:
+            print(f"Writing output to {output_file}")
+            await f.write("\n".join(output_content))
+
+        # Write summary results
         async with aiofiles.open(result_file, "w") as f:
+            print(f"Writing result to {result_file}")
             await f.write(f"{exercise_name},{num_retries},{result.returncode}")
+
+        print(f"Finished processing sample {exercise_name}")
+
         return exercise_name, num_retries, result.returncode
 
     except Exception as e:
-        print(
+        error_msg = (
             f"Error processing sample (returncode={result and result.returncode}): {e}"
         )
+        print(error_msg)
+
+        # Record error in output
+        output_content.append("\n=== ERROR ===")
+        output_content.append(error_msg)
+        output_content.append("\n=== FINAL STATUS: ERROR ===")
+
+        # Write detailed output even in case of error
+        async with aiofiles.open(output_file, "w") as f:
+            await f.write("\n".join(output_content))
+
+        # Write summary results
         async with aiofiles.open(result_file, "w") as f:
             await f.write(f"{exercise_name},{num_retries},1")
+
         return exercise_name, num_retries, 1
 
 
@@ -536,19 +581,19 @@ async def evaluate(
     current_time = datetime.now().strftime("%Y%m%d_%I%M%p")
     model_name = model.split("/")[-1]
 
-    results_dir = (
-        Path("results") / f"{model_name}_{source_lang}_to_{target_lang}_{current_time}"
-    )
-    os.makedirs(results_dir, exist_ok=True)
+    # Create base directory structure
+    base_dir = Path(f"results/{source_lang}_to_{target_lang}_{current_time}")
+    model_dir = base_dir / model_name
+    results_dir = model_dir / "results"
+    output_dir = model_dir / "output"
 
-    # f.write(f"Workspace: {workspace_dir}\n")
-    # f.write(f"Source Language: {source_lang}\n")
-    # f.write(f"Target Language: {target_lang}\n")
-    # f.write(f"Model: {model}\n")
-    # f.write(f"Exercise Name,Num Attempts,Return Code\n")
+    # Create all directories
+    os.makedirs(results_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
     print("Set workspace dir to", workspace_dir)
     print("Set results dir to", results_dir)
+    print("Set output dir to", output_dir)
 
     # Initialize sample collector with concrete implementation
     collector = ExercismSampleCollector(
@@ -577,9 +622,8 @@ async def evaluate(
             file_manager,
             sandbox,
             model,
-            source_lang,
-            target_lang,
             results_dir,
+            output_dir,
         )
         tasks.append(task)
 

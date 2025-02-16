@@ -220,10 +220,6 @@ File Mappings:\n"""
         return composed_prompt
 
     async def completion(self) -> None:
-        print(f"\n--- PROMPT ---")
-        print(self.messages[-1]["content"])
-        print(f"--- END PROMPT ---")
-
         completion = await litellm.acompletion(
             messages=self.messages,
             model=self.model,
@@ -233,10 +229,6 @@ File Mappings:\n"""
         )
 
         self.last_completion = completion  # HACK?
-
-        print(f"\n--- COMPLETION ---")
-        pprint.pprint(completion.choices)
-        print(f"--- END COMPLETION ---")
 
         self.messages.append(
             get_assistant_message_from_tool_call(self.model, completion)
