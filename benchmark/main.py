@@ -3,6 +3,7 @@ import asyncio
 import os
 import subprocess
 import tempfile
+import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -16,10 +17,10 @@ from particle.llm_translator import LLMTranslator
 
 SUPPORTED_MODELS = [
     "gpt-4o-2024-08-06",
-    "gpt-3.5-turbo",
     "anthropic/claude-3-5-sonnet-20241022",
-    "vertex_ai/gemini-1.5-pro-latest",
-    "deepseek-coder",
+    "deepseek/deepseek-chat",
+    "deepseek/deepseek-coder",
+    "fireworks_ai/accounts/fireworks/models/deepseek-v3",
 ]
 
 SUPPORTED_LANGUAGES = [
@@ -529,6 +530,8 @@ Ensure that the function name in the source code gets translated using the funct
         return exercise_name, num_retries, result.returncode
 
     except Exception as e:
+        traceback.print_exc()
+
         error_msg = (
             f"Error processing sample (returncode={result and result.returncode}): {e}"
         )

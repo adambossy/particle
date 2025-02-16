@@ -22,23 +22,24 @@ os.environ["LITELLM_LOG"] = "DEBUG"
 litellm.success_callback = ["langfuse"]
 litellm.failure_callback = ["langfuse"]
 
-
-# def translate_code(translated_source: str, error: str) -> str:
-#     """
-#     Translate the code and return the updated translated source.
-#     """
-#     pass
+# litellm.set_verbose = True
 
 
-# # Use this for gpt-4o
-# translate_code_tool = {
-#     "type": "function",
-#     "function": litellm.utils.function_to_dict(translate_code),
-# }
+def translate_code(translated_code: str, error: str) -> str:
+    """
+    Translate the code and return the updated translated source.
+    """
+    pass
 
+
+# Use this for gpt-4o
+gpt_4o_translate_code_tool = {
+    "type": "function",
+    "function": litellm.utils.function_to_dict(translate_code),
+}
 
 # NOTE (adam) This is Claude-specific and will break for other models
-translate_code_tool = {
+claude_translate_code_tool = {
     "name": "translate_code",
     "description": "Translate the code from Python to Go and return the updated translated source.",
     "input_schema": {
@@ -53,8 +54,17 @@ translate_code_tool = {
                 "description": "The error message, if any, encountered during translation.",
             },
         },
-        "required": ["source_code"],
+        "required": ["translated_code"],
     },
+}
+
+
+translate_code_tool_table = {
+    "deepseek/deepseek-coder": gpt_4o_translate_code_tool,
+    "deepseek/deepseek-chat": gpt_4o_translate_code_tool,
+    "fireworks_ai/accounts/fireworks/models/deepseek-v3": gpt_4o_translate_code_tool,
+    "gpt-4o-2024-08-06": gpt_4o_translate_code_tool,
+    "anthropic/claude-3-5-sonnet-20241022": claude_translate_code_tool,
 }
 
 
@@ -223,7 +233,7 @@ File Mappings:\n"""
         completion = await litellm.acompletion(
             messages=self.messages,
             model=self.model,
-            tools=[translate_code_tool],
+            tools=[translate_code_tool_table[self.model]],
             tool_choice={"type": "function", "function": {"name": "translate_code"}},
             temperature=1.0,
         )
@@ -250,7 +260,7 @@ File Mappings:\n"""
         self.messages.append({"role": "user", "content": composed_prompt})
 
         translate_code_response = await self.completion()
-        return translate_code_response["source_code"]
+        return translate_code_response["translated_code"]
 
     async def retry(self, last_test_output: str, test_code: str | None = None) -> str:
         self.messages.append(
@@ -264,7 +274,7 @@ File Mappings:\n"""
         )
 
         response = await self.completion()
-        return response["source_code"]
+        return response["translated_code"]
 
     def initialize_messages(self) -> None:
         self.messages = [
