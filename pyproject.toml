@@ -19,6 +19,7 @@ instructor = "^1.7.2"
 langfuse = "^2.57.10"
 numpydoc = "^1.8.0"
 matplotlib = "^3.10.0"
+aiofiles = "^24.1.0"
 
 
 [build-system]

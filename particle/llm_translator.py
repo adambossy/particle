@@ -65,7 +65,7 @@ class LLMTranslator:
         self.model = model
         self.file_manager = file_manager
 
-        self.client = instructor.from_litellm(litellm.completion)
+        self.client = instructor.from_litellm(litellm.acompletion)
 
         self.system_prompt = """You are an expert AI assistant focused on translating Python code to Go.
 When translating Python code to Go:
@@ -219,12 +219,12 @@ File Mappings:\n"""
 
         return composed_prompt
 
-    def completion(self) -> None:
+    async def completion(self) -> None:
         print(f"\n--- PROMPT ---")
         print(self.messages[-1]["content"])
         print(f"--- END PROMPT ---")
 
-        completion = litellm.completion(
+        completion = await litellm.acompletion(
             messages=self.messages,
             model=self.model,
             tools=[translate_code_tool],
@@ -246,7 +246,7 @@ File Mappings:\n"""
         arguments = json.loads(tool_call.function.arguments)
         return arguments
 
-    def translate(
+    async def translate(
         self,
         code_snippets_by_file: dict[str, list[str]],
         special_instructions: str | None = None,
@@ -257,10 +257,10 @@ File Mappings:\n"""
         )
         self.messages.append({"role": "user", "content": composed_prompt})
 
-        translate_code_response = self.completion()
+        translate_code_response = await self.completion()
         return translate_code_response["source_code"]
 
-    def retry(self, last_test_output: str, test_code: str | None = None) -> str:
+    async def retry(self, last_test_output: str, test_code: str | None = None) -> str:
         self.messages.append(
             get_user_message_from_tool_call(
                 self.model,
@@ -271,7 +271,7 @@ File Mappings:\n"""
             )
         )
 
-        response = self.completion()
+        response = await self.completion()
         return response["source_code"]
 
     def initialize_messages(self) -> None:

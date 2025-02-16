@@ -6,8 +6,9 @@ import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Generator
+from typing import AsyncGenerator, Generator
 
+import aiofiles
 import click
 
 from particle.file_manager import FileManager
@@ -52,8 +53,8 @@ class CodeSample:
 
 class SampleCollector(abc.ABC):
     @abc.abstractmethod
-    def get_code_samples(self) -> Generator[CodeSample, None, None]:
-        """Returns a generator of CodeSample instances."""
+    async def get_code_samples(self) -> AsyncGenerator[CodeSample, None]:
+        """Returns an async generator of CodeSample instances."""
         pass
 
 
@@ -114,9 +115,9 @@ class ExercismSampleCollector(SampleCollector):
             if target_ex_path.exists():
                 yield source_ex_path, target_ex_path
 
-    def get_code_samples(
-        self, num_samples: int = None
-    ) -> Generator[CodeSample, None, None]:
+    async def get_code_samples(
+        self, num_samples: int | None = None
+    ) -> AsyncGenerator[CodeSample, None]:
         """Generate CodeSample instances for matching exercises."""
         source_ext = self.LANGUAGE_EXTENSIONS[self.source_lang]
         target_ext = self.LANGUAGE_EXTENSIONS[self.target_lang]
@@ -187,22 +188,22 @@ class ExercismSampleCollector(SampleCollector):
             extra_test_paths = [str(path) for path in extra_test_files]
 
             try:
-                # Read source and test files
-                with open(source_file) as f:
-                    source_code = f.read()
-                with open(source_interface) as f:
-                    source_interface = f.read()
-                with open(source_test_file) as f:
-                    source_test_code = f.read()
-                with open(target_code_file) as f:
-                    target_interface = f.read()
-                with open(target_test_file) as f:
-                    target_test_code = f.read()
+                # Read source and test files asynchronously
+                async with aiofiles.open(source_file) as f:
+                    source_code = await f.read()
+                async with aiofiles.open(source_interface) as f:
+                    source_interface_code = await f.read()
+                async with aiofiles.open(source_test_file) as f:
+                    source_test_code = await f.read()
+                async with aiofiles.open(target_code_file) as f:
+                    target_interface = await f.read()
+                async with aiofiles.open(target_test_file) as f:
+                    target_test_code = await f.read()
 
                 extra_test_code = []
                 for extra_test_path in extra_test_paths:
-                    with open(extra_test_path) as f:
-                        extra_test_code.append(f.read())
+                    async with aiofiles.open(extra_test_path) as f:
+                        extra_test_code.append(await f.read())
 
                 # Create relative paths from workspace directory
                 source_rel_path = source_file.relative_to(self.source_repo_path)
@@ -215,12 +216,12 @@ class ExercismSampleCollector(SampleCollector):
                 yield CodeSample(
                     source_code=source_code,
                     source_path=str(source_rel_path),
-                    source_interface=source_interface,
+                    source_interface=source_interface_code,
                     source_test_code=source_test_code,
                     source_test_path=str(source_test_rel_path),
                     target_interface=target_interface,
-                    target_path=str(target_rel_path),
                     target_test_code=target_test_code,
+                    target_path=str(target_rel_path),
                     target_test_path=str(test_rel_path),
                     extra_test_code=extra_test_code,
                     extra_test_paths=extra_test_paths,
@@ -258,7 +259,7 @@ class Sandbox:
             sandbox_file = self.sandbox_path / file_path.name
             sandbox_file.touch(exist_ok=True)
 
-    def create_code_file(self, rel_path: Path | str, source_code: str) -> Path:
+    async def create_code_file(self, rel_path: Path | str, source_code: str) -> Path:
         """Create a file containing the translated code in the sandbox.
 
         Args:
@@ -272,10 +273,11 @@ class Sandbox:
             rel_path = Path(rel_path)
 
         file_path = self.sandbox_path / rel_path.name
-        file_path.write_text(source_code)
+        async with aiofiles.open(file_path, "w") as f:
+            await f.write(source_code)
         return file_path
 
-    def create_test_file(self, rel_path: Path | str, test_code: str) -> Path:
+    async def create_test_file(self, rel_path: Path | str, test_code: str) -> Path:
         """Create a test file in the sandbox.
 
         Args:
@@ -289,7 +291,8 @@ class Sandbox:
             rel_path = Path(rel_path)
 
         file_path = self.sandbox_path / rel_path.name
-        file_path.write_text(test_code)
+        async with aiofiles.open(file_path, "w") as f:
+            await f.write(test_code)
         return file_path
 
     def get_test_command(self, test_file: Path) -> tuple[list[str], dict]:
@@ -325,14 +328,14 @@ class Sandbox:
 
         return commands.get(self.target_lang, ([], {}))
 
-    def setup_test_environment(self, test_dir: Path) -> None:
+    async def setup_test_environment(self, test_dir: Path) -> None:
         """Set up any necessary test environment for the given language."""
         if self.target_lang == "python":
             # Create requirements.txt if needed
             requirements = test_dir / "requirements.txt"
             if not requirements.exists():
-                with open(requirements, "w") as f:
-                    f.write("pytest\n")
+                async with aiofiles.open(requirements, "w") as f:
+                    await f.write("pytest\n")
             subprocess.run(["pip", "install", "-r", str(requirements)], check=True)
 
         elif self.target_lang == "go":
@@ -354,11 +357,11 @@ class Sandbox:
         else:
             raise ValueError(f"Unsupported language: {self.target_lang}")
 
-    def run_tests(self, test_file: Path) -> subprocess.CompletedProcess:
+    async def run_tests(self, test_file: Path) -> subprocess.CompletedProcess:
         """Run tests for the given language and return the result."""
         # Set up test environment
         test_dir = test_file.parent
-        self.setup_test_environment(test_dir)
+        await self.setup_test_environment(test_dir)
 
         # Get test command for target language
         cmd, run_kwargs = self.get_test_command(test_file)
@@ -370,8 +373,12 @@ class Sandbox:
         print("  CWD:", run_kwargs["cwd"])
         print("  CMD:", " ".join(cmd))
 
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, cwd=run_kwargs["cwd"]
+        # Run the command in an executor to avoid blocking
+        result = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: subprocess.run(
+                cmd, capture_output=True, text=True, cwd=run_kwargs["cwd"]
+            ),
         )
 
         result.stdout = result.stdout or ""
@@ -394,7 +401,7 @@ async def process_sample(
     source_lang: str,
     target_lang: str,
     results_dir: Path,
-) -> None:
+) -> tuple[str, int, int]:
     """Process a single code sample."""
     # Create necessary directories
     # TODO (adam) Have Sandbox manage the portion before the try/except block
@@ -419,13 +426,13 @@ async def process_sample(
         os.makedirs(os.path.dirname(extra_test_file), exist_ok=True)
 
     # Write source and test files
-    with open(test_file, "w") as f:
-        f.write(sample.target_test_code)
+    async with aiofiles.open(test_file, "w") as f:
+        await f.write(sample.target_test_code)
     for extra_test_file, extra_test_code in zip(
         extra_test_files, sample.extra_test_code
     ):
-        with open(extra_test_file, "w") as f:
-            f.write(extra_test_code)
+        async with aiofiles.open(extra_test_file, "w") as f:
+            await f.write(extra_test_code)
 
     # Initialize translator and translate code
     translator = LLMTranslator(model, file_manager)
@@ -450,33 +457,33 @@ Ensure that the function name in the source code gets translated using the funct
 
     try:
         # Translate the code
-        translated_code = translator.translate(
+        translated_code = await translator.translate(
             code_snippets,
             special_instructions=special_instructions,
         )
 
         # Write translated code
         print(f"Writing translated code to {translated_file}")
-        with open(translated_file, "w") as f:
-            f.write(translated_code)
+        async with aiofiles.open(translated_file, "w") as f:
+            await f.write(translated_code)
 
         # Run tests using TestRunner
-        result = sandbox.run_tests(test_file)
+        result = await sandbox.run_tests(test_file)
 
         while result.returncode != 0 and num_retries < 10:
             # If tests failed, try to translate again with the error output
             last_test_output = result.stderr + "\n" + result.stdout
-            translated_code = translator.retry(
+            translated_code = await translator.retry(
                 last_test_output,
                 sample.target_test_code,
             )
 
             # Write the retried translation
-            with open(translated_file, "w") as f_retry:
-                f_retry.write(translated_code)
+            async with aiofiles.open(translated_file, "w") as f:
+                await f.write(translated_code)
 
             # Run tests again
-            result = sandbox.run_tests(test_file)
+            result = await sandbox.run_tests(test_file)
 
             num_retries += 1
 
@@ -485,14 +492,16 @@ Ensure that the function name in the source code gets translated using the funct
         else:
             print(f"Tests failed after {num_retries} retries!")
 
-        result_file.write_text(f"{exercise_name},{num_retries},{result.returncode}")
+        async with aiofiles.open(result_file, "w") as f:
+            await f.write(f"{exercise_name},{num_retries},{result.returncode}")
         return exercise_name, num_retries, result.returncode
 
     except Exception as e:
         print(
             f"Error processing sample (returncode={result and result.returncode}): {e}"
         )
-        result_file.write_text(f"{exercise_name},{num_retries},1")
+        async with aiofiles.open(result_file, "w") as f:
+            await f.write(f"{exercise_name},{num_retries},1")
         return exercise_name, num_retries, 1
 
 
@@ -505,14 +514,15 @@ async def collect_results(results_dir: Path) -> None:
     results_file = results_dir / "results.txt"
 
     # Write CSV header
-    with open(results_file, "w") as f:
-        f.write("Exercise Name,Num Attempts,Return Code\n")
+    async with aiofiles.open(results_file, "w") as f:
+        await f.write("Exercise Name,Num Attempts,Return Code\n")
 
         # Read and aggregate all result files except results.txt
         for file_path in results_dir.glob("*.txt"):
             if file_path.name != "results.txt":
-                content = file_path.read_text().strip()
-                f.write(f"{content}\n")
+                async with aiofiles.open(file_path) as f_result:
+                    content = await f_result.read()
+                    await f.write(f"{content.strip()}\n")
 
 
 async def evaluate(
@@ -550,10 +560,17 @@ async def evaluate(
     file_manager = FileManager(workspace_dir / "python", workspace_dir / "go")
     sandbox = Sandbox(workspace_dir, target_lang)
 
+    # Collect all samples first
+    samples = []
+    async for sample in collector.get_code_samples(num_samples):
+        samples.append(sample)
+
+    print(f"Collected {len(samples)} samples for processing")
+
     # Create tasks for parallel processing
     tasks = []
-    for sample in collector.get_code_samples(num_samples):
-        print(f"Processing sample: {sample.source_path}")
+    for sample in samples:
+        print(f"Creating task for sample: {sample.source_path}")
         task = process_sample(
             sample,
             workspace_dir,
@@ -566,8 +583,9 @@ async def evaluate(
         )
         tasks.append(task)
 
-    # Run all tasks concurrently
-    await asyncio.gather(*tasks)
+    # Run all tasks concurrently and collect results
+    results = await asyncio.gather(*tasks)
+    print(f"Processed {len(results)} samples")
 
     # Collect and aggregate results
     await collect_results(results_dir)
