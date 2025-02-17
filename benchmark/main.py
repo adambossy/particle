@@ -340,7 +340,6 @@ class Sandbox:
             subprocess.run(["pip", "install", "-r", str(requirements)], check=True)
 
         elif self.target_lang == "go":
-            print(f"Setting up go test environment for directory {test_dir}")
             # Initialize go module if needed
             if not (test_dir / "go.mod").exists():
                 module_name = f"exercism/{test_dir.name}"
@@ -459,6 +458,7 @@ Ensure that the function name in the source code gets translated using the funct
         output_content.append(sample.target_test_code)
 
         # Translate the code
+        print(f"Fetching translation for {exercise_name}")
         translated_code = await translator.translate(
             code_snippets,
             special_instructions=special_instructions,
@@ -473,6 +473,7 @@ Ensure that the function name in the source code gets translated using the funct
             await f.write(translated_code)
 
         # Run tests using TestRunner
+        print(f"Running tests for {exercise_name}")
         result = await sandbox.run_tests(test_file)
         output_content.append("\n=== Initial Test Results ===")
         output_content.append(f"Return code: {result.returncode}")
@@ -484,6 +485,7 @@ Ensure that the function name in the source code gets translated using the funct
         while result.returncode != 0 and num_retries < 10:
             # If tests failed, try to translate again with the error output
             last_test_output = result.stderr + "\n" + result.stdout
+            print(f"Retrying translation for {exercise_name}")
             translated_code = await translator.retry(
                 last_test_output,
                 sample.target_test_code,
@@ -498,6 +500,7 @@ Ensure that the function name in the source code gets translated using the funct
                 await f.write(translated_code)
 
             # Run tests again
+            print(f"Running tests again for {exercise_name}")
             result = await sandbox.run_tests(test_file)
             output_content.append(f"\n=== Test Results (Attempt {num_retries + 1}) ===")
             output_content.append(f"Return code: {result.returncode}")
