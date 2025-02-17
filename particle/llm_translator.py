@@ -7,6 +7,7 @@ import click
 import instructor
 import litellm
 from dotenv import load_dotenv
+from fireworks.client import Fireworks
 
 from particle.utils import (
     get_assistant_message_from_tool_call,
@@ -17,15 +18,13 @@ from .file_manager import FileManager
 
 load_dotenv()
 
-os.environ["LITELLM_LOG"] = "DEBUG"
-
 litellm.success_callback = ["langfuse"]
 litellm.failure_callback = ["langfuse"]
 
-# litellm.set_verbose = True
+litellm._turn_on_debug()
 
 
-def translate_code(translated_code: str, error: str) -> str:
+def translate_code(translated_code: str, error: str | None = None) -> str:
     """
     Translate the code and return the updated translated source.
     """
@@ -33,10 +32,39 @@ def translate_code(translated_code: str, error: str) -> str:
 
 
 # Use this for gpt-4o
+# gpt_4o_translate_code_tool = {
+#     "type": "function",
+#     "function": litellm.utils.function_to_dict(translate_code),
+# }
+
+
+deepseek_client = Fireworks(
+    api_key=os.getenv("FIREWORKS_AI_API_KEY"),
+)
+
+
 gpt_4o_translate_code_tool = {
     "type": "function",
-    "function": litellm.utils.function_to_dict(translate_code),
+    "function": {
+        "name": "translate_code",
+        "description": "Translate the code and return the updated translated source.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "translated_code": {
+                    "type": "string",
+                    "description": "The source code that has been translated from Python to Go.",
+                },
+                "error": {
+                    "type": "string",
+                    "description": "The error message, if any, encountered during translation.",
+                },
+            },
+            "required": ["translated_code"],
+        },
+    },
 }
+
 
 # NOTE (adam) This is Claude-specific and will break for other models
 claude_translate_code_tool = {
@@ -230,13 +258,30 @@ File Mappings:\n"""
         return composed_prompt
 
     async def completion(self) -> None:
-        completion = await litellm.acompletion(
-            messages=self.messages,
-            model=self.model,
-            tools=[translate_code_tool_table[self.model]],
-            tool_choice={"type": "function", "function": {"name": "translate_code"}},
-            temperature=1.0,
-        )
+        if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+            completion = await deepseek_client.chat.completions.acreate(
+                messages=self.messages,
+                model="accounts/fireworks/models/deepseek-v3",
+                tools=[translate_code_tool_table[self.model]],
+                max_tokens=20000,
+                tool_choice={
+                    "type": "function",
+                    "function": {"name": "translate_code"},
+                },
+                temperature=1.0,
+                stream=False,
+            )
+        elif self.model == "anthropic/claude-3-5-sonnet-20241022":
+            completion = await litellm.acompletion(
+                messages=self.messages,
+                model=self.model,
+                tools=[translate_code_tool_table[self.model]],
+                tool_choice={
+                    "type": "function",
+                    "function": {"name": "translate_code"},
+                },
+                temperature=1.0,
+            )
 
         self.last_completion = completion  # HACK?
 
