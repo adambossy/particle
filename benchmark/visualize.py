@@ -1,6 +1,7 @@
 import argparse
 import csv
 import os
+import subprocess
 from collections import Counter
 from pprint import pformat
 from typing import Dict, List, Optional, Tuple
@@ -192,7 +193,7 @@ def visualize_bar_chart(
     plt.tight_layout()
     # Save the plot instead of showing it
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    # plt.show()
+    subprocess.run(["open", output_path])
 
 
 def visualize_table(
@@ -237,7 +238,7 @@ def visualize_table(
     df = df.sort_index()
 
     # Create a figure and axis
-    fig, ax = plt.subplots(figsize=(12, max(8, len(all_exercises) * 0.3)))
+    fig, ax = plt.subplots(figsize=(12, 24))
     ax.axis("off")
 
     # Create the table
@@ -290,7 +291,7 @@ def visualize_table(
     # Save the table visualization
     table_output_path = output_path.replace(".png", "_table.png")
     plt.savefig(table_output_path, dpi=300, bbox_inches="tight")
-    plt.show()
+    subprocess.run(["open", table_output_path])
 
 
 if __name__ == "__main__":
