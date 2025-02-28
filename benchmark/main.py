@@ -579,7 +579,11 @@ async def collect_results(results_dir: Path) -> None:
 
 
 async def evaluate(
-    model: str, source_lang: str, target_lang: str, num_samples: int = None
+    model: str,
+    source_lang: str,
+    target_lang: str,
+    num_samples: int = None,
+    parallel: bool = True,
 ) -> None:
     """Evaluate model performance on code translation task."""
     # Create temporary sandbox directory
@@ -620,24 +624,42 @@ async def evaluate(
 
     print(f"Collected {len(samples)} samples for processing")
 
-    # Create tasks for parallel processing
-    tasks = []
-    for sample in samples:
-        print(f"Creating task for sample: {sample.source_path}")
-        task = process_sample(
-            sample,
-            workspace_dir,
-            file_manager,
-            sandbox,
-            model,
-            results_dir,
-            output_dir,
-        )
-        tasks.append(task)
+    results = []
 
-    # Run all tasks concurrently and collect results
-    results = await asyncio.gather(*tasks)
-    print(f"Processed {len(results)} samples")
+    if parallel:
+        # Create tasks for parallel processing
+        tasks = []
+        for sample in samples:
+            print(f"Creating task for sample: {sample.source_path}")
+            task = process_sample(
+                sample,
+                workspace_dir,
+                file_manager,
+                sandbox,
+                model,
+                results_dir,
+                output_dir,
+            )
+            tasks.append(task)
+
+        # Run all tasks concurrently and collect results
+        results = await asyncio.gather(*tasks)
+        print(f"Processed {len(results)} samples in parallel")
+    else:
+        # Process samples serially
+        for sample in samples:
+            print(f"Processing sample: {sample.source_path}")
+            result = await process_sample(
+                sample,
+                workspace_dir,
+                file_manager,
+                sandbox,
+                model,
+                results_dir,
+                output_dir,
+            )
+            results.append(result)
+        print(f"Processed {len(results)} samples serially")
 
     # Collect and aggregate results
     await collect_results(results_dir)
@@ -696,16 +718,24 @@ def cli():
     default=None,
     help="Number of samples to process (default: all available)",
 )
-def translate(models, source, target, num_samples):
+@click.option(
+    "--parallel",
+    "-p",
+    is_flag=True,
+    default=False,
+    help="Process samples in parallel (default: serial)",
+)
+def translate(models, source, target, num_samples, parallel):
     """Translate code from one programming language to another using specified LLMs."""
     click.echo(f"Models selected: {', '.join(models)}")
     click.echo(f"Source language: {source}")
     click.echo(f"Target language: {target}")
     click.echo(f"Number of samples: {'all' if num_samples is None else num_samples}")
+    click.echo(f"Processing mode: {'parallel' if parallel else 'serial'}")
 
     for model in models:
         click.echo(f"\nTranslating with {model}...")
-        asyncio.run(evaluate(model, source, target, num_samples))
+        asyncio.run(evaluate(model, source, target, num_samples, parallel))
 
 
 @cli.command()
