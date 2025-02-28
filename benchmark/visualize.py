@@ -2,10 +2,12 @@ import argparse
 import csv
 import os
 from collections import Counter
-from typing import Dict, List, Tuple
+from pprint import pformat
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 
 def load_results(filepaths: List[str]) -> Dict[str, List[Tuple[str, int, int]]]:
@@ -32,10 +34,57 @@ def load_results(filepaths: List[str]) -> Dict[str, List[Tuple[str, int, int]]]:
     return results
 
 
-def visualize(results: Dict[str, List[Tuple[str, int, int]]], output_path: str) -> None:
+def combine_results(
+    results: Dict[str, List[Tuple[str, int, int]]]
+) -> List[Tuple[str, int, int]]:
+    """
+    Combine results across models by taking the result with the lowest retry count for each exercise.
+
+    Args:
+        results: Dictionary mapping model names to lists of (exercise, attempts, status) tuples
+
+    Returns:
+        List of (exercise, attempts, status) tuples with the best result for each exercise
+    """
+    # Create a dictionary to track the best result for each exercise
+    best_results: Dict[str, Tuple[int, int]] = {}
+
+    # Iterate through all models and their results
+    for model, exercises in results.items():
+        for exercise, attempts, status in exercises:
+            print(
+                f"Evaluating exercise: {exercise}, attempts: {attempts}, status: {status}"
+            )
+            # If we haven't seen this exercise before, or if this result has fewer attempts
+            # or if it has the same attempts but succeeded (status 0) where the previous one failed
+            if exercise not in best_results or (
+                attempts < best_results[exercise][0] and status == 0
+            ):
+                best_results[exercise] = (attempts, status)
+
+    # Convert the dictionary back to a list of tuples
+    combined_results = [
+        (exercise, attempts, status)
+        for exercise, (attempts, status) in best_results.items()
+    ]
+
+    print("Final combined_results:", pformat(combined_results))
+
+    return combined_results
+
+
+def visualize_bar_chart(
+    results: Dict[str, List[Tuple[str, int, int]]], output_path: str
+) -> None:
     # Process data
     model_stats = {}
-    for model, exercises in results.items():
+
+    # Add combined results
+    combined_results = combine_results(results)
+    results_with_combined = results.copy()
+    results_with_combined["combined"] = combined_results
+
+    for model, exercises in results_with_combined.items():
         total_count = len(exercises)
         # Filter successful exercises (status code 0)
         successful = [ex for ex in exercises if ex[2] == 0]
@@ -60,7 +109,7 @@ def visualize(results: Dict[str, List[Tuple[str, int, int]]], output_path: str) 
         print(f"Total exercises: {total_count}")
 
     # Plotting
-    models = list(results.keys())
+    models = list(results_with_combined.keys())
     x = np.arange(len(models))
     bar_width = 0.35
 
@@ -127,6 +176,97 @@ def visualize(results: Dict[str, List[Tuple[str, int, int]]], output_path: str) 
     plt.tight_layout()
     # Save the plot instead of showing it
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    # plt.show()
+
+
+def visualize_table(
+    results: Dict[str, List[Tuple[str, int, int]]], output_path: str
+) -> None:
+    """
+    Create a table visualization with exercises as rows and models as columns.
+    Each cell contains the retry count for that exercise and model.
+
+    Args:
+        results: Dictionary mapping model names to lists of (exercise, attempts, status) tuples
+        output_path: Path to save the visualization
+    """
+    # Create a dictionary to store retry counts for each exercise and model
+    exercise_model_retries: Dict[str, Dict[str, Optional[Tuple[int, int]]]] = {}
+
+    # Get all unique exercises across all models
+    all_exercises = set()
+    for exercises in results.values():
+        all_exercises.update(ex[0] for ex in exercises)
+
+    # Initialize the dictionary with None values
+    for exercise in all_exercises:
+        exercise_model_retries[exercise] = {model: None for model in results.keys()}
+
+    # Fill in the retry counts and status codes
+    for model, exercises in results.items():
+        for exercise, attempts, status in exercises:
+            # Only count successful attempts (status code 0)
+            if status == 0:
+                exercise_model_retries[exercise][model] = (attempts, status)
+
+    # Add combined results
+    combined_results = combine_results(results)
+    combined_dict = {ex[0]: ((ex[1], ex[2])) for ex in combined_results}
+
+    for exercise in all_exercises:
+        exercise_model_retries[exercise]["combined"] = combined_dict.get(exercise)
+
+    # Convert to DataFrame for easier visualization
+    df = pd.DataFrame.from_dict(exercise_model_retries, orient="index")
+
+    # Sort by exercise name
+    df = df.sort_index()
+
+    # Create a figure and axis
+    fig, ax = plt.subplots(figsize=(12, max(8, len(all_exercises) * 0.3)))
+    ax.axis("off")
+
+    # Create the table
+    table = ax.table(
+        cellText=df.applymap(
+            lambda x: f"{x[0]} ({x[1]})" if x is not None else "N/A"
+        ).values,
+        rowLabels=df.index,
+        colLabels=df.columns,
+        cellLoc="center",
+        loc="center",
+        bbox=[0, 0, 1, 1],
+    )
+
+    # Style the table
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1, 1.5)
+
+    # Color cells based on retry count
+    for i in range(len(df)):
+        for j in range(len(df.columns)):
+            cell = table[(i + 1, j)]
+            value = df.iloc[i, j]
+            if value is not None:
+                # Color gradient from green (0 retries) to red (max retries)
+                max_retries = 10  # Adjust as needed
+                if value[0] <= max_retries:
+                    # Green to red gradient
+                    r = min(1.0, value[0] / max_retries)
+                    g = max(0.0, 1.0 - value[0] / max_retries)
+                    cell.set_facecolor((r, g, 0.0))
+
+                    # Set text color to white for better visibility on darker backgrounds
+                    if value[0] >= max_retries / 2:
+                        cell.get_text().set_color("white")
+
+    plt.title("Exercise Retry Counts by Model")
+    plt.tight_layout()
+
+    # Save the table visualization
+    table_output_path = output_path.replace(".png", "_table.png")
+    plt.savefig(table_output_path, dpi=300, bbox_inches="tight")
     plt.show()
 
 
@@ -152,4 +292,5 @@ if __name__ == "__main__":
     output_path = os.path.join(args.results_dir, "visualization.png")
 
     results = load_results(results_files)
-    visualize(results, output_path)
+    visualize_bar_chart(results, output_path)
+    visualize_table(results, output_path)
