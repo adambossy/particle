@@ -17,6 +17,7 @@ from particle.llm_translator import LLMTranslator
 
 SUPPORTED_MODELS = [
     "gpt-4o-2024-08-06",
+    "o3-mini",
     "anthropic/claude-3-5-sonnet-20241022",
     "deepseek/deepseek-chat",
     "deepseek/deepseek-coder",

@@ -92,6 +92,7 @@ translate_code_tool_table = {
     "deepseek/deepseek-chat": gpt_4o_translate_code_tool,
     "fireworks_ai/accounts/fireworks/models/deepseek-v3": gpt_4o_translate_code_tool,
     "gpt-4o-2024-08-06": gpt_4o_translate_code_tool,
+    "o3-mini": gpt_4o_translate_code_tool,
     "anthropic/claude-3-5-sonnet-20241022": claude_translate_code_tool,
 }
 
@@ -272,6 +273,17 @@ File Mappings:\n"""
                 stream=False,
             )
         elif self.model == "anthropic/claude-3-5-sonnet-20241022":
+            completion = await litellm.acompletion(
+                messages=self.messages,
+                model=self.model,
+                tools=[translate_code_tool_table[self.model]],
+                tool_choice={
+                    "type": "function",
+                    "function": {"name": "translate_code"},
+                },
+                temperature=1.0,
+            )
+        else:
             completion = await litellm.acompletion(
                 messages=self.messages,
                 model=self.model,
