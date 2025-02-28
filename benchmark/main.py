@@ -180,7 +180,7 @@ class ExercismSampleCollector(SampleCollector):
 
             # Collect additional test files with a different prefix
             extra_test_files = []
-            for test_file in target_ex_path.glob(f"*_test.{source_ext}"):
+            for test_file in target_ex_path.glob(f"*_test.{target_ext}"):
                 prefix = test_file.stem.split("_test")[0]
                 if prefix != exercise_name_snake:
                     extra_test_files.append(
@@ -189,6 +189,10 @@ class ExercismSampleCollector(SampleCollector):
 
             # Store the relative paths of these extra test files
             extra_test_paths = [str(path) for path in extra_test_files]
+
+            print(
+                f"Found {len(extra_test_paths)} extra test files for {exercise_name}: {extra_test_paths}"
+            )
 
             try:
                 # Read source and test files asynchronously
@@ -205,7 +209,8 @@ class ExercismSampleCollector(SampleCollector):
 
                 extra_test_code = []
                 for extra_test_path in extra_test_paths:
-                    async with aiofiles.open(extra_test_path) as f:
+                    full_path = self.target_repo_path / extra_test_path
+                    async with aiofiles.open(full_path) as f:
                         extra_test_code.append(await f.read())
 
                 # Create relative paths from workspace directory
@@ -233,7 +238,8 @@ class ExercismSampleCollector(SampleCollector):
 
             except (IOError, OSError) as e:
                 print(f"Error processing {exercise_name}: {e}")
-                continue
+                print(f"Current working directory: {os.getcwd()}")
+                raise e
 
 
 class Sandbox:
