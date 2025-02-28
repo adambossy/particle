@@ -100,6 +100,9 @@ def visualize_bar_chart(
             "percentages": percentages,
             "counts": [c for _, c in sorted_retries],
             "total": total_count,
+            "success_percentage": len(successful)
+            / total_count
+            * 100,  # Calculate success percentage
         }
 
         # Print statistics
@@ -164,6 +167,19 @@ def visualize_bar_chart(
                 )
 
         bottom += heights
+
+    # Add success percentage labels above each bar
+    for i, model in enumerate(models):
+        success_percentage = model_stats[model]["success_percentage"]
+        ax.text(
+            x[i],
+            bottom[i] + 2,  # Position above the top of the bar
+            f"{success_percentage:.1f}%",
+            ha="center",
+            va="bottom",
+            color="black",
+            weight="bold",
+        )
 
     # Labels and formatting
     ax.set_ylabel("Percent of exercises translated successfully")
