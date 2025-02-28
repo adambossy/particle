@@ -263,17 +263,26 @@ def visualize_table(
             cell = table[(i + 1, j)]
             value = df.iloc[i, j]
             if value is not None:
-                # Color gradient from green (0 retries) to red (max retries)
-                max_retries = 10  # Adjust as needed
-                if value[0] <= max_retries:
-                    # Green to red gradient
-                    r = min(1.0, value[0] / max_retries)
-                    g = max(0.0, 1.0 - value[0] / max_retries)
-                    cell.set_facecolor((r, g, 0.0))
+                # Special case: if status_code is 2, make the cell red
+                if value[1] == 2:
+                    cell.set_facecolor((1.0, 0.0, 0.0))  # Red
+                    cell.get_text().set_color("white")  # White text for visibility
+                # Special case: if status_code is 1, make the cell yellow
+                elif value[1] == 1:
+                    cell.set_facecolor((1.0, 1.0, 0.0))  # Yellow
+                    cell.get_text().set_color("black")  # Black text for visibility
+                else:
+                    # Color gradient from green (0 retries) to red (max retries)
+                    max_retries = 10  # Adjust as needed
+                    if value[0] <= max_retries:
+                        # Green to red gradient
+                        r = min(1.0, value[0] / max_retries)
+                        g = max(0.0, 1.0 - value[0] / max_retries)
+                        cell.set_facecolor((r, g, 0.0))
 
-                    # Set text color to white for better visibility on darker backgrounds
-                    if value[0] >= max_retries / 2:
-                        cell.get_text().set_color("white")
+                        # Set text color to white for better visibility on darker backgrounds
+                        if value[0] >= max_retries / 2:
+                            cell.get_text().set_color("white")
 
     plt.title("Exercise Retry Counts by Model")
     plt.tight_layout()
