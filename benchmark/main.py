@@ -19,6 +19,7 @@ SUPPORTED_MODELS = [
     "gpt-4o-2024-08-06",
     "o3-mini",
     "anthropic/claude-3-5-sonnet-20241022",
+    "anthropic/claude-3-7-sonnet-20250219",
     "deepseek/deepseek-chat",
     "deepseek/deepseek-coder",
     "fireworks_ai/accounts/fireworks/models/deepseek-v3",

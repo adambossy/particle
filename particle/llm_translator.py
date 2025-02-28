@@ -94,6 +94,7 @@ translate_code_tool_table = {
     "gpt-4o-2024-08-06": gpt_4o_translate_code_tool,
     "o3-mini": gpt_4o_translate_code_tool,
     "anthropic/claude-3-5-sonnet-20241022": claude_translate_code_tool,
+    "anthropic/claude-3-7-sonnet-20250219": claude_translate_code_tool,
 }
 
 
@@ -272,7 +273,10 @@ File Mappings:\n"""
                 temperature=1.0,
                 stream=False,
             )
-        elif self.model == "anthropic/claude-3-5-sonnet-20241022":
+        elif self.model in [
+            "anthropic/claude-3-5-sonnet-20241022",
+            "anthropic/claude-3-7-sonnet-20250219",
+        ]:
             completion = await litellm.acompletion(
                 messages=self.messages,
                 model=self.model,
