@@ -21,7 +21,7 @@ load_dotenv()
 litellm.success_callback = ["langfuse"]
 litellm.failure_callback = ["langfuse"]
 
-litellm._turn_on_debug()
+# litellm._turn_on_debug()
 
 
 def translate_code(translated_code: str, error: str | None = None) -> str:
