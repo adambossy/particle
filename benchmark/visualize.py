@@ -8,22 +8,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def load_results(filepath: str) -> Dict[str, List[Tuple[str, int, int]]]:
-    # Extract model name from parent directory
-    dirname = os.path.basename(os.path.dirname(filepath))
-    # Split by underscore and take the first part (model name)
-    model_name = dirname.split("_")[0]
+def load_results(filepaths: List[str]) -> Dict[str, List[Tuple[str, int, int]]]:
+    results = {}
+    for filepath in filepaths:
+        # Get the directory containing the file
+        dirname = os.path.dirname(filepath)
+        # Get the parent directory of that directory
+        parent_dir = os.path.basename(os.path.dirname(dirname))
+        # Split by underscore and take the first part (model name)
+        model_name = parent_dir.split("_")[0]
 
-    results = []
-    with open(filepath, "r") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            exercise = row["Exercise Name"]
-            attempts = int(row["Num Attempts"])
-            status = int(row["Return Code"])
-            results.append((exercise, attempts, status))
+        if model_name not in results:
+            results[model_name] = []
 
-    return {model_name: results}
+        with open(filepath, "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                exercise = row["Exercise Name"]
+                attempts = int(row["Num Attempts"])
+                status = int(row["Return Code"])
+                results[model_name].append((exercise, attempts, status))
+
+    return results
 
 
 def visualize(results: Dict[str, List[Tuple[str, int, int]]], output_path: str) -> None:
@@ -126,12 +132,24 @@ def visualize(results: Dict[str, List[Tuple[str, int, int]]], output_path: str) 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Visualize model results")
-    parser.add_argument("results_file", help="Path to results.txt file")
+    parser.add_argument(
+        "results_dir", help="Path to the directory containing model subdirectories"
+    )
     args = parser.parse_args()
 
-    # Get the directory of the input file
-    output_dir = os.path.dirname(args.results_file)
-    output_path = os.path.join(output_dir, "visualization.png")
+    # Walk through each subdirectory and collect results.txt files
+    results_files = []
+    for root, dirs, files in os.walk(args.results_dir):
+        for dir in dirs:
+            results_file = os.path.join(root, dir, "results/", "results.txt")
+            print(
+                f"Found results file (exists?): {results_file} {os.path.exists(results_file)}"
+            )
+            if os.path.exists(results_file):
+                results_files.append(results_file)
 
-    results = load_results(args.results_file)
+    # Save the visualization in the results directory
+    output_path = os.path.join(args.results_dir, "visualization.png")
+
+    results = load_results(results_files)
     visualize(results, output_path)
