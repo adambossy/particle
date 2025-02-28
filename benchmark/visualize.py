@@ -221,9 +221,7 @@ def visualize_table(
     # Fill in the retry counts and status codes
     for model, exercises in results.items():
         for exercise, attempts, status in exercises:
-            # Only count successful attempts (status code 0)
-            if status == 0:
-                exercise_model_retries[exercise][model] = (attempts, status)
+            exercise_model_retries[exercise][model] = (attempts, status)
 
     # Add combined results
     combined_results = combine_results(results)
