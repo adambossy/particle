@@ -631,7 +631,9 @@ DEFAULT_SOURCE_AND_FILES = {
 )
 def cli(project_path: str, model: str) -> None:
     """CLI tool for translating Python code to Go."""
-    llm = MODELS[model]()
+    from benchmark.main import SUPPORTED_MODELS
+
+    llm = SUPPORTED_MODELS[model]()
     file_manager = FileManager(Path(project_path))
     llm_translator = LLMTranslator(llm, file_manager)
 
