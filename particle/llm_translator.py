@@ -420,6 +420,63 @@ File Mappings:\n"""
 
         return composed_prompt
 
+    async def get_completion(self) -> Dict[str, Any]:
+        """Get completion based on the model type."""
+        if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+            completion = await deepseek_client.chat.completions.acreate(
+                messages=self.messages,
+                model="accounts/fireworks/models/deepseek-v3",
+                tools=[translate_code_tool_table[self.model]],
+                max_tokens=20000,
+                tool_choice={
+                    "type": "function",
+                    "function": {"name": "translate_code"},
+                },
+                temperature=1.0,
+                stream=False,
+            )
+        elif self.model in [
+            "anthropic/claude-3-5-sonnet-20241022",
+            "anthropic/claude-3-7-sonnet-20250219",
+        ]:
+            # Add extra parameter to get response headers
+            completion = await litellm.acompletion(
+                messages=self.messages,
+                model=self.model,
+                tools=[translate_code_tool_table[self.model]],
+                tool_choice={
+                    "type": "function",
+                    "function": {"name": "translate_code"},
+                },
+                temperature=1.0,
+                # return_response_headers=True,  # Get response headers
+            )
+
+            # Extract headers and update rate tracker
+            # FIXME (adam) update_from_headers never gets called so I don't think
+            # this is the right check
+            if hasattr(completion, "_response_ms") and hasattr(
+                completion._response_ms, "headers"
+            ):
+                self.rate_tracker.update_from_headers(completion._response_ms.headers)
+
+            # Update from usage data
+            if hasattr(completion, "usage"):
+                self.rate_tracker.update_from_usage(completion.usage)
+        else:
+            completion = await litellm.acompletion(
+                messages=self.messages,
+                model=self.model,
+                tools=[translate_code_tool_table[self.model]],
+                tool_choice={
+                    "type": "function",
+                    "function": {"name": "translate_code"},
+                },
+                temperature=1.0,
+            )
+
+        return completion
+
     async def completion(self) -> None:
         # Check if we need to reset rate limit counters
         self.rate_tracker.reset_if_needed()
@@ -434,60 +491,7 @@ File Mappings:\n"""
         retry_count = 0
         while retry_count <= self.max_retries:
             try:
-                if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
-                    completion = await deepseek_client.chat.completions.acreate(
-                        messages=self.messages,
-                        model="accounts/fireworks/models/deepseek-v3",
-                        tools=[translate_code_tool_table[self.model]],
-                        max_tokens=20000,
-                        tool_choice={
-                            "type": "function",
-                            "function": {"name": "translate_code"},
-                        },
-                        temperature=1.0,
-                        stream=False,
-                    )
-                elif self.model in [
-                    "anthropic/claude-3-5-sonnet-20241022",
-                    "anthropic/claude-3-7-sonnet-20250219",
-                ]:
-                    # Add extra parameter to get response headers
-                    completion = await litellm.acompletion(
-                        messages=self.messages,
-                        model=self.model,
-                        tools=[translate_code_tool_table[self.model]],
-                        tool_choice={
-                            "type": "function",
-                            "function": {"name": "translate_code"},
-                        },
-                        temperature=1.0,
-                        # return_response_headers=True,  # Get response headers
-                    )
-
-                    # Extract headers and update rate tracker
-                    # FIXME (adam) update_from_headers never gets called so I don't think
-                    # this is the right check
-                    if hasattr(completion, "_response_ms") and hasattr(
-                        completion._response_ms, "headers"
-                    ):
-                        self.rate_tracker.update_from_headers(
-                            completion._response_ms.headers
-                        )
-
-                    # Update from usage data
-                    if hasattr(completion, "usage"):
-                        self.rate_tracker.update_from_usage(completion.usage)
-                else:
-                    completion = await litellm.acompletion(
-                        messages=self.messages,
-                        model=self.model,
-                        tools=[translate_code_tool_table[self.model]],
-                        tool_choice={
-                            "type": "function",
-                            "function": {"name": "translate_code"},
-                        },
-                        temperature=1.0,
-                    )
+                completion = await self.get_completion()
 
                 self.last_completion = completion  # HACK?
 
