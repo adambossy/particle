@@ -584,6 +584,16 @@ async def collect_results(results_dir: Path) -> None:
                     await f.write(f"{content.strip()}\n")
 
 
+async def limited_gather(tasks: list[asyncio.Task], limit: int) -> list:
+    semaphore = asyncio.Semaphore(limit)
+
+    async def sem_task(task):
+        async with semaphore:
+            return await task
+
+    return await asyncio.gather(*(sem_task(task) for task in tasks))
+
+
 async def evaluate(
     model: str,
     source_lang: str,
@@ -648,8 +658,8 @@ async def evaluate(
             )
             tasks.append(task)
 
-        # Run all tasks concurrently and collect results
-        results = await asyncio.gather(*tasks)
+        # Use the limited_gather function instead of asyncio.gather
+        results = await limited_gather(tasks, limit=8)  # Adjust 'limit' as needed
         print(f"Processed {len(results)} samples in parallel")
     else:
         # Process samples serially

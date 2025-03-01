@@ -1,7 +1,12 @@
+import asyncio
 import json
+import logging
 import os
 import pprint
+import random
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 import click
 import instructor
@@ -22,6 +27,12 @@ litellm.success_callback = ["langfuse"]
 litellm.failure_callback = ["langfuse"]
 
 # litellm._turn_on_debug()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("particle.llm_translator")
 
 
 def translate_code(translated_code: str, error: str | None = None) -> str:
@@ -98,6 +109,149 @@ translate_code_tool_table = {
 }
 
 
+class RateLimitTracker:
+    """Tracks rate limit information for API calls."""
+
+    def __init__(self) -> None:
+        # Anthropic rate limits (default values)
+        self.rpm_limit: int = 100  # Requests per minute limit
+        self.ipm_limit: int = 80000  # Input tokens per minute limit
+        self.opm_limit: int = 32000  # Output tokens per minute limit
+
+        # Current usage
+        self.rpm_current: int = 0
+        self.ipm_current: int = 0
+        self.opm_current: int = 0
+
+        # Last reset time
+        self.last_reset_time: datetime = datetime.now()
+
+        # Throttling state
+        self.is_throttled: bool = False
+        self.throttle_until: Optional[datetime] = None
+
+    def update_from_headers(self, headers: Dict[str, Any]) -> None:
+        """Update rate limit information from response headers."""
+        # Extract rate limit information from headers
+        # Format depends on the API provider
+
+        # For Anthropic, headers might look like:
+        # x-ratelimit-limit-requests: 100
+        # x-ratelimit-remaining-requests: 95
+        # x-ratelimit-limit-tokens: 32000
+        # x-ratelimit-remaining-tokens: 30000
+
+        pprint.pformat(headers)
+
+        if "x-ratelimit-limit-requests" in headers:
+            self.rpm_limit = int(
+                headers.get("x-ratelimit-limit-requests", self.rpm_limit)
+            )
+
+        if "x-ratelimit-limit-input-tokens" in headers:
+            self.ipm_limit = int(
+                headers.get("x-ratelimit-limit-input-tokens", self.ipm_limit)
+            )
+
+        if "x-ratelimit-limit-output-tokens" in headers:
+            self.opm_limit = int(
+                headers.get("x-ratelimit-limit-output-tokens", self.opm_limit)
+            )
+
+        if "x-ratelimit-remaining-requests" in headers:
+            remaining = int(headers.get("x-ratelimit-remaining-requests", 0))
+            self.rpm_current = self.rpm_limit - remaining
+
+        if "x-ratelimit-remaining-input-tokens" in headers:
+            remaining = int(headers.get("x-ratelimit-remaining-input-tokens", 0))
+            self.ipm_current = self.ipm_limit - remaining
+
+        if "x-ratelimit-remaining-output-tokens" in headers:
+            remaining = int(headers.get("x-ratelimit-remaining-output-tokens", 0))
+            self.opm_current = self.opm_limit - remaining
+
+        # Update from usage in response
+        self.log_current_usage()
+
+    def update_from_usage(self, usage: Dict[str, Any]) -> None:
+        """Update rate limit information from response usage data."""
+        if usage:
+            # Update token counts if available
+            if "prompt_tokens" in usage:
+                self.ipm_current += usage.get("prompt_tokens", 0)
+            if "completion_tokens" in usage:
+                self.opm_current += usage.get("completion_tokens", 0)
+
+            # Increment request count
+            self.rpm_current += 1
+
+            self.log_current_usage()
+
+    def should_throttle(self) -> Tuple[bool, float]:
+        """Determine if we should throttle requests based on current usage."""
+        # If we're already throttled, check if we can resume
+        if self.is_throttled and self.throttle_until:
+            if datetime.now() >= self.throttle_until:
+                self.is_throttled = False
+                self.throttle_until = None
+                logger.info("Resuming requests after throttling period")
+            else:
+                wait_time = (self.throttle_until - datetime.now()).total_seconds()
+                return True, wait_time
+
+        # Check if we're approaching limits (90% of limit)
+        approaching_rpm_limit = self.rpm_current >= 0.9 * self.rpm_limit
+        approaching_ipm_limit = self.ipm_current >= 0.9 * self.ipm_limit
+        approaching_opm_limit = self.opm_current >= 0.9 * self.opm_limit
+
+        # If we're approaching any limit, throttle
+        if approaching_rpm_limit or approaching_ipm_limit or approaching_opm_limit:
+            # Calculate time until next minute (when limits reset)
+            now = datetime.now()
+            next_minute = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
+            wait_time = (next_minute - now).total_seconds()
+
+            self.is_throttled = True
+            self.throttle_until = next_minute
+
+            if approaching_rpm_limit:
+                logger.warning(
+                    f"Approaching RPM limit ({self.rpm_current}/{self.rpm_limit}). Throttling for {wait_time:.2f}s"
+                )
+            if approaching_ipm_limit:
+                logger.warning(
+                    f"Approaching IPM limit ({self.ipm_current}/{self.ipm_limit}). Throttling for {wait_time:.2f}s"
+                )
+            if approaching_opm_limit:
+                logger.warning(
+                    f"Approaching OPM limit ({self.opm_current}/{self.opm_limit}). Throttling for {wait_time:.2f}s"
+                )
+
+            return True, wait_time
+
+        return False, 0
+
+    def reset_if_needed(self) -> None:
+        """Reset counters if a minute has passed since last reset."""
+        now = datetime.now()
+        if (now - self.last_reset_time).total_seconds() >= 60:
+            logger.info(
+                f"Resetting rate limit counters. Previous usage: RPM={self.rpm_current}/{self.rpm_limit}, "
+                f"IPM={self.ipm_current}/{self.ipm_limit}, OPM={self.opm_current}/{self.opm_limit}"
+            )
+            self.rpm_current = 0
+            self.ipm_current = 0
+            self.opm_current = 0
+            self.last_reset_time = now
+
+    def log_current_usage(self) -> None:
+        """Log current usage metrics."""
+        logger.info(
+            f"Current API usage: RPM={self.rpm_current}/{self.rpm_limit}, "
+            f"IPM={self.ipm_current}/{self.ipm_limit}, OPM={self.opm_current}/{self.opm_limit}"
+        )
+
+
 class LLMTranslator:
     def __init__(self, model: str, file_manager: FileManager):
         super().__init__()
@@ -106,6 +260,13 @@ class LLMTranslator:
         self.file_manager = file_manager
 
         self.client = instructor.from_litellm(litellm.acompletion)
+
+        # Initialize rate limit tracker
+        self.rate_tracker = RateLimitTracker()
+
+        # Retry configuration
+        self.max_retries = 5
+        self.base_retry_delay = 1.0  # seconds
 
         self.system_prompt = """You are an expert AI assistant focused on translating Python code to Go.
 When translating Python code to Go:
@@ -186,10 +347,10 @@ func filterAndTransform(items []int) []string {
 // go_project/src/implementation_test.go
 package src
 
-import (
+import {
     "reflect"
     "testing"
-)
+}
 
 func TestFilterAndTransform(t *testing.T) {
     tests := []struct {
@@ -260,54 +421,133 @@ File Mappings:\n"""
         return composed_prompt
 
     async def completion(self) -> None:
-        if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
-            completion = await deepseek_client.chat.completions.acreate(
-                messages=self.messages,
-                model="accounts/fireworks/models/deepseek-v3",
-                tools=[translate_code_tool_table[self.model]],
-                max_tokens=20000,
-                tool_choice={
-                    "type": "function",
-                    "function": {"name": "translate_code"},
-                },
-                temperature=1.0,
-                stream=False,
-            )
-        elif self.model in [
-            "anthropic/claude-3-5-sonnet-20241022",
-            "anthropic/claude-3-7-sonnet-20250219",
-        ]:
-            completion = await litellm.acompletion(
-                messages=self.messages,
-                model=self.model,
-                tools=[translate_code_tool_table[self.model]],
-                tool_choice={
-                    "type": "function",
-                    "function": {"name": "translate_code"},
-                },
-                temperature=1.0,
-            )
-        else:
-            completion = await litellm.acompletion(
-                messages=self.messages,
-                model=self.model,
-                tools=[translate_code_tool_table[self.model]],
-                tool_choice={
-                    "type": "function",
-                    "function": {"name": "translate_code"},
-                },
-                temperature=1.0,
-            )
+        # Check if we need to reset rate limit counters
+        self.rate_tracker.reset_if_needed()
 
-        self.last_completion = completion  # HACK?
+        # Check if we should throttle
+        should_throttle, wait_time = self.rate_tracker.should_throttle()
+        if should_throttle:
+            logger.info(f"Throttling API requests. Waiting for {wait_time:.2f} seconds")
+            await asyncio.sleep(wait_time)
 
-        self.messages.append(
-            get_assistant_message_from_tool_call(self.model, completion)
-        )
+        # Implement retry logic with exponential backoff
+        retry_count = 0
+        while retry_count <= self.max_retries:
+            try:
+                if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+                    completion = await deepseek_client.chat.completions.acreate(
+                        messages=self.messages,
+                        model="accounts/fireworks/models/deepseek-v3",
+                        tools=[translate_code_tool_table[self.model]],
+                        max_tokens=20000,
+                        tool_choice={
+                            "type": "function",
+                            "function": {"name": "translate_code"},
+                        },
+                        temperature=1.0,
+                        stream=False,
+                    )
+                elif self.model in [
+                    "anthropic/claude-3-5-sonnet-20241022",
+                    "anthropic/claude-3-7-sonnet-20250219",
+                ]:
+                    # Add extra parameter to get response headers
+                    completion = await litellm.acompletion(
+                        messages=self.messages,
+                        model=self.model,
+                        tools=[translate_code_tool_table[self.model]],
+                        tool_choice={
+                            "type": "function",
+                            "function": {"name": "translate_code"},
+                        },
+                        temperature=1.0,
+                        # return_response_headers=True,  # Get response headers
+                    )
 
-        tool_call = completion.choices[0].message.tool_calls[0]
-        arguments = json.loads(tool_call.function.arguments)
-        return arguments
+                    # Extract headers and update rate tracker
+                    # FIXME (adam) update_from_headers never gets called so I don't think
+                    # this is the right check
+                    if hasattr(completion, "_response_ms") and hasattr(
+                        completion._response_ms, "headers"
+                    ):
+                        self.rate_tracker.update_from_headers(
+                            completion._response_ms.headers
+                        )
+
+                    # Update from usage data
+                    if hasattr(completion, "usage"):
+                        self.rate_tracker.update_from_usage(completion.usage)
+                else:
+                    completion = await litellm.acompletion(
+                        messages=self.messages,
+                        model=self.model,
+                        tools=[translate_code_tool_table[self.model]],
+                        tool_choice={
+                            "type": "function",
+                            "function": {"name": "translate_code"},
+                        },
+                        temperature=1.0,
+                    )
+
+                self.last_completion = completion  # HACK?
+
+                self.messages.append(
+                    get_assistant_message_from_tool_call(self.model, completion)
+                )
+
+                tool_call = completion.choices[0].message.tool_calls[0]
+                arguments = json.loads(tool_call.function.arguments)
+                return arguments
+
+            except litellm.exceptions.RateLimitError as e:
+                retry_count += 1
+
+                # Extract rate limit information from error if possible
+                error_msg = str(e)
+                logger.warning(f"Rate limit error encountered: {error_msg}")
+
+                if retry_count > self.max_retries:
+                    logger.error(
+                        f"Max retries ({self.max_retries}) exceeded. Giving up."
+                    )
+                    raise
+
+                # Calculate backoff time (exponential with jitter)
+                backoff_time = self.base_retry_delay * (2**retry_count) + (
+                    0.1 * random.random()
+                )
+
+                # If error message contains information about when to retry, use that
+                if "try again later" in error_msg.lower():
+                    # Try to extract a wait time from the error message
+                    # This is a simplistic approach - in practice you might need more sophisticated parsing
+                    backoff_time = (
+                        60  # Default to 60 seconds if we can't parse a specific time
+                    )
+
+                logger.info(
+                    f"Retrying in {backoff_time:.2f} seconds (attempt {retry_count}/{self.max_retries})"
+                )
+                await asyncio.sleep(backoff_time)
+
+            except Exception as e:
+                logger.error(f"Error during API call: {str(e)}")
+                retry_count += 1
+
+                if retry_count > self.max_retries:
+                    logger.error(
+                        f"Max retries ({self.max_retries}) exceeded. Giving up."
+                    )
+                    raise
+
+                # Calculate backoff time (exponential with jitter)
+                backoff_time = self.base_retry_delay * (2**retry_count) + (
+                    0.1 * random.random()
+                )
+                logger.info(
+                    f"Retrying in {backoff_time:.2f} seconds (attempt {retry_count}/{self.max_retries})"
+                )
+                await asyncio.sleep(backoff_time)
 
     async def translate(
         self,
