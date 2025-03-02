@@ -115,6 +115,11 @@ translate_code_tool_table = {
 
 # Rate limit configuration by model
 rate_limit_config = {
+    # OpenAI models
+    "gpt-4o-2024-08-06": {
+        "rpm_limit": 10000,
+        "tpm_limit": 30000000,
+    },
     # Anthropic models
     "anthropic/claude-3-5-sonnet-20241022": {
         "rpm_limit": 100,
