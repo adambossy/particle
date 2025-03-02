@@ -1,4 +1,24 @@
+from typing import Any, Dict, Optional
+
 from litellm.types.utils import ModelResponse
+
+# Function calling support by model
+use_function_calling = {
+    "deepseek/deepseek-coder": False,
+    "deepseek/deepseek-chat": False,
+    "fireworks_ai/accounts/fireworks/models/deepseek-v3": False,
+    "gpt-4o-2024-08-06": True,
+    "o3-mini": True,
+    "anthropic/claude-3-5-sonnet-20241022": True,
+    "anthropic/claude-3-7-sonnet-20250219": True,
+    "gemini/gemini-2.0-flash": False,
+    "gemini/gemini-1.5-pro": False,
+}
+
+
+def should_use_function_calling(model: str) -> bool:
+    """Determine if a model uses function calling."""
+    return use_function_calling.get(model, True)
 
 
 def prompt_user_to_continue(msg: str) -> bool:
@@ -15,8 +35,8 @@ def prompt_user_to_continue(msg: str) -> bool:
 def get_assistant_message_from_tool_call(
     model: str,
     completion: ModelResponse,
-) -> None:
-    if model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+) -> Dict[str, Any]:
+    if not should_use_function_calling(model):
         return {
             "role": "assistant",
             "content": completion.choices[0].message.content,
@@ -68,10 +88,10 @@ def get_user_message_from_tool_call(
     model: str,
     completion: ModelResponse,
     test_output: str,
-    test_code: str,
+    test_code: Optional[str],
     is_error: bool,
-) -> None:
-    if model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+) -> Dict[str, Any]:
+    if not should_use_function_calling(model):
         return {
             "role": "user",
             "content": f"""{test_code}
