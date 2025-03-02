@@ -5,6 +5,7 @@ import os
 import pprint
 import random
 import re
+import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -112,19 +113,74 @@ translate_code_tool_table = {
 }
 
 
+# Rate limit configuration by model
+rate_limit_config = {
+    # Anthropic models
+    "anthropic/claude-3-5-sonnet-20241022": {
+        "rpm_limit": 100,
+        "ipm_limit": 80000,
+        "opm_limit": 32000,
+    },
+    "anthropic/claude-3-7-sonnet-20250219": {
+        "rpm_limit": 100,
+        "ipm_limit": 80000,
+        "opm_limit": 32000,
+    },
+    # Gemini models
+    "gemini/gemini-2.0-flash": {
+        "rpm_limit": 2000,
+        "tpm_limit": 4000000,
+    },
+    "gemini/gemini-1.5-pro": {
+        "rpm_limit": 1000,
+        "tpm_limit": 4000000,
+    },
+}
+
+# Default rate limits for models not in the lookup table
+DEFAULT_RATE_LIMITS = {
+    "rpm_limit": 100,  # Default to Claude's RPM limit
+    "ipm_limit": 80000,  # Default to Claude's IPM limit
+    "opm_limit": 32000,  # Default to Claude's OPM limit
+}
+
+
 class RateLimitTracker:
     """Tracks rate limit information for API calls."""
 
-    def __init__(self) -> None:
-        # Anthropic rate limits (default values)
-        self.rpm_limit: int = 100  # Requests per minute limit
-        self.ipm_limit: int = 80000  # Input tokens per minute limit
-        self.opm_limit: int = 32000  # Output tokens per minute limit
+    def __init__(self, model: str) -> None:
+        # Store the model name
+        self.model: str = model
+
+        # Get rate limits for the specified model or use defaults
+        model_limits = rate_limit_config.get(model, DEFAULT_RATE_LIMITS)
+
+        # Set rate limits based on model configuration
+        self.rpm_limit: int = model_limits.get(
+            "rpm_limit", DEFAULT_RATE_LIMITS["rpm_limit"]
+        )
+
+        # Check if the model uses TPM or IPM/OPM
+        if "tpm_limit" in model_limits:
+            self.tpm_limit: int = model_limits["tpm_limit"]
+            self.ipm_limit: Optional[int] = None
+            self.opm_limit: Optional[int] = None
+            self.uses_tpm: bool = True
+        else:
+            self.tpm_limit: Optional[int] = None
+            self.ipm_limit: int = model_limits.get(
+                "ipm_limit", DEFAULT_RATE_LIMITS["ipm_limit"]
+            )
+            self.opm_limit: int = model_limits.get(
+                "opm_limit", DEFAULT_RATE_LIMITS["opm_limit"]
+            )
+            self.uses_tpm: bool = False
 
         # Current usage
         self.rpm_current: int = 0
         self.ipm_current: int = 0
         self.opm_current: int = 0
+        self.tpm_current: int = 0  # Combined token usage for TPM models
 
         # Last reset time
         self.last_reset_time: datetime = datetime.now()
@@ -151,27 +207,37 @@ class RateLimitTracker:
                 headers.get("x-ratelimit-limit-requests", self.rpm_limit)
             )
 
-        if "x-ratelimit-limit-input-tokens" in headers:
-            self.ipm_limit = int(
-                headers.get("x-ratelimit-limit-input-tokens", self.ipm_limit)
-            )
+        if self.uses_tpm:
+            if "x-ratelimit-limit-tokens" in headers:
+                self.tpm_limit = int(
+                    headers.get("x-ratelimit-limit-tokens", self.tpm_limit)
+                )
 
-        if "x-ratelimit-limit-output-tokens" in headers:
-            self.opm_limit = int(
-                headers.get("x-ratelimit-limit-output-tokens", self.opm_limit)
-            )
+            if "x-ratelimit-remaining-tokens" in headers:
+                remaining = int(headers.get("x-ratelimit-remaining-tokens", 0))
+                self.tpm_current = self.tpm_limit - remaining
+        else:
+            if "x-ratelimit-limit-input-tokens" in headers:
+                self.ipm_limit = int(
+                    headers.get("x-ratelimit-limit-input-tokens", self.ipm_limit)
+                )
+
+            if "x-ratelimit-limit-output-tokens" in headers:
+                self.opm_limit = int(
+                    headers.get("x-ratelimit-limit-output-tokens", self.opm_limit)
+                )
+
+            if "x-ratelimit-remaining-input-tokens" in headers:
+                remaining = int(headers.get("x-ratelimit-remaining-input-tokens", 0))
+                self.ipm_current = self.ipm_limit - remaining
+
+            if "x-ratelimit-remaining-output-tokens" in headers:
+                remaining = int(headers.get("x-ratelimit-remaining-output-tokens", 0))
+                self.opm_current = self.opm_limit - remaining
 
         if "x-ratelimit-remaining-requests" in headers:
             remaining = int(headers.get("x-ratelimit-remaining-requests", 0))
             self.rpm_current = self.rpm_limit - remaining
-
-        if "x-ratelimit-remaining-input-tokens" in headers:
-            remaining = int(headers.get("x-ratelimit-remaining-input-tokens", 0))
-            self.ipm_current = self.ipm_limit - remaining
-
-        if "x-ratelimit-remaining-output-tokens" in headers:
-            remaining = int(headers.get("x-ratelimit-remaining-output-tokens", 0))
-            self.opm_current = self.opm_limit - remaining
 
         # Update from usage in response
         self.log_current_usage()
@@ -180,10 +246,15 @@ class RateLimitTracker:
         """Update rate limit information from response usage data."""
         if usage:
             # Update token counts if available
-            if "prompt_tokens" in usage:
-                self.ipm_current += usage.get("prompt_tokens", 0)
-            if "completion_tokens" in usage:
-                self.opm_current += usage.get("completion_tokens", 0)
+            if self.uses_tpm:
+                prompt_tokens = usage.get("prompt_tokens", 0)
+                completion_tokens = usage.get("completion_tokens", 0)
+                self.tpm_current += prompt_tokens + completion_tokens
+            else:
+                if "prompt_tokens" in usage:
+                    self.ipm_current += usage.get("prompt_tokens", 0)
+                if "completion_tokens" in usage:
+                    self.opm_current += usage.get("completion_tokens", 0)
 
             # Increment request count
             self.rpm_current += 1
@@ -204,11 +275,16 @@ class RateLimitTracker:
 
         # Check if we're approaching limits (90% of limit)
         approaching_rpm_limit = self.rpm_current >= 0.9 * self.rpm_limit
-        approaching_ipm_limit = self.ipm_current >= 0.9 * self.ipm_limit
-        approaching_opm_limit = self.opm_current >= 0.9 * self.opm_limit
+
+        if self.uses_tpm:
+            approaching_token_limit = self.tpm_current >= 0.9 * self.tpm_limit
+        else:
+            approaching_ipm_limit = self.ipm_current >= 0.9 * self.ipm_limit
+            approaching_opm_limit = self.opm_current >= 0.9 * self.opm_limit
+            approaching_token_limit = approaching_ipm_limit or approaching_opm_limit
 
         # If we're approaching any limit, throttle
-        if approaching_rpm_limit or approaching_ipm_limit or approaching_opm_limit:
+        if approaching_rpm_limit or approaching_token_limit:
             # Calculate time until next minute (when limits reset)
             now = datetime.now()
             next_minute = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
@@ -221,14 +297,21 @@ class RateLimitTracker:
                 logger.warning(
                     f"Approaching RPM limit ({self.rpm_current}/{self.rpm_limit}). Throttling for {wait_time:.2f}s"
                 )
-            if approaching_ipm_limit:
-                logger.warning(
-                    f"Approaching IPM limit ({self.ipm_current}/{self.ipm_limit}). Throttling for {wait_time:.2f}s"
-                )
-            if approaching_opm_limit:
-                logger.warning(
-                    f"Approaching OPM limit ({self.opm_current}/{self.opm_limit}). Throttling for {wait_time:.2f}s"
-                )
+
+            if self.uses_tpm:
+                if approaching_token_limit:
+                    logger.warning(
+                        f"Approaching TPM limit ({self.tpm_current}/{self.tpm_limit}). Throttling for {wait_time:.2f}s"
+                    )
+            else:
+                if approaching_ipm_limit:
+                    logger.warning(
+                        f"Approaching IPM limit ({self.ipm_current}/{self.ipm_limit}). Throttling for {wait_time:.2f}s"
+                    )
+                if approaching_opm_limit:
+                    logger.warning(
+                        f"Approaching OPM limit ({self.opm_current}/{self.opm_limit}). Throttling for {wait_time:.2f}s"
+                    )
 
             return True, wait_time
 
@@ -238,21 +321,35 @@ class RateLimitTracker:
         """Reset counters if a minute has passed since last reset."""
         now = datetime.now()
         if (now - self.last_reset_time).total_seconds() >= 60:
-            logger.info(
-                f"Resetting rate limit counters. Previous usage: RPM={self.rpm_current}/{self.rpm_limit}, "
-                f"IPM={self.ipm_current}/{self.ipm_limit}, OPM={self.opm_current}/{self.opm_limit}"
-            )
+            if self.uses_tpm:
+                logger.info(
+                    f"Resetting rate limit counters. Previous usage: RPM={self.rpm_current}/{self.rpm_limit}, "
+                    f"TPM={self.tpm_current}/{self.tpm_limit}"
+                )
+                self.tpm_current = 0
+            else:
+                logger.info(
+                    f"Resetting rate limit counters. Previous usage: RPM={self.rpm_current}/{self.rpm_limit}, "
+                    f"IPM={self.ipm_current}/{self.ipm_limit}, OPM={self.opm_current}/{self.opm_limit}"
+                )
+                self.ipm_current = 0
+                self.opm_current = 0
+
             self.rpm_current = 0
-            self.ipm_current = 0
-            self.opm_current = 0
             self.last_reset_time = now
 
     def log_current_usage(self) -> None:
         """Log current usage metrics."""
-        logger.info(
-            f"Current API usage: RPM={self.rpm_current}/{self.rpm_limit}, "
-            f"IPM={self.ipm_current}/{self.ipm_limit}, OPM={self.opm_current}/{self.opm_limit}"
-        )
+        if self.uses_tpm:
+            logger.info(
+                f"Current API usage: RPM={self.rpm_current}/{self.rpm_limit}, "
+                f"TPM={self.tpm_current}/{self.tpm_limit}"
+            )
+        else:
+            logger.info(
+                f"Current API usage: RPM={self.rpm_current}/{self.rpm_limit}, "
+                f"IPM={self.ipm_current}/{self.ipm_limit}, OPM={self.opm_current}/{self.opm_limit}"
+            )
 
 
 class LLMTranslator:
@@ -265,7 +362,7 @@ class LLMTranslator:
         self.client = instructor.from_litellm(litellm.acompletion)
 
         # Initialize rate limit tracker
-        self.rate_tracker = RateLimitTracker()
+        self.rate_tracker = RateLimitTracker(model)
 
         # Retry configuration
         self.max_retries = 5
@@ -484,6 +581,10 @@ File Mappings:\n"""
         # Save the completion for potential retry operations
         self.last_completion = completion
 
+        # Update rate tracker if usage data is available
+        if hasattr(completion, "usage"):
+            self.rate_tracker.update_from_usage(completion.usage)
+
         # Extract code from between fences
         content = completion.choices[0].message.content
 
@@ -571,6 +672,8 @@ File Mappings:\n"""
 
             except Exception as e:
                 logger.error(f"Error during API call: {str(e)}")
+                logger.error(traceback.format_exc())
+
                 retry_count += 1
 
                 if retry_count > self.max_retries:
