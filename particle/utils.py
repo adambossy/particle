@@ -16,6 +16,12 @@ def get_assistant_message_from_tool_call(
     model: str,
     completion: ModelResponse,
 ) -> None:
+    if model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+        return {
+            "role": "assistant",
+            "content": completion.choices[0].message.content,
+        }
+
     tool_call = completion.choices[0].message.tool_calls[0]
     return {
         "role": "assistant",
@@ -65,6 +71,17 @@ def get_user_message_from_tool_call(
     test_code: str,
     is_error: bool,
 ) -> None:
+    if model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+        return {
+            "role": "user",
+            "content": f"""{test_code}
+
+The translated code resulted in one or more errors while running tests, listed
+below. The tests that ran are listed above. Modify the code produced above to ensure tests pass.
+
+{test_output}""",
+        }
+
     tool_call = completion.choices[0].message.tool_calls[0]
     return {
         "role": "tool",

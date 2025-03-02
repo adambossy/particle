@@ -4,6 +4,7 @@ import logging
 import os
 import pprint
 import random
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -423,18 +424,7 @@ File Mappings:\n"""
     async def get_completion(self) -> Dict[str, Any]:
         """Get completion based on the model type."""
         if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
-            completion = await deepseek_client.chat.completions.acreate(
-                messages=self.messages,
-                model="accounts/fireworks/models/deepseek-v3",
-                tools=[translate_code_tool_table[self.model]],
-                max_tokens=20000,
-                tool_choice={
-                    "type": "function",
-                    "function": {"name": "translate_code"},
-                },
-                temperature=1.0,
-                stream=False,
-            )
+            return await self.get_deepseek_completion()
         elif self.model in [
             "anthropic/claude-3-5-sonnet-20241022",
             "anthropic/claude-3-7-sonnet-20250219",
@@ -475,7 +465,39 @@ File Mappings:\n"""
                 temperature=1.0,
             )
 
+        # Save the completion for potential retry operations
+        self.last_completion = completion
         return completion
+
+    async def get_deepseek_completion(self) -> str:
+        """Get completion for deepseek model using code fences instead of tools."""
+        completion = await deepseek_client.chat.completions.acreate(
+            messages=self.messages,
+            model="accounts/fireworks/models/deepseek-v3",
+            max_tokens=20000,
+            temperature=1.0,
+            stream=False,
+        )
+
+        # Save the completion for potential retry operations
+        self.last_completion = completion
+
+        # Extract code from between fences
+        content = completion.choices[0].message.content
+
+        # Find code blocks between triple backticks
+        code_blocks = re.findall(r"```(?:\w+)?\n([\s\S]*?)\n```", content)
+
+        if code_blocks:
+            # Join all code blocks if there are multiple
+            translated_code = "\n\n".join(code_blocks)
+            return translated_code
+        else:
+            # If no code blocks found, return the entire content
+            logger.warning(
+                "No code blocks found in deepseek response, returning full content"
+            )
+            return content
 
     async def completion(self) -> None:
         # Check if we need to reset rate limit counters
@@ -491,17 +513,28 @@ File Mappings:\n"""
         retry_count = 0
         while retry_count <= self.max_retries:
             try:
+                # For deepseek model, result is already the translated code
+                if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+                    translated_code = await self.get_deepseek_completion()
+                    # Add the assistant message to the conversation history
+                    self.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": self.last_completion.choices[0].message.content,
+                        }
+                    )
+                    return translated_code
+
                 completion = await self.get_completion()
 
-                self.last_completion = completion  # HACK?
-
+                # For other models using tools
                 self.messages.append(
                     get_assistant_message_from_tool_call(self.model, completion)
                 )
 
                 tool_call = completion.choices[0].message.tool_calls[0]
                 arguments = json.loads(tool_call.function.arguments)
-                return arguments
+                return arguments["translated_code"]
 
             except litellm.exceptions.RateLimitError as e:
                 retry_count += 1
@@ -564,8 +597,8 @@ File Mappings:\n"""
         )
         self.messages.append({"role": "user", "content": composed_prompt})
 
-        translate_code_response = await self.completion()
-        return translate_code_response["translated_code"]
+        translate_code = await self.completion()
+        return translate_code
 
     async def retry(self, last_test_output: str, test_code: str | None = None) -> str:
         self.messages.append(
@@ -578,8 +611,10 @@ File Mappings:\n"""
             )
         )
 
-        response = await self.completion()
-        return response["translated_code"]
+        if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+            return await self.get_deepseek_completion()
+
+        return await self.completion()
 
     def initialize_messages(self) -> None:
         self.messages = [
