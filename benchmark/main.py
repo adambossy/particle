@@ -23,6 +23,8 @@ SUPPORTED_MODELS = [
     "deepseek/deepseek-chat",
     "deepseek/deepseek-coder",
     "fireworks_ai/accounts/fireworks/models/deepseek-v3",
+    "gemini/gemini-2.0-flash",
+    "gemini/gemini-1.5-pro",
 ]
 
 SUPPORTED_LANGUAGES = [
