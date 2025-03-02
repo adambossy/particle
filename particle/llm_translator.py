@@ -107,6 +107,8 @@ translate_code_tool_table = {
     "o3-mini": gpt_4o_translate_code_tool,
     "anthropic/claude-3-5-sonnet-20241022": claude_translate_code_tool,
     "anthropic/claude-3-7-sonnet-20250219": claude_translate_code_tool,
+    "gemini/gemini-2.0-flash": gpt_4o_translate_code_tool,
+    "gemini/gemini-1.5-pro": gpt_4o_translate_code_tool,
 }
 
 
