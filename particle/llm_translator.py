@@ -19,6 +19,7 @@ from fireworks.client import Fireworks
 from particle.utils import (
     get_assistant_message_from_tool_call,
     get_user_message_from_tool_call,
+    should_use_function_calling,
 )
 
 from .file_manager import FileManager
@@ -364,6 +365,9 @@ class LLMTranslator:
         self.model = model
         self.file_manager = file_manager
 
+        # Determine if the model supports function calling
+        self.uses_function_calling: bool = should_use_function_calling(model)
+
         self.client = instructor.from_litellm(litellm.acompletion)
 
         # Initialize rate limit tracker
@@ -527,12 +531,13 @@ File Mappings:\n"""
 
     async def get_completion(self) -> Dict[str, Any]:
         """Get completion based on the model type."""
-        if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
-            return await self.get_deepseek_completion()
-        elif self.model in [
-            "anthropic/claude-3-5-sonnet-20241022",
-            "anthropic/claude-3-7-sonnet-20250219",
-        ]:
+        if not self.uses_function_calling:
+            return await self.get_plain_text_completion()
+
+        # Check if the model is from Anthropic
+        is_anthropic_model = self.model.startswith("anthropic/")
+
+        if is_anthropic_model:
             # Add extra parameter to get response headers
             completion = await litellm.acompletion(
                 messages=self.messages,
@@ -569,15 +574,33 @@ File Mappings:\n"""
                 temperature=1.0,
             )
 
+            # Update from usage data for other models
+            if hasattr(completion, "usage"):
+                self.rate_tracker.update_from_usage(completion.usage)
+
         # Save the completion for potential retry operations
         self.last_completion = completion
         return completion
 
-    async def get_deepseek_completion(self) -> str:
-        """Get completion for deepseek model using code fences instead of tools."""
-        completion = await deepseek_client.chat.completions.acreate(
+    async def get_plain_text_completion(self) -> str:
+        """Get completion for models that don't use function calling."""
+        # Use the appropriate client based on the model
+        if self.model.startswith("fireworks_ai/"):
+            acompletion_func = deepseek_client.chat.completions.acreate
+            # For fireworks models, we need to use the full path after "fireworks_ai/"
+            if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+                model_name = "accounts/fireworks/models/deepseek-v3"
+            else:
+                # Extract the model name from the full path
+                model_name = self.model.replace("fireworks_ai/", "")
+        else:
+            # For other non-function calling models, use litellm
+            acompletion_func = litellm.acompletion
+            model_name = self.model
+
+        completion = await acompletion_func(
             messages=self.messages,
-            model="accounts/fireworks/models/deepseek-v3",
+            model=model_name,
             max_tokens=20000,
             temperature=1.0,
             stream=False,
@@ -602,9 +625,7 @@ File Mappings:\n"""
             return translated_code
         else:
             # If no code blocks found, return the entire content
-            logger.warning(
-                "No code blocks found in deepseek response, returning full content"
-            )
+            logger.warning("No code blocks found in response, returning full content")
             return content
 
     async def completion(self) -> None:
@@ -621,9 +642,8 @@ File Mappings:\n"""
         retry_count = 0
         while retry_count <= self.max_retries:
             try:
-                # For deepseek model, result is already the translated code
-                if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
-                    translated_code = await self.get_deepseek_completion()
+                if not self.uses_function_calling:
+                    translated_code = await self.get_plain_text_completion()
                     # Add the assistant message to the conversation history
                     self.messages.append(
                         {
@@ -635,7 +655,7 @@ File Mappings:\n"""
 
                 completion = await self.get_completion()
 
-                # For other models using tools
+                # For models using tools
                 self.messages.append(
                     get_assistant_message_from_tool_call(self.model, completion)
                 )
@@ -720,9 +740,6 @@ File Mappings:\n"""
                 is_error=True,
             )
         )
-
-        if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
-            return await self.get_deepseek_completion()
 
         return await self.completion()
 
