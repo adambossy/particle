@@ -16,9 +16,9 @@ import litellm
 from dotenv import load_dotenv
 from fireworks.client import Fireworks
 
-from particle.call_graph_analyzer import is_test_file
-from particle.llm_results_parser import LLMResultsParser
-from particle.utils import (
+from particle2.call_graph_analyzer import is_test_file
+from particle2.llm_results_parser import LLMResultsParser
+from particle2.utils import (
     get_assistant_message_from_tool_call,
     get_user_message_from_tool_call,
     should_use_function_calling,
