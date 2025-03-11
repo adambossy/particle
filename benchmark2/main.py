@@ -800,8 +800,8 @@ async def evaluate(
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
 
-    logger.info("Set workspace dir to", workspace_dir)
-    logger.info("Set output dir to", output_dir)
+    logger.info(f"Set workspace dir to {workspace_dir}")
+    logger.info(f"Set output dir to {output_dir}")
 
     # Create benchmark run record in database
     from benchmark.utils import create_benchmark_run, update_benchmark_run_end_time
