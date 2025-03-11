@@ -1,5 +1,6 @@
 import abc
 import asyncio
+import logging
 import os
 import subprocess
 import tempfile
@@ -16,6 +17,13 @@ from benchmark.models import BenchmarkRun, ExerciseResult
 from benchmark.utils import create_exercise_result
 from particle2.file_manager import FileManager
 from particle2.llm_translator import LLMTranslator
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("benchmark")
 
 SUPPORTED_MODELS = [
     "gpt-4o-2024-08-06",
@@ -94,7 +102,7 @@ class ExercismSampleCollector(SampleCollector):
             repo_url = self.REPO_URL_TEMPLATE.format(lang)
             repo_path = self.workspace_dir / lang
 
-            print(f"Cloning {repo_url} into {repo_path}")
+            logger.infof"Cloning {repo_url} into {repo_path}")
 
             if not repo_path.exists():
                 subprocess.run(
@@ -110,7 +118,7 @@ class ExercismSampleCollector(SampleCollector):
 
         # Get all exercise directories in source repo
         exercises_glob = list(source_exercises.glob("*"))
-        print(f"Found {len(exercises_glob)} exercises in source repo")
+        logger.infof"Found {len(exercises_glob)} exercises in source repo")
         for source_ex_path in source_exercises.glob("*"):
             if not source_ex_path.is_dir():
                 continue
@@ -141,7 +149,7 @@ class ExercismSampleCollector(SampleCollector):
             # Contains solution code to translate
             source_file = source_ex_path / ".meta" / f"example.{source_ext}"
             if not source_file.exists():
-                print(
+                logger.info
                     f"Skipping {exercise_name} because source file {source_file} doesn't exist in source repo"
                 )
                 continue
@@ -149,7 +157,7 @@ class ExercismSampleCollector(SampleCollector):
             # Contains interface stub
             source_interface = source_ex_path / f"{exercise_name_snake}.{source_ext}"
             if not source_interface.exists():
-                print(
+                logger.info
                     f"Skipping {exercise_name} because interface file {source_interface} doesn't exist in source repo"
                 )
                 continue
@@ -159,7 +167,7 @@ class ExercismSampleCollector(SampleCollector):
                 source_ex_path / f"{exercise_name_snake}_test.{source_ext}"
             )
             if not source_test_file.exists():
-                print(
+                logger.info
                     f"Skipping {exercise_name} because test file {source_test_file} doesn't exist in source repo"
                 )
                 continue
@@ -167,7 +175,7 @@ class ExercismSampleCollector(SampleCollector):
             # Contains interface stub
             target_code_file = target_ex_path / f"{exercise_name_snake}.{target_ext}"
             if not target_code_file.exists():
-                print(
+                logger.info
                     f"Skipping {exercise_name} because target code file {target_code_file} doesn't exist in target repo"
                 )
                 continue
@@ -177,7 +185,7 @@ class ExercismSampleCollector(SampleCollector):
                 target_ex_path / f"{exercise_name_snake}_test.{target_ext}"
             )
             if not target_test_file.exists():
-                print(
+                logger.info
                     f"Skipping {exercise_name} because target test file {target_test_file} doesn't exist in target repo"
                 )
                 continue
@@ -194,7 +202,7 @@ class ExercismSampleCollector(SampleCollector):
             # Store the relative paths of these extra test files
             extra_test_paths = [str(path) for path in extra_test_files]
 
-            print(
+            logger.info
                 f"Found {len(extra_test_paths)} extra test files for {exercise_name}: {extra_test_paths}"
             )
 
@@ -241,8 +249,8 @@ class ExercismSampleCollector(SampleCollector):
                 samples_yielded += 1
 
             except (IOError, OSError) as e:
-                print(f"Error processing {exercise_name}: {e}")
-                print(f"Current working directory: {os.getcwd()}")
+                logger.infof"Error processing {exercise_name}: {e}")
+                logger.infof"Current working directory: {os.getcwd()}")
                 raise e
 
 
@@ -450,7 +458,7 @@ async def setup_output_logger(output_file: Path) -> callable:
             print_to_console: Whether to also print the message to console
         """
         if print_to_console:
-            print(message)
+            logger.infomessage)
 
         async with aiofiles.open(output_file, "a") as f:
             await f.write(f"{message}\n")
@@ -516,7 +524,7 @@ async def run_translation_with_retries(
 
     # Initial translation
     exercise_name = test_file.parent.name
-    print(f"Fetching translation for {exercise_name}")
+    logger.infof"Fetching translation for {exercise_name}")
     translated_code = await translator.translate(
         code_snippets,
         special_instructions=special_instructions,
@@ -530,7 +538,7 @@ async def run_translation_with_retries(
         await f.write(translated_code)
 
     # Run tests
-    print(f"Running tests for {exercise_name}")
+    logger.infof"Running tests for {exercise_name}")
     result = await sandbox.run_tests(test_file)
     await record_test_results(logger, result)
 
@@ -538,7 +546,7 @@ async def run_translation_with_retries(
     while result.returncode != 0 and num_retries < max_retries:
         # If tests failed, try to translate again with the error output
         last_test_output = result.stderr + "\n" + result.stdout
-        print(f"Retrying translation for {exercise_name}")
+        logger.infof"Retrying translation for {exercise_name}")
         translated_code = await translator.retry(
             last_test_output,
             sample.target_test_code,
@@ -554,7 +562,7 @@ async def run_translation_with_retries(
             await f.write(translated_code)
 
         # Run tests again
-        print(f"Running tests again for {exercise_name}")
+        logger.infof"Running tests again for {exercise_name}")
         result = await sandbox.run_tests(test_file)
         await record_test_results(logger, result, num_retries + 1)
 
@@ -563,11 +571,11 @@ async def run_translation_with_retries(
     # Record final status
     if result.returncode == 0:
         success_msg = f"Tests passed successfully after {num_retries} retries!"
-        print(success_msg)
+        logger.infosuccess_msg)
         await logger("\n=== FINAL STATUS: SUCCESS ===")
     else:
         failure_msg = f"Tests failed after {num_retries} retries!"
-        print(failure_msg)
+        logger.infofailure_msg)
         await logger("\n=== FINAL STATUS: FAILED ===")
 
     return result, num_retries
@@ -594,7 +602,7 @@ async def save_result_to_database(
         output_content=output_content,
     )
 
-    print(f"Saved result to database with ID: {result['id']}")
+    logger.infof"Saved result to database with ID: {result['id']}")
 
 
 async def process_sample(
@@ -619,7 +627,7 @@ async def process_sample(
     # Create logger for this sample
     logger = await setup_output_logger(output_file)
 
-    print(f"Processing sample {exercise_name}")
+    logger.infof"Processing sample {exercise_name}")
 
     # Initialize translator
     translator = LLMTranslator(
@@ -668,7 +676,7 @@ Ensure that the function name in the source code gets translated using the funct
             output_file=output_file,
         )
 
-        print(f"Finished processing sample {exercise_name}")
+        logger.infof"Finished processing sample {exercise_name}")
 
         return exercise_name, num_retries, result.returncode
 
@@ -678,7 +686,7 @@ Ensure that the function name in the source code gets translated using the funct
         error_msg = (
             f"Error processing sample (returncode={result and result.returncode}): {e}"
         )
-        print(error_msg)
+        logger.infoerror_msg)
 
         # Record error in output
         await logger(
@@ -720,20 +728,20 @@ async def collect_results(benchmark_run_id: int) -> None:
         or 0
     )
 
-    print(
+    logger.info
         f"Benchmark run: {benchmark_run.model_name} ({benchmark_run.source_lang} -> {benchmark_run.target_lang})"
     )
-    print(f"Start time: {benchmark_run.start_time}")
-    print(f"End time: {benchmark_run.end_time}")
-    print(f"Total exercises: {total_exercises}")
-    print(f"Successful exercises: {successful_exercises} ({success_rate:.2f}%)")
-    print(f"Average retries: {avg_retries:.2f}")
+    logger.infof"Start time: {benchmark_run.start_time}")
+    logger.infof"End time: {benchmark_run.end_time}")
+    logger.infof"Total exercises: {total_exercises}")
+    logger.infof"Successful exercises: {successful_exercises} ({success_rate:.2f}%)")
+    logger.infof"Average retries: {avg_retries:.2f}")
 
     # Print results for each exercise
-    print("\nExercise results:")
-    print("Exercise Name,Num Retries,Return Code")
+    logger.info"\nExercise results:")
+    logger.info"Exercise Name,Num Retries,Return Code")
     for result in exercise_results:
-        print(f"{result.exercise_name},{result.num_retries},{result.return_code}")
+        logger.infof"{result.exercise_name},{result.num_retries},{result.return_code}")
 
 
 async def limited_gather(tasks: list[asyncio.Task], limit: int) -> list:
@@ -769,8 +777,8 @@ async def evaluate(
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
 
-    print("Set workspace dir to", workspace_dir)
-    print("Set output dir to", output_dir)
+    logger.info"Set workspace dir to", workspace_dir)
+    logger.info"Set output dir to", output_dir)
 
     # Create benchmark run record in database
     from benchmark.utils import create_benchmark_run, update_benchmark_run_end_time
@@ -782,7 +790,7 @@ async def evaluate(
     )
     benchmark_run_id = benchmark_run["id"]
 
-    print(f"Created benchmark run with ID: {benchmark_run_id}")
+    logger.infof"Created benchmark run with ID: {benchmark_run_id}")
 
     # Initialize sample collector with concrete implementation
     collector = ExercismSampleCollector(
@@ -799,7 +807,7 @@ async def evaluate(
     async for sample in collector.get_code_samples(num_samples):
         samples.append(sample)
 
-    print(f"Collected {len(samples)} samples for processing")
+    logger.infof"Collected {len(samples)} samples for processing")
 
     results = []
 
@@ -808,7 +816,7 @@ async def evaluate(
             # Create tasks for parallel processing
             tasks = []
             for sample in samples:
-                print(f"Creating task for sample: {sample.source_path}")
+                logger.infof"Creating task for sample: {sample.source_path}")
                 task = process_sample(
                     sample,
                     workspace_dir,
@@ -823,11 +831,11 @@ async def evaluate(
 
             # Use the limited_gather function instead of asyncio.gather
             results = await limited_gather(tasks, limit=16)  # Adjust 'limit' as needed
-            print(f"Processed {len(results)} samples in parallel")
+            logger.infof"Processed {len(results)} samples in parallel")
         else:
             # Process samples serially
             for sample in samples:
-                print(f"Processing sample: {sample.source_path}")
+                logger.infof"Processing sample: {sample.source_path}")
                 result = await process_sample(
                     sample,
                     workspace_dir,
@@ -839,11 +847,11 @@ async def evaluate(
                     benchmark_run_id,  # Pass benchmark run ID
                 )
                 results.append(result)
-            print(f"Processed {len(results)} samples serially")
+            logger.infof"Processed {len(results)} samples serially")
     finally:
         # Update benchmark run end time
         update_benchmark_run_end_time(benchmark_run_id)
-        print(f"Updated benchmark run {benchmark_run_id} with end time")
+        logger.infof"Updated benchmark run {benchmark_run_id} with end time")
 
 
 def get_latest_results_dir() -> Path:
