@@ -463,17 +463,19 @@ async def record_initial_state(
     sample: CodeSample,
 ) -> None:
     """Record the initial state of the code sample using the logger."""
-    await logger("=== Initial Source Code ===")
-    await logger(f"Source file: {sample.source_path}")
-    await logger(sample.source_code)
-    await logger("\n=== Source Interface ===")
-    await logger(sample.source_interface)
-    await logger("\n=== Target Interface ===")
-    await logger(sample.target_interface)
-    await logger("\n=== Source Test Code ===")
-    await logger(sample.source_test_code)
-    await logger("\n=== Target Test Code ===")
-    await logger(sample.target_test_code)
+    await logger(
+        "=== Initial Source Code ===\n"
+        f"Source file: {sample.source_path}\n"
+        f"{sample.source_code}\n"
+        "\n=== Source Interface ===\n"
+        f"{sample.source_interface}\n"
+        "\n=== Target Interface ===\n"
+        f"{sample.target_interface}\n"
+        "\n=== Source Test Code ===\n"
+        f"{sample.source_test_code}\n"
+        "\n=== Target Test Code ===\n"
+        f"{sample.target_test_code}"
+    )
 
 
 async def record_test_results(
@@ -482,16 +484,20 @@ async def record_test_results(
     attempt_num: int | None = None,
 ) -> None:
     """Record test execution results using the logger."""
-    if attempt_num is None:
-        await logger("\n=== Initial Test Results ===")
-    else:
-        await logger(f"\n=== Test Results (Attempt {attempt_num}) ===")
+    header = (
+        "\n=== Initial Test Results ==="
+        if attempt_num is None
+        else f"\n=== Test Results (Attempt {attempt_num}) ==="
+    )
 
-    await logger(f"Return code: {result.returncode}")
-    await logger("=== STDOUT ===")
-    await logger(result.stdout)
-    await logger("=== STDERR ===")
-    await logger(result.stderr)
+    await logger(
+        f"{header}\n"
+        f"Return code: {result.returncode}\n"
+        "=== STDOUT ===\n"
+        f"{result.stdout}\n"
+        "=== STDERR ===\n"
+        f"{result.stderr}"
+    )
 
 
 async def run_translation_with_retries(
@@ -517,8 +523,7 @@ async def run_translation_with_retries(
     )
 
     # Record translation
-    await logger("\n=== Initial Translation ===")
-    await logger(translated_code)
+    await logger("\n=== Initial Translation ===\n" f"{translated_code}")
 
     # Write translated code
     async with aiofiles.open(translated_file, "w") as f:
@@ -540,8 +545,9 @@ async def run_translation_with_retries(
         )
 
         # Record retry attempt
-        await logger(f"\n=== Retry Attempt {num_retries + 1} ===")
-        await logger(translated_code)
+        await logger(
+            f"\n=== Retry Attempt {num_retries + 1} ===\n" f"{translated_code}"
+        )
 
         # Write the retried translation
         async with aiofiles.open(translated_file, "w") as f:
@@ -558,11 +564,11 @@ async def run_translation_with_retries(
     if result.returncode == 0:
         success_msg = f"Tests passed successfully after {num_retries} retries!"
         print(success_msg)
-        await logger(f"\n=== FINAL STATUS: SUCCESS ===")
+        await logger("\n=== FINAL STATUS: SUCCESS ===")
     else:
         failure_msg = f"Tests failed after {num_retries} retries!"
         print(failure_msg)
-        await logger(f"\n=== FINAL STATUS: FAILED ===")
+        await logger("\n=== FINAL STATUS: FAILED ===")
 
     return result, num_retries
 
@@ -675,9 +681,9 @@ Ensure that the function name in the source code gets translated using the funct
         print(error_msg)
 
         # Record error in output
-        await logger("\n=== ERROR ===")
-        await logger(error_msg)
-        await logger("\n=== FINAL STATUS: ERROR ===")
+        await logger(
+            "\n=== ERROR ===\n" f"{error_msg}\n" "\n=== FINAL STATUS: ERROR ==="
+        )
 
         # Save error result to database
         await save_result_to_database(
