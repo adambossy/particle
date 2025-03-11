@@ -55,7 +55,7 @@ class Command(BaseCommand):
             "-p",
             action="store_true",
             default=False,
-            help="Process samples in parallel (default: serial)",
+            help="Process samples and models in parallel (default: serial)",
         )
 
         # collect command
@@ -68,6 +68,17 @@ class Command(BaseCommand):
             type=int,
             required=True,
             help="Benchmark run ID to collect results for",
+        )
+
+    async def run_model_evaluation(self, model: str, options: dict) -> None:
+        """Run evaluation for a single model."""
+        self.stdout.write(f"\nTranslating with {model}...")
+        await evaluate(
+            model=model,
+            source_lang=options["source"],
+            target_lang=options["target"],
+            num_samples=options["num_samples"],
+            parallel=options["parallel"],
         )
 
     def handle(self, *args, **options):
@@ -84,17 +95,31 @@ class Command(BaseCommand):
                 f"Processing mode: {'parallel' if options['parallel'] else 'serial'}"
             )
 
-            for model in options["models"]:
-                self.stdout.write(f"\nTranslating with {model}...")
-                asyncio.run(
-                    evaluate(
-                        model=model,
-                        source_lang=options["source"],
-                        target_lang=options["target"],
-                        num_samples=options["num_samples"],
-                        parallel=options["parallel"],
+            if options["parallel"] and len(options["models"]) > 1:
+                # Run models in parallel when parallel flag is set and multiple models are specified
+                self.stdout.write("Running multiple models in parallel...")
+
+                async def run_all_models():
+                    tasks = []
+                    for model in options["models"]:
+                        task = self.run_model_evaluation(model, options)
+                        tasks.append(task)
+                    await asyncio.gather(*tasks)
+
+                asyncio.run(run_all_models())
+            else:
+                # Run models serially
+                for model in options["models"]:
+                    self.stdout.write(f"\nTranslating with {model}...")
+                    asyncio.run(
+                        evaluate(
+                            model=model,
+                            source_lang=options["source"],
+                            target_lang=options["target"],
+                            num_samples=options["num_samples"],
+                            parallel=options["parallel"],
+                        )
                     )
-                )
 
         elif command == "collect":
             benchmark_id = options["benchmark_id"]
