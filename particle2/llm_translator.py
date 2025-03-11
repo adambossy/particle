@@ -361,7 +361,7 @@ class RateLimitTracker:
 
 
 def get_source_code_from_translations_dict(
-    translated_code_by_file: dict[Path, str]
+    translated_code_by_file: dict[Path, str],
 ) -> str:
     """Return the source code from a dictionary of file paths to code."""
     for file_name, translated_code in translated_code_by_file.items():
@@ -844,7 +844,7 @@ DEFAULT_SOURCE_AND_FILES = {
 )
 def cli(project_path: str, model: str) -> None:
     """CLI tool for translating Python code to Go."""
-    from benchmark.main import SUPPORTED_MODELS
+    from benchmark2.main import SUPPORTED_MODELS
 
     llm = SUPPORTED_MODELS[model]()
     file_manager = FileManager(Path(project_path))
