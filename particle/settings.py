@@ -81,15 +81,15 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": config("SUPABASE_DB_NAME", default="postgres"),
         "USER": config("SUPABASE_DB_USER", default="postgres"),
-        "PASSWORD": config("SUPABASE_DB_PASSWORD", default=""),
-        "HOST": config("SUPABASE_DB_HOST", default="db.example.supabase.co"),
-        "PORT": config("SUPABASE_DB_PORT", default="5432"),
+        # "PASSWORD": config("SUPABASE_DB_PASSWORD", default=""),
+        "HOST": config("SUPABASE_HOST"),
+        "PORT": config("SUPABASE_PORT", default="5432"),
     }
 }
 
 # Supabase configuration
-SUPABASE_URL = config("SUPABASE_URL", default="https://example.supabase.co")
-SUPABASE_KEY = config("SUPABASE_KEY", default="your-supabase-key")
+SUPABASE_URL = config("SUPABASE_PROJECT_URL")
+SUPABASE_KEY = config("SUPABASE_API_KEY")
 
 
 # Password validation
