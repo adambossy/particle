@@ -614,7 +614,6 @@ async def process_sample(
     file_manager: FileManager,
     sandbox: Sandbox,
     model: str,
-    results_dir: Path,
     output_dir: Path,
     benchmark_run_id: int,
 ) -> tuple[str, int, int]:
@@ -848,7 +847,6 @@ async def evaluate(
                     file_manager,
                     sandbox,
                     model,
-                    None,  # No longer needed since we use the database
                     output_dir,
                     benchmark_run_id,  # Pass benchmark run ID
                 )
@@ -867,7 +865,6 @@ async def evaluate(
                     file_manager,
                     sandbox,
                     model,
-                    None,  # No longer needed since we use the database
                     output_dir,
                     benchmark_run_id,  # Pass benchmark run ID
                 )
