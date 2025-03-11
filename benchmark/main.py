@@ -392,6 +392,176 @@ class Sandbox:
         return result
 
 
+async def setup_sample_files(
+    sample: CodeSample,
+    workspace_dir: Path,
+) -> tuple[Path, list[Path], Path, str]:
+    """Set up the necessary files and directories for processing a sample."""
+    # Create file paths
+    test_file = workspace_dir / "sandbox" / sample.target_test_path
+    extra_test_files = []
+    for extra_test_path in sample.extra_test_paths:
+        extra_test_files.append(workspace_dir / "sandbox" / extra_test_path)
+    translated_file = workspace_dir / "sandbox" / sample.target_path
+
+    # Get exercise name
+    exercise_name = translated_file.parent.name
+
+    # Create directories
+    os.makedirs(os.path.dirname(test_file), exist_ok=True)
+    for extra_test_file in extra_test_files:
+        os.makedirs(os.path.dirname(extra_test_file), exist_ok=True)
+
+    # Write test files
+    async with aiofiles.open(test_file, "w") as f:
+        await f.write(sample.target_test_code)
+    for extra_test_file, extra_test_code in zip(
+        extra_test_files, sample.extra_test_code
+    ):
+        async with aiofiles.open(extra_test_file, "w") as f:
+            await f.write(extra_test_code)
+
+    return test_file, extra_test_files, translated_file, exercise_name
+
+
+async def record_initial_state(
+    sample: CodeSample,
+) -> list[str]:
+    """Record the initial state of the code sample."""
+    output_content = []
+
+    output_content.append("=== Initial Source Code ===")
+    output_content.append(f"Source file: {sample.source_path}")
+    output_content.append(sample.source_code)
+    output_content.append("\n=== Source Interface ===")
+    output_content.append(sample.source_interface)
+    output_content.append("\n=== Target Interface ===")
+    output_content.append(sample.target_interface)
+    output_content.append("\n=== Source Test Code ===")
+    output_content.append(sample.source_test_code)
+    output_content.append("\n=== Target Test Code ===")
+    output_content.append(sample.target_test_code)
+
+    return output_content
+
+
+async def write_translation_to_file(
+    translated_file: Path, translated_code: str
+) -> None:
+    """Write translated code to a file."""
+    async with aiofiles.open(translated_file, "w") as f:
+        await f.write(translated_code)
+
+
+async def record_test_results(
+    result: subprocess.CompletedProcess,
+    attempt_num: int | None = None,
+) -> list[str]:
+    """Record test execution results."""
+    output_content = []
+
+    if attempt_num is None:
+        output_content.append("\n=== Initial Test Results ===")
+    else:
+        output_content.append(f"\n=== Test Results (Attempt {attempt_num}) ===")
+
+    output_content.append(f"Return code: {result.returncode}")
+    output_content.append("=== STDOUT ===")
+    output_content.append(result.stdout)
+    output_content.append("=== STDERR ===")
+    output_content.append(result.stderr)
+
+    return output_content
+
+
+async def run_translation_with_retries(
+    test_file: Path,
+    translated_file: Path,
+    translator: LLMTranslator,
+    sandbox: Sandbox,
+    code_snippets: dict[str, list[str]],
+    special_instructions: str,
+    sample: CodeSample,
+    max_retries: int = 10,
+) -> tuple[list[str], subprocess.CompletedProcess, int]:
+    """Core logic for translating code and retrying on test failures."""
+    output_content = []
+    num_retries = 0
+
+    # Initial translation
+    print(f"Fetching translation for {test_file.parent.name}")
+    translated_code = await translator.translate(
+        code_snippets,
+        special_instructions=special_instructions,
+    )
+
+    # Record translation
+    output_content.append("\n=== Initial Translation ===")
+    output_content.append(translated_code)
+
+    # Write translated code
+    await write_translation_to_file(translated_file, translated_code)
+
+    # Run tests
+    print(f"Running tests for {test_file.parent.name}")
+    result = await sandbox.run_tests(test_file)
+    output_content.extend(await record_test_results(result))
+
+    # Retry loop
+    while result.returncode != 0 and num_retries < max_retries:
+        # If tests failed, try to translate again with the error output
+        last_test_output = result.stderr + "\n" + result.stdout
+        print(f"Retrying translation for {test_file.parent.name}")
+        translated_code = await translator.retry(
+            last_test_output,
+            sample.target_test_code,
+        )
+
+        # Record retry attempt
+        output_content.append(f"\n=== Retry Attempt {num_retries + 1} ===")
+        output_content.append(translated_code)
+
+        # Write the retried translation
+        await write_translation_to_file(translated_file, translated_code)
+
+        # Run tests again
+        print(f"Running tests again for {test_file.parent.name}")
+        result = await sandbox.run_tests(test_file)
+        output_content.extend(await record_test_results(result, num_retries + 1))
+
+        num_retries += 1
+
+    # Record final status
+    if result.returncode == 0:
+        print(f"Tests passed successfully after {num_retries} retries!")
+        output_content.append("\n=== FINAL STATUS: SUCCESS ===")
+    else:
+        print(f"Tests failed after {num_retries} retries!")
+        output_content.append("\n=== FINAL STATUS: FAILED ===")
+
+    return output_content, result, num_retries
+
+
+async def write_results_to_files(
+    output_content: list[str],
+    result_file: Path,
+    output_file: Path,
+    exercise_name: str,
+    num_retries: int,
+    returncode: int,
+) -> None:
+    """Write detailed output and summary results to files."""
+    # Write detailed output
+    async with aiofiles.open(output_file, "w") as f:
+        print(f"Writing output to {output_file}")
+        await f.write("\n".join(output_content))
+
+    # Write summary results
+    async with aiofiles.open(result_file, "w") as f:
+        print(f"Writing result to {result_file}")
+        await f.write(f"{exercise_name},{num_retries},{returncode}")
+
+
 async def process_sample(
     sample: CodeSample,
     workspace_dir: Path,
@@ -402,45 +572,26 @@ async def process_sample(
     output_dir: Path,
 ) -> tuple[str, int, int]:
     """Process a single code sample."""
-    # Create necessary directories
-    # TODO (adam) Have Sandbox manage the portion before the try/except block
-    test_file = workspace_dir / "sandbox" / sample.target_test_path
-    extra_test_files = []
-    for extra_test_path in sample.extra_test_paths:
-        extra_test_files.append(workspace_dir / "sandbox" / extra_test_path)
-    translated_file = workspace_dir / "sandbox" / sample.target_path
+    # Set up files and directories
+    test_file, extra_test_files, translated_file, exercise_name = (
+        await setup_sample_files(sample, workspace_dir)
+    )
 
-    # TODO (adam) move into CodeSample object
-    exercise_name = translated_file.parent.name
+    # Create result and output file paths
     result_file = results_dir / f"{exercise_name}.txt"
     output_file = output_dir / f"{exercise_name}.txt"
 
     print(f"Processing sample {exercise_name}")
 
-    os.makedirs(os.path.dirname(test_file), exist_ok=True)
-
-    for extra_test_file in extra_test_files:
-        os.makedirs(os.path.dirname(extra_test_file), exist_ok=True)
-
-    # Write source and test files
-    async with aiofiles.open(test_file, "w") as f:
-        await f.write(sample.target_test_code)
-    for extra_test_file, extra_test_code in zip(
-        extra_test_files, sample.extra_test_code
-    ):
-        async with aiofiles.open(extra_test_file, "w") as f:
-            await f.write(extra_test_code)
-
-    # Initialize translator and translate code
+    # Initialize translator
     translator = LLMTranslator(
         model, file_manager, metadata={"exercise_name": exercise_name}
     )
 
-    # Create a dictionary mapping source file to code snippets
+    # Create code snippets dictionary
     code_snippets = {sample.source_path: [sample.source_code]}
 
-    # NOTE (adam) Exercism-specific instructions since the repos are maintained separately and
-    # so the function names differ
+    # Prepare special instructions
     special_instructions = f"""
 The following code contains the interface that must be implemented to satisfy tests in the target language:
 {sample.source_interface}
@@ -457,88 +608,31 @@ Ensure that the function name in the source code gets translated using the funct
 
     try:
         # Record initial state
-        output_content.append("=== Initial Source Code ===")
-        output_content.append(f"Source file: {sample.source_path}")
-        output_content.append(sample.source_code)
-        output_content.append("\n=== Source Interface ===")
-        output_content.append(sample.source_interface)
-        output_content.append("\n=== Target Interface ===")
-        output_content.append(sample.target_interface)
-        output_content.append("\n=== Source Test Code ===")
-        output_content.append(sample.source_test_code)
-        output_content.append("\n=== Target Test Code ===")
-        output_content.append(sample.target_test_code)
+        output_content = await record_initial_state(sample)
 
-        # Translate the code
-        print(f"Fetching translation for {exercise_name}")
-        translated_code = await translator.translate(
+        # Run core translation and retry logic
+        translation_output, result, num_retries = await run_translation_with_retries(
+            test_file,
+            translated_file,
+            translator,
+            sandbox,
             code_snippets,
-            special_instructions=special_instructions,
+            special_instructions,
+            sample,
         )
 
-        # Record translation
-        output_content.append("\n=== Initial Translation ===")
-        output_content.append(translated_code)
+        # Add translation output to collected content
+        output_content.extend(translation_output)
 
-        # Write translated code
-        async with aiofiles.open(translated_file, "w") as f:
-            await f.write(translated_code)
-
-        # Run tests using TestRunner
-        print(f"Running tests for {exercise_name}")
-        result = await sandbox.run_tests(test_file)
-        output_content.append("\n=== Initial Test Results ===")
-        output_content.append(f"Return code: {result.returncode}")
-        output_content.append("=== STDOUT ===")
-        output_content.append(result.stdout)
-        output_content.append("=== STDERR ===")
-        output_content.append(result.stderr)
-
-        while result.returncode != 0 and num_retries < 10:
-            # If tests failed, try to translate again with the error output
-            last_test_output = result.stderr + "\n" + result.stdout
-            print(f"Retrying translation for {exercise_name}")
-            translated_code = await translator.retry(
-                last_test_output,
-                sample.target_test_code,
-            )
-
-            # Record retry attempt
-            output_content.append(f"\n=== Retry Attempt {num_retries + 1} ===")
-            output_content.append(translated_code)
-
-            # Write the retried translation
-            async with aiofiles.open(translated_file, "w") as f:
-                await f.write(translated_code)
-
-            # Run tests again
-            print(f"Running tests again for {exercise_name}")
-            result = await sandbox.run_tests(test_file)
-            output_content.append(f"\n=== Test Results (Attempt {num_retries + 1}) ===")
-            output_content.append(f"Return code: {result.returncode}")
-            output_content.append("=== STDOUT ===")
-            output_content.append(result.stdout)
-            output_content.append("=== STDERR ===")
-            output_content.append(result.stderr)
-
-            num_retries += 1
-
-        if result.returncode == 0:
-            print(f"Tests passed successfully after {num_retries} retries!")
-            output_content.append("\n=== FINAL STATUS: SUCCESS ===")
-        else:
-            print(f"Tests failed after {num_retries} retries!")
-            output_content.append("\n=== FINAL STATUS: FAILED ===")
-
-        # Write detailed output
-        async with aiofiles.open(output_file, "w") as f:
-            print(f"Writing output to {output_file}")
-            await f.write("\n".join(output_content))
-
-        # Write summary results
-        async with aiofiles.open(result_file, "w") as f:
-            print(f"Writing result to {result_file}")
-            await f.write(f"{exercise_name},{num_retries},{result.returncode}")
+        # Write results to files
+        await write_results_to_files(
+            output_content,
+            result_file,
+            output_file,
+            exercise_name,
+            num_retries,
+            result.returncode,
+        )
 
         print(f"Finished processing sample {exercise_name}")
 
