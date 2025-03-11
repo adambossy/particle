@@ -26,7 +26,7 @@ def get_module_name(file_path: str) -> str:
     return Path(file_path).stem
 
 
-def is_test_file(self, file_path: Path) -> bool:
+def is_test_file(file_path: Path) -> bool:
     """Determine if a file is a test file based on its name."""
     return file_path.name.startswith("test_") or file_path.name.endswith("_test.py")
 

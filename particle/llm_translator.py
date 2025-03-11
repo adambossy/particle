@@ -16,6 +16,8 @@ import litellm
 from dotenv import load_dotenv
 from fireworks.client import Fireworks
 
+from particle.call_graph_analyzer import is_test_file
+from particle.llm_results_parser import LLMResultsParser
 from particle.utils import (
     get_assistant_message_from_tool_call,
     get_user_message_from_tool_call,
@@ -358,12 +360,31 @@ class RateLimitTracker:
             )
 
 
+def get_source_code_from_translations_dict(
+    translated_code_by_file: dict[Path, str]
+) -> str:
+    """Return the source code from a dictionary of file paths to code."""
+    for file_name, translated_code in translated_code_by_file.items():
+        file_path = Path(file_name)
+        if not is_test_file(file_path):
+            return translated_code
+    raise ValueError("No source code file found in the provided dictionary.")
+
+
 class LLMTranslator:
-    def __init__(self, model: str, file_manager: FileManager):
+    def __init__(
+        self,
+        model: str,
+        file_manager: FileManager,
+        metadata: dict[str, Any] = {},
+    ):
         super().__init__()
 
         self.model = model
         self.file_manager = file_manager
+        self.metadata = metadata
+
+        self.llm_results_parser = LLMResultsParser()
 
         # Determine if the model supports function calling
         self.uses_function_calling: bool = should_use_function_calling(model)
@@ -585,22 +606,24 @@ File Mappings:\n"""
     async def get_plain_text_completion(self) -> str:
         """Get completion for models that don't use function calling."""
         # Use the appropriate client based on the model
-        if self.model.startswith("fireworks_ai/"):
-            acompletion_func = deepseek_client.chat.completions.acreate
-            # For fireworks models, we need to use the full path after "fireworks_ai/"
-            if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
-                model_name = "accounts/fireworks/models/deepseek-v3"
-            else:
-                # Extract the model name from the full path
-                model_name = self.model.replace("fireworks_ai/", "")
-        else:
-            # For other non-function calling models, use litellm
-            acompletion_func = litellm.acompletion
-            model_name = self.model
+        # if self.model.startswith("fireworks_ai/"):
+        #     # acompletion_func = deepseek_client.chat.completions.acreate
+        #     # For fireworks models, we need to use the full path after "fireworks_ai/"
+        #     if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+        #         model_name = "accounts/fireworks/models/deepseek-v3"
+        #     else:
+        #         # Extract the model name from the full path
+        #         model_name = self.model.replace("fireworks_ai/", "")
+        # else:
+        #     # For other non-function calling models, use litellm
+        #     acompletion_func = litellm.acompletion
+        #     model_name = self.model
+
+        acompletion_func = litellm.acompletion
 
         completion = await acompletion_func(
             messages=self.messages,
-            model=model_name,
+            model=self.model,
             max_tokens=20000,
             temperature=1.0,
             stream=False,
@@ -616,17 +639,45 @@ File Mappings:\n"""
         # Extract code from between fences
         content = completion.choices[0].message.content
 
-        # Find code blocks between triple backticks
-        code_blocks = re.findall(r"```(?:\w+)?\n([\s\S]*?)\n```", content)
+        if self.model in ["gemini/gemini-1.5-pro", "gemini/gemini-2.0-flash"]:
+            translated_code_by_file = self.llm_results_parser.parse_translations(
+                content
+            )
+            return get_source_code_from_translations_dict(translated_code_by_file)
 
-        if code_blocks:
-            # Join all code blocks if there are multiple
-            translated_code = "\n\n".join(code_blocks)
-            return translated_code
-        else:
-            # If no code blocks found, return the entire content
-            logger.warning("No code blocks found in response, returning full content")
-            return content
+        if self.model == "fireworks_ai/accounts/fireworks/models/deepseek-v3":
+            # Find code blocks between triple backticks
+            code_blocks = re.findall(r"```(?:\w+)?\n([\s\S]*?)\n```", content)
+
+            translated_code = None
+            if code_blocks:
+                for block in code_blocks:
+                    lines = block.splitlines()
+                    if lines and lines[0].startswith("//"):
+                        # Extract the filename from the comment
+                        file_comment = lines[0]
+                        filename = file_comment[
+                            2:
+                        ].strip()  # Remove "//" and strip whitespace
+                        file_path = Path(filename)
+
+                        # Check if it's a test file
+                        if not is_test_file(file_path):
+                            # Omit the first line and keep the rest of the code
+                            translated_code = "\n".join(lines[1:])
+                if not translated_code:
+                    logger.warning(
+                        f"Couldn't extract source code from blocks, returning full content (metadata: {self.metadata})"
+                    )
+                    logger.warning(content)
+            else:
+                logger.warning(
+                    f"No code blocks found in response, returning full content (metadata: {self.metadata})"
+                )
+                logger.warning(content)
+
+            # If no code blocks found, return the entire content as a fallback
+            return translated_code or content
 
     async def completion(self) -> None:
         # Check if we need to reset rate limit counters

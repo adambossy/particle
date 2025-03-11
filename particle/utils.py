@@ -96,8 +96,9 @@ def get_user_message_from_tool_call(
             "role": "user",
             "content": f"""{test_code}
 
-The translated code resulted in one or more errors while running tests, listed
-below. The tests that ran are listed above. Modify the code produced above to ensure tests pass.
+The translated code resulted in one or more errors while running tests, listed below. The tests
+that ran are listed above. Modify the code produced above to ensure tests pass. Do NOT edit the
+tests. ONLY edit the source code you last provided.
 
 {test_output}""",
         }
