@@ -470,11 +470,11 @@ async def setup_output_logger(output_file: Path) -> callable:
 
 
 async def record_initial_state(
-    logger: callable,
+    alogger: callable,
     sample: CodeSample,
 ) -> None:
     """Record the initial state of the code sample using the logger."""
-    await logger(
+    await alogger(
         "=== Initial Source Code ===\n"
         f"Source file: {sample.source_path}\n"
         f"{sample.source_code}\n"
@@ -490,7 +490,7 @@ async def record_initial_state(
 
 
 async def record_test_results(
-    logger: callable,
+    alogger: callable,
     result: subprocess.CompletedProcess,
     attempt_num: int | None = None,
 ) -> None:
@@ -501,7 +501,7 @@ async def record_test_results(
         else f"\n=== Test Results (Attempt {attempt_num}) ==="
     )
 
-    await logger(
+    await alogger(
         f"{header}\n"
         f"Return code: {result.returncode}\n"
         "=== STDOUT ===\n"
@@ -519,7 +519,7 @@ async def run_translation_with_retries(
     code_snippets: dict[str, list[str]],
     special_instructions: str,
     sample: CodeSample,
-    logger: callable,
+    alogger: callable,
     max_retries: int = 10,
 ) -> tuple[subprocess.CompletedProcess, int]:
     """Core logic for translating code and retrying on test failures."""
@@ -534,7 +534,7 @@ async def run_translation_with_retries(
     )
 
     # Record translation
-    await logger("\n=== Initial Translation ===\n" f"{translated_code}")
+    await alogger("\n=== Initial Translation ===\n" f"{translated_code}")
 
     # Write translated code
     async with aiofiles.open(translated_file, "w") as f:
@@ -543,7 +543,7 @@ async def run_translation_with_retries(
     # Run tests
     logger.info(f"Running tests for {exercise_name}")
     result = await sandbox.run_tests(test_file)
-    await record_test_results(logger, result)
+    await record_test_results(alogger, result)
 
     # Retry loop
     while result.returncode != 0 and num_retries < max_retries:
@@ -556,7 +556,7 @@ async def run_translation_with_retries(
         )
 
         # Record retry attempt
-        await logger(
+        await alogger(
             f"\n=== Retry Attempt {num_retries + 1} ===\n" f"{translated_code}"
         )
 
@@ -575,11 +575,11 @@ async def run_translation_with_retries(
     if result.returncode == 0:
         success_msg = f"Tests passed successfully after {num_retries} retries!"
         logger.info(success_msg)
-        await logger("\n=== FINAL STATUS: SUCCESS ===")
+        await alogger("\n=== FINAL STATUS: SUCCESS ===")
     else:
         failure_msg = f"Tests failed after {num_retries} retries!"
         logger.info(failure_msg)
-        await logger("\n=== FINAL STATUS: FAILED ===")
+        await alogger("\n=== FINAL STATUS: FAILED ===")
 
     return result, num_retries
 
@@ -627,7 +627,7 @@ async def process_sample(
     output_file = output_dir / f"{exercise_name}.txt"
 
     # Create logger for this sample
-    logger = await setup_output_logger(output_file)
+    alogger = await setup_output_logger(output_file)
 
     logger.info(f"Processing sample {exercise_name}")
 
@@ -655,7 +655,7 @@ Ensure that the function name in the source code gets translated using the funct
 
     try:
         # Record initial state
-        await record_initial_state(logger, sample)
+        await record_initial_state(alogger, sample)
 
         # Run core translation and retry logic
         result, num_retries = await run_translation_with_retries(
@@ -666,7 +666,7 @@ Ensure that the function name in the source code gets translated using the funct
             code_snippets,
             special_instructions,
             sample,
-            logger,
+            alogger,
         )
 
         # Save result to database
@@ -691,7 +691,7 @@ Ensure that the function name in the source code gets translated using the funct
         logger.info(error_msg)
 
         # Record error in output
-        await logger(
+        await alogger(
             "\n=== ERROR ===\n" f"{error_msg}\n" "\n=== FINAL STATUS: ERROR ==="
         )
 
