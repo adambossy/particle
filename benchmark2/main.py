@@ -426,57 +426,72 @@ async def setup_sample_files(
     return test_file, extra_test_files, translated_file, exercise_name
 
 
-async def record_initial_state(
-    sample: CodeSample,
-) -> list[str]:
-    """Record the initial state of the code sample."""
-    output_content = []
+async def setup_output_logger(output_file: Path) -> callable:
+    """Create a logger function that writes messages to the output file immediately.
 
-    output_content.append("=== Initial Source Code ===")
-    output_content.append(f"Source file: {sample.source_path}")
-    output_content.append(sample.source_code)
-    output_content.append("\n=== Source Interface ===")
-    output_content.append(sample.source_interface)
-    output_content.append("\n=== Target Interface ===")
-    output_content.append(sample.target_interface)
-    output_content.append("\n=== Source Test Code ===")
-    output_content.append(sample.source_test_code)
-    output_content.append("\n=== Target Test Code ===")
-    output_content.append(sample.target_test_code)
+    Args:
+        output_file: Path to the output file
 
-    return output_content
+    Returns:
+        A function that can be called to log messages
+    """
+    # Create directory if it doesn't exist
+    os.makedirs(output_file.parent, exist_ok=True)
 
-
-async def write_output_to_file(
-    output_content: list[str],
-    output_file: Path,
-) -> None:
-    """Write detailed output to file."""
-    # Write detailed output
+    # Create or truncate the file
     async with aiofiles.open(output_file, "w") as f:
-        print(f"Writing output to {output_file}")
-        await f.write("\n".join(output_content))
+        await f.write("")  # Initialize empty file
+
+    async def log_message(message: str, print_to_console: bool = False) -> None:
+        """Log a message to the output file immediately.
+
+        Args:
+            message: The message to log
+            print_to_console: Whether to also print the message to console
+        """
+        if print_to_console:
+            print(message)
+
+        async with aiofiles.open(output_file, "a") as f:
+            await f.write(f"{message}\n")
+
+    return log_message
+
+
+async def record_initial_state(
+    logger: callable,
+    sample: CodeSample,
+) -> None:
+    """Record the initial state of the code sample using the logger."""
+    await logger("=== Initial Source Code ===")
+    await logger(f"Source file: {sample.source_path}")
+    await logger(sample.source_code)
+    await logger("\n=== Source Interface ===")
+    await logger(sample.source_interface)
+    await logger("\n=== Target Interface ===")
+    await logger(sample.target_interface)
+    await logger("\n=== Source Test Code ===")
+    await logger(sample.source_test_code)
+    await logger("\n=== Target Test Code ===")
+    await logger(sample.target_test_code)
 
 
 async def record_test_results(
+    logger: callable,
     result: subprocess.CompletedProcess,
     attempt_num: int | None = None,
-) -> list[str]:
-    """Record test execution results."""
-    output_content = []
-
+) -> None:
+    """Record test execution results using the logger."""
     if attempt_num is None:
-        output_content.append("\n=== Initial Test Results ===")
+        await logger("\n=== Initial Test Results ===")
     else:
-        output_content.append(f"\n=== Test Results (Attempt {attempt_num}) ===")
+        await logger(f"\n=== Test Results (Attempt {attempt_num}) ===")
 
-    output_content.append(f"Return code: {result.returncode}")
-    output_content.append("=== STDOUT ===")
-    output_content.append(result.stdout)
-    output_content.append("=== STDERR ===")
-    output_content.append(result.stderr)
-
-    return output_content
+    await logger(f"Return code: {result.returncode}")
+    await logger("=== STDOUT ===")
+    await logger(result.stdout)
+    await logger("=== STDERR ===")
+    await logger(result.stderr)
 
 
 async def run_translation_with_retries(
@@ -487,63 +502,69 @@ async def run_translation_with_retries(
     code_snippets: dict[str, list[str]],
     special_instructions: str,
     sample: CodeSample,
+    logger: callable,
     max_retries: int = 10,
-) -> tuple[list[str], subprocess.CompletedProcess, int]:
+) -> tuple[subprocess.CompletedProcess, int]:
     """Core logic for translating code and retrying on test failures."""
-    output_content = []
     num_retries = 0
 
     # Initial translation
-    print(f"Fetching translation for {test_file.parent.name}")
+    exercise_name = test_file.parent.name
+    print(f"Fetching translation for {exercise_name}")
     translated_code = await translator.translate(
         code_snippets,
         special_instructions=special_instructions,
     )
 
     # Record translation
-    output_content.append("\n=== Initial Translation ===")
-    output_content.append(translated_code)
+    await logger("\n=== Initial Translation ===")
+    await logger(translated_code)
 
     # Write translated code
-    await write_output_to_file(translated_file, translated_code)
+    async with aiofiles.open(translated_file, "w") as f:
+        await f.write(translated_code)
+
     # Run tests
-    print(f"Running tests for {test_file.parent.name}")
+    print(f"Running tests for {exercise_name}")
     result = await sandbox.run_tests(test_file)
-    output_content.extend(await record_test_results(result))
+    await record_test_results(logger, result)
 
     # Retry loop
     while result.returncode != 0 and num_retries < max_retries:
         # If tests failed, try to translate again with the error output
         last_test_output = result.stderr + "\n" + result.stdout
-        print(f"Retrying translation for {test_file.parent.name}")
+        print(f"Retrying translation for {exercise_name}")
         translated_code = await translator.retry(
             last_test_output,
             sample.target_test_code,
         )
 
         # Record retry attempt
-        output_content.append(f"\n=== Retry Attempt {num_retries + 1} ===")
-        output_content.append(translated_code)
+        await logger(f"\n=== Retry Attempt {num_retries + 1} ===")
+        await logger(translated_code)
 
         # Write the retried translation
-        await write_output_to_file(translated_file, translated_code)
+        async with aiofiles.open(translated_file, "w") as f:
+            await f.write(translated_code)
 
         # Run tests again
-        print(f"Running tests again for {test_file.parent.name}")
+        print(f"Running tests again for {exercise_name}")
         result = await sandbox.run_tests(test_file)
-        output_content.extend(await record_test_results(result, num_retries + 1))
+        await record_test_results(logger, result, num_retries + 1)
 
         num_retries += 1
 
     # Record final status
     if result.returncode == 0:
-        print(f"Tests passed successfully after {num_retries} retries!")
-        output_content.append("\n=== FINAL STATUS: SUCCESS ===")
+        success_msg = f"Tests passed successfully after {num_retries} retries!"
+        print(success_msg)
+        await logger(f"\n=== FINAL STATUS: SUCCESS ===")
     else:
-        print(f"Tests failed after {num_retries} retries!")
-        output_content.append("\n=== FINAL STATUS: FAILED ===")
+        failure_msg = f"Tests failed after {num_retries} retries!"
+        print(failure_msg)
+        await logger(f"\n=== FINAL STATUS: FAILED ===")
 
-    return output_content, result, num_retries
+    return result, num_retries
 
 
 async def save_result_to_database(
@@ -551,12 +572,12 @@ async def save_result_to_database(
     exercise_name: str,
     num_retries: int,
     returncode: int,
-    output_content: list[str],
+    output_file: Path,
 ) -> None:
     """Save exercise result to database."""
-
-    # Convert output_content list to a single string
-    output_str = "\n".join(output_content)
+    # Read the output file content
+    async with aiofiles.open(output_file, "r") as f:
+        output_content = await f.read()
 
     # Create exercise result in the database
     result = create_exercise_result(
@@ -564,7 +585,7 @@ async def save_result_to_database(
         exercise_name=exercise_name,
         num_retries=num_retries,
         return_code=returncode,
-        output_content=output_str,
+        output_content=output_content,
     )
 
     print(f"Saved result to database with ID: {result['id']}")
@@ -578,7 +599,7 @@ async def process_sample(
     model: str,
     results_dir: Path,
     output_dir: Path,
-    benchmark_run_id: int,  # Added parameter for benchmark run ID
+    benchmark_run_id: int,
 ) -> tuple[str, int, int]:
     """Process a single code sample."""
     # Set up files and directories
@@ -586,8 +607,11 @@ async def process_sample(
         await setup_sample_files(sample, workspace_dir)
     )
 
-    # Create output file path (still keeping output files for detailed logs)
+    # Create output file path
     output_file = output_dir / f"{exercise_name}.txt"
+
+    # Create logger for this sample
+    logger = await setup_output_logger(output_file)
 
     print(f"Processing sample {exercise_name}")
 
@@ -612,14 +636,13 @@ Ensure that the function name in the source code gets translated using the funct
 
     num_retries = 0
     result = None
-    output_content = []
 
     try:
         # Record initial state
-        output_content = await record_initial_state(sample)
+        await record_initial_state(logger, sample)
 
         # Run core translation and retry logic
-        translation_output, result, num_retries = await run_translation_with_retries(
+        result, num_retries = await run_translation_with_retries(
             test_file,
             translated_file,
             translator,
@@ -627,21 +650,16 @@ Ensure that the function name in the source code gets translated using the funct
             code_snippets,
             special_instructions,
             sample,
+            logger,
         )
 
-        # Add translation output to collected content
-        output_content.extend(translation_output)
-
-        # Write detailed output to file
-        await write_output_to_file(output_content, output_file)
-
-        # Save result to database instead of writing to result file
+        # Save result to database
         await save_result_to_database(
             benchmark_run_id=benchmark_run_id,
             exercise_name=exercise_name,
             num_retries=num_retries,
             returncode=result.returncode,
-            output_content=output_content,
+            output_file=output_file,
         )
 
         print(f"Finished processing sample {exercise_name}")
@@ -657,12 +675,9 @@ Ensure that the function name in the source code gets translated using the funct
         print(error_msg)
 
         # Record error in output
-        output_content.append("\n=== ERROR ===")
-        output_content.append(error_msg)
-        output_content.append("\n=== FINAL STATUS: ERROR ===")
-
-        # Write detailed output even in case of error
-        await write_output_to_file(output_content, output_file)
+        await logger("\n=== ERROR ===")
+        await logger(error_msg)
+        await logger("\n=== FINAL STATUS: ERROR ===")
 
         # Save error result to database
         await save_result_to_database(
@@ -670,7 +685,7 @@ Ensure that the function name in the source code gets translated using the funct
             exercise_name=exercise_name,
             num_retries=num_retries,
             returncode=1,  # Force error code
-            output_content=output_content,
+            output_file=output_file,
         )
 
         return exercise_name, num_retries, 1
