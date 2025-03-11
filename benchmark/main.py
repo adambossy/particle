@@ -432,7 +432,9 @@ async def process_sample(
             await f.write(extra_test_code)
 
     # Initialize translator and translate code
-    translator = LLMTranslator(model, file_manager)
+    translator = LLMTranslator(
+        model, file_manager, metadata={"exercise_name": exercise_name}
+    )
 
     # Create a dictionary mapping source file to code snippets
     code_snippets = {sample.source_path: [sample.source_code]}
@@ -661,7 +663,7 @@ async def evaluate(
             tasks.append(task)
 
         # Use the limited_gather function instead of asyncio.gather
-        results = await limited_gather(tasks, limit=8)  # Adjust 'limit' as needed
+        results = await limited_gather(tasks, limit=16)  # Adjust 'limit' as needed
         print(f"Processed {len(results)} samples in parallel")
     else:
         # Process samples serially
