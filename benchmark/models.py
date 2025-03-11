@@ -4,6 +4,11 @@ from django.db import models
 class BenchmarkRun(models.Model):
     """Model representing a benchmark run with metadata."""
 
+    name = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Random word identifier for this benchmark run",
+    )
     model_name = models.CharField(max_length=100)
     source_lang = models.CharField(max_length=50)
     target_lang = models.CharField(max_length=50)
@@ -11,7 +16,7 @@ class BenchmarkRun(models.Model):
     end_time = models.DateTimeField(null=True, blank=True)
 
     def __str__(self) -> str:
-        return f"{self.source_lang} to {self.target_lang} - {self.model_name} ({self.start_time.strftime('%Y-%m-%d %H:%M')})"
+        return f"{self.name} - {self.source_lang} to {self.target_lang} - {self.model_name} ({self.start_time.strftime('%Y-%m-%d %H:%M')})"
 
 
 class ExerciseResult(models.Model):
@@ -31,4 +36,4 @@ class ExerciseResult(models.Model):
 
     def __str__(self) -> str:
         status = "SUCCESS" if self.return_code == 0 else "FAILED"
-        return f"{self.exercise_name} - {status} - {self.num_retries} retries"
+        return f"{self.benchmark_run.name} - {self.exercise_name} - {status} - {self.num_retries} retries"

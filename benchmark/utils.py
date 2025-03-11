@@ -1,9 +1,99 @@
+import os
+import random
+import subprocess
 from typing import Any, Dict, Optional
 
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
 from benchmark.models import BenchmarkRun, ExerciseResult
+
+# Fallback to a small list of words if no dictionary is found
+fallback_words = [
+    "apple",
+    "banana",
+    "cherry",
+    "date",
+    "elderberry",
+    "fig",
+    "grape",
+    "honeydew",
+    "kiwi",
+    "lemon",
+    "mango",
+    "nectarine",
+    "orange",
+    "papaya",
+    "quince",
+    "raspberry",
+    "strawberry",
+    "tangerine",
+    "watermelon",
+    "cosmic",
+    "stellar",
+    "lunar",
+    "solar",
+    "galactic",
+    "quantum",
+    "atomic",
+    "nebula",
+    "comet",
+    "asteroid",
+]
+
+
+def get_random_word() -> str:
+    """
+    Get a random word from the system dictionary.
+
+    Returns:
+        str: A random word from the system dictionary
+    """
+    # Default dictionary paths for common Unix systems
+    dictionary_paths = [
+        "/usr/share/dict/words",
+        "/usr/dict/words",
+        "/etc/dictionaries-common/words",
+    ]
+
+    # Find the first available dictionary
+    dictionary_path = None
+    for path in dictionary_paths:
+        if os.path.exists(path):
+            dictionary_path = path
+            break
+
+    if not dictionary_path:
+        return random.choice(fallback_words)
+
+    # Get a random word from the dictionary
+    try:
+        # Use grep to filter out words with apostrophes and other special characters
+        result = subprocess.run(
+            f'grep -v "[^a-zA-Z]" {dictionary_path} | shuf -n 1',
+            shell=True,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        word = result.stdout.strip()
+
+        # If the word is too long, try again with a length filter
+        if len(word) > 10:
+            result = subprocess.run(
+                f'grep -v "[^a-zA-Z]" {dictionary_path} | grep -E "^.{{3,10}}$" | shuf -n 1',
+                shell=True,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            word = result.stdout.strip()
+
+        # Capitalize the word
+        return word.capitalize() if word else "Benchmark"
+    except subprocess.CalledProcessError:
+        # Fallback to a random word from our list
+        return random.choice(fallback_words)
 
 
 @sync_to_async
@@ -21,7 +111,11 @@ def create_benchmark_run(
     Returns:
         Dict[str, Any]: The created record data as a dictionary
     """
+    # Generate a random word for the benchmark name
+    random_word = get_random_word()
+
     benchmark_run = BenchmarkRun.objects.create(
+        name=random_word,
         model_name=model_name,
         source_lang=source_lang,
         target_lang=target_lang,
@@ -29,6 +123,7 @@ def create_benchmark_run(
 
     return {
         "id": benchmark_run.id,
+        "name": benchmark_run.name,
         "model_name": benchmark_run.model_name,
         "source_lang": benchmark_run.source_lang,
         "target_lang": benchmark_run.target_lang,
@@ -71,6 +166,7 @@ def create_exercise_result(
     return {
         "id": exercise_result.id,
         "benchmark_run_id": benchmark_run_id,
+        "benchmark_name": benchmark_run.name,
         "exercise_name": exercise_result.exercise_name,
         "num_retries": exercise_result.num_retries,
         "return_code": exercise_result.return_code,
