@@ -16,7 +16,11 @@ from asgiref.sync import sync_to_async
 from django.db import models
 
 from benchmark.models import BenchmarkRun, ExerciseResult
-from benchmark.utils import create_exercise_result
+from benchmark.utils import (
+    create_benchmark_run,
+    create_exercise_result,
+    update_benchmark_run_end_time,
+)
 from particle2.file_manager import FileManager
 from particle2.llm_translator import LLMTranslator
 
@@ -802,9 +806,6 @@ async def evaluate(
 
     logger.info(f"Set workspace dir to {workspace_dir}")
     logger.info(f"Set output dir to {output_dir}")
-
-    # Create benchmark run record in database
-    from benchmark.utils import create_benchmark_run, update_benchmark_run_end_time
 
     # Now await the async function
     benchmark_run = await create_benchmark_run(
