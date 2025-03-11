@@ -567,7 +567,7 @@ async def run_translation_with_retries(
         # Run tests again
         logger.info(f"Running tests again for {exercise_name}")
         result = await sandbox.run_tests(test_file)
-        await record_test_results(logger, result, num_retries + 1)
+        await record_test_results(alogger, result, num_retries + 1)
 
         num_retries += 1
 
