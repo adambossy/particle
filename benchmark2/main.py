@@ -8,7 +8,7 @@ import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Dict, Generator
 
 import aiofiles
 import click
@@ -752,8 +752,13 @@ async def collect_results(benchmark_run_id: int) -> None:
     )
     avg_retries = await sync_to_async(get_avg_retries)()
 
+    models_str = (
+        ", ".join(benchmark_run.model_names)
+        if benchmark_run.model_names
+        else "No models"
+    )
     logger.info(
-        f"Benchmark run: {benchmark_run.model_name} ({benchmark_run.source_lang} -> {benchmark_run.target_lang})"
+        f"Benchmark run: {benchmark_run.name} - {models_str} ({benchmark_run.source_lang} -> {benchmark_run.target_lang})"
     )
     logger.info(f"Start time: {benchmark_run.start_time}")
     logger.info(f"End time: {benchmark_run.end_time}")
@@ -785,6 +790,7 @@ async def evaluate(
     model: str,
     source_lang: str,
     target_lang: str,
+    benchmark_run: Dict[str, Any],
     num_samples: int = None,
     parallel: bool = True,
 ) -> None:
@@ -807,15 +813,12 @@ async def evaluate(
     logger.info(f"Set workspace dir to {workspace_dir}")
     logger.info(f"Set output dir to {output_dir}")
 
-    # Now await the async function
-    benchmark_run = await create_benchmark_run(
-        model_name=model_name,
-        source_lang=source_lang,
-        target_lang=target_lang,
-    )
+    # Get benchmark run ID from the passed benchmark run
     benchmark_run_id = benchmark_run["id"]
 
-    logger.info(f"Created benchmark run with ID: {benchmark_run_id}")
+    logger.info(
+        f"Using benchmark run with ID: {benchmark_run_id} and name: {benchmark_run['name']}"
+    )
 
     # Initialize sample collector with concrete implementation
     collector = ExercismSampleCollector(

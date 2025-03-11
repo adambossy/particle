@@ -98,13 +98,13 @@ def get_random_word() -> str:
 
 @sync_to_async
 def create_benchmark_run(
-    model_name: str, source_lang: str, target_lang: str
+    models: list[str], source_lang: str, target_lang: str
 ) -> Dict[str, Any]:
     """
     Create a new benchmark run record using Django ORM.
 
     Args:
-        model_name: The name of the LLM model being benchmarked
+        models: List of LLM model names being benchmarked
         source_lang: The source programming language
         target_lang: The target programming language
 
@@ -116,7 +116,7 @@ def create_benchmark_run(
 
     benchmark_run = BenchmarkRun.objects.create(
         name=random_word,
-        model_name=model_name,
+        model_names=models,
         source_lang=source_lang,
         target_lang=target_lang,
     )
@@ -124,7 +124,7 @@ def create_benchmark_run(
     return {
         "id": benchmark_run.id,
         "name": benchmark_run.name,
-        "model_name": benchmark_run.model_name,
+        "model_names": benchmark_run.model_names,
         "source_lang": benchmark_run.source_lang,
         "target_lang": benchmark_run.target_lang,
         "start_time": benchmark_run.start_time.isoformat(),

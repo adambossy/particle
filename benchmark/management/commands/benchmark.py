@@ -7,6 +7,7 @@ from benchmark2.main import (
     SUPPORTED_LANGUAGES,
     SUPPORTED_MODELS,
     collect_results,
+    create_benchmark_run,
     evaluate,
 )
 
@@ -70,13 +71,16 @@ class Command(BaseCommand):
             help="Benchmark run ID to collect results for",
         )
 
-    async def run_model_evaluation(self, model: str, options: dict) -> None:
+    async def run_model_evaluation(
+        self, model: str, options: dict, benchmark_run: dict
+    ) -> None:
         """Run evaluation for a single model."""
         self.stdout.write(f"\nTranslating with {model}...")
         await evaluate(
             model=model,
             source_lang=options["source"],
             target_lang=options["target"],
+            benchmark_run=benchmark_run,
             num_samples=options["num_samples"],
             parallel=options["parallel"],
         )
@@ -95,6 +99,20 @@ class Command(BaseCommand):
                 f"Processing mode: {'parallel' if options['parallel'] else 'serial'}"
             )
 
+            # Create a benchmark run for all models
+            async def create_run():
+                return await create_benchmark_run(
+                    models=options["models"],
+                    source_lang=options["source"],
+                    target_lang=options["target"],
+                )
+
+            # HACK to run async function in synchronous context
+            benchmark_run = asyncio.run(create_run())
+            self.stdout.write(
+                f"Created benchmark run with ID: {benchmark_run['id']} and name: {benchmark_run['name']} for models: {', '.join(benchmark_run['model_names'])}"
+            )
+
             if options["parallel"] and len(options["models"]) > 1:
                 # Run models in parallel when parallel flag is set and multiple models are specified
                 self.stdout.write("Running multiple models in parallel...")
@@ -102,7 +120,7 @@ class Command(BaseCommand):
                 async def run_all_models():
                     tasks = []
                     for model in options["models"]:
-                        task = self.run_model_evaluation(model, options)
+                        task = self.run_model_evaluation(model, options, benchmark_run)
                         tasks.append(task)
                     await asyncio.gather(*tasks)
 
@@ -116,6 +134,7 @@ class Command(BaseCommand):
                             model=model,
                             source_lang=options["source"],
                             target_lang=options["target"],
+                            benchmark_run=benchmark_run,
                             num_samples=options["num_samples"],
                             parallel=options["parallel"],
                         )
