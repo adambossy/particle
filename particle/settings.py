@@ -81,7 +81,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": config("SUPABASE_DB_NAME", default="postgres"),
         "USER": config("SUPABASE_DB_USER", default="postgres"),
-        # "PASSWORD": config("SUPABASE_DB_PASSWORD", default=""),
+        "PASSWORD": config("SUPABASE_DB_PASSWORD", default=""),
         "HOST": config("SUPABASE_HOST"),
         "PORT": config("SUPABASE_PORT", default="5432"),
     }
