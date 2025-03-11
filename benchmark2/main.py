@@ -12,6 +12,8 @@ from typing import AsyncGenerator, Generator
 
 import aiofiles
 import click
+from asgiref.sync import sync_to_async
+from django.db import models
 
 from benchmark.models import BenchmarkRun, ExerciseResult
 from benchmark.utils import create_exercise_result
@@ -595,7 +597,7 @@ async def save_result_to_database(
         output_content = await f.read()
 
     # Create exercise result in the database
-    result = create_exercise_result(
+    result = await create_exercise_result(
         benchmark_run_id=benchmark_run_id,
         exercise_name=exercise_name,
         num_retries=num_retries,
@@ -712,22 +714,40 @@ async def collect_results(benchmark_run_id: int) -> None:
     Args:
         benchmark_run_id: ID of the benchmark run to collect results for
     """
+
+    # Define sync functions to be called with sync_to_async
+    def get_benchmark_run():
+        return BenchmarkRun.objects.get(id=benchmark_run_id)
+
+    def get_exercise_results():
+        return list(ExerciseResult.objects.filter(benchmark_run_id=benchmark_run_id))
+
+    def get_total_exercises():
+        return ExerciseResult.objects.filter(benchmark_run_id=benchmark_run_id).count()
+
+    def get_successful_exercises():
+        return ExerciseResult.objects.filter(
+            benchmark_run_id=benchmark_run_id, return_code=0
+        ).count()
+
+    def get_avg_retries():
+        return (
+            ExerciseResult.objects.filter(benchmark_run_id=benchmark_run_id).aggregate(
+                avg_retries=models.Avg("num_retries")
+            )["avg_retries"]
+            or 0
+        )
+
     # Get the benchmark run
-    benchmark_run = BenchmarkRun.objects.get(id=benchmark_run_id)
+    benchmark_run = await sync_to_async(get_benchmark_run)()
 
-    # Get all exercise results for this run
-    exercise_results = ExerciseResult.objects.filter(benchmark_run_id=benchmark_run_id)
-
-    # Calculate statistics
-    total_exercises = exercise_results.count()
-    successful_exercises = exercise_results.filter(return_code=0).count()
+    # Get statistics
+    total_exercises = await sync_to_async(get_total_exercises)()
+    successful_exercises = await sync_to_async(get_successful_exercises)()
     success_rate = (
         (successful_exercises / total_exercises) * 100 if total_exercises > 0 else 0
     )
-    avg_retries = (
-        exercise_results.aggregate(avg_retries=models.Avg("num_retries"))["avg_retries"]
-        or 0
-    )
+    avg_retries = await sync_to_async(get_avg_retries)()
 
     logger.info(
         f"Benchmark run: {benchmark_run.model_name} ({benchmark_run.source_lang} -> {benchmark_run.target_lang})"
@@ -741,6 +761,9 @@ async def collect_results(benchmark_run_id: int) -> None:
     # Print results for each exercise
     logger.info("\nExercise results:")
     logger.info("Exercise Name,Num Retries,Return Code")
+
+    # Get all exercise results
+    exercise_results = await sync_to_async(get_exercise_results)()
     for result in exercise_results:
         logger.info(f"{result.exercise_name},{result.num_retries},{result.return_code}")
 
@@ -784,7 +807,8 @@ async def evaluate(
     # Create benchmark run record in database
     from benchmark.utils import create_benchmark_run, update_benchmark_run_end_time
 
-    benchmark_run = create_benchmark_run(
+    # Now await the async function
+    benchmark_run = await create_benchmark_run(
         model_name=model_name,
         source_lang=source_lang,
         target_lang=target_lang,
@@ -850,8 +874,8 @@ async def evaluate(
                 results.append(result)
             logger.info(f"Processed {len(results)} samples serially")
     finally:
-        # Update benchmark run end time
-        update_benchmark_run_end_time(benchmark_run_id)
+        # Update benchmark run end time - now await the async function
+        await update_benchmark_run_end_time(benchmark_run_id)
         logger.info(f"Updated benchmark run {benchmark_run_id} with end time")
 
 

@@ -1,10 +1,12 @@
 from typing import Any, Dict, Optional
 
+from asgiref.sync import sync_to_async
 from django.utils import timezone
 
 from benchmark.models import BenchmarkRun, ExerciseResult
 
 
+@sync_to_async
 def create_benchmark_run(
     model_name: str, source_lang: str, target_lang: str
 ) -> Dict[str, Any]:
@@ -34,6 +36,7 @@ def create_benchmark_run(
     }
 
 
+@sync_to_async
 def create_exercise_result(
     benchmark_run_id: int,
     exercise_name: str,
@@ -75,6 +78,7 @@ def create_exercise_result(
     }
 
 
+@sync_to_async
 def update_benchmark_run_end_time(benchmark_run_id: int) -> None:
     """
     Update the end_time of a benchmark run.
