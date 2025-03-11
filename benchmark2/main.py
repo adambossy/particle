@@ -12,8 +12,10 @@ from typing import AsyncGenerator, Generator
 import aiofiles
 import click
 
-from particle.file_manager import FileManager
-from particle.llm_translator import LLMTranslator
+from benchmark.models import BenchmarkRun, ExerciseResult
+from benchmark.utils import create_exercise_result
+from particle2.file_manager import FileManager
+from particle2.llm_translator import LLMTranslator
 
 SUPPORTED_MODELS = [
     "gpt-4o-2024-08-06",
@@ -445,12 +447,15 @@ async def record_initial_state(
     return output_content
 
 
-async def write_translation_to_file(
-    translated_file: Path, translated_code: str
+async def write_output_to_file(
+    output_content: list[str],
+    output_file: Path,
 ) -> None:
-    """Write translated code to a file."""
-    async with aiofiles.open(translated_file, "w") as f:
-        await f.write(translated_code)
+    """Write detailed output to file."""
+    # Write detailed output
+    async with aiofiles.open(output_file, "w") as f:
+        print(f"Writing output to {output_file}")
+        await f.write("\n".join(output_content))
 
 
 async def record_test_results(
@@ -500,8 +505,7 @@ async def run_translation_with_retries(
     output_content.append(translated_code)
 
     # Write translated code
-    await write_translation_to_file(translated_file, translated_code)
-
+    await write_output_to_file(translated_file, translated_code)
     # Run tests
     print(f"Running tests for {test_file.parent.name}")
     result = await sandbox.run_tests(test_file)
@@ -522,7 +526,7 @@ async def run_translation_with_retries(
         output_content.append(translated_code)
 
         # Write the retried translation
-        await write_translation_to_file(translated_file, translated_code)
+        await write_output_to_file(translated_file, translated_code)
 
         # Run tests again
         print(f"Running tests again for {test_file.parent.name}")
@@ -542,24 +546,28 @@ async def run_translation_with_retries(
     return output_content, result, num_retries
 
 
-async def write_results_to_files(
-    output_content: list[str],
-    result_file: Path,
-    output_file: Path,
+async def save_result_to_database(
+    benchmark_run_id: int,
     exercise_name: str,
     num_retries: int,
     returncode: int,
+    output_content: list[str],
 ) -> None:
-    """Write detailed output and summary results to files."""
-    # Write detailed output
-    async with aiofiles.open(output_file, "w") as f:
-        print(f"Writing output to {output_file}")
-        await f.write("\n".join(output_content))
+    """Save exercise result to database."""
 
-    # Write summary results
-    async with aiofiles.open(result_file, "w") as f:
-        print(f"Writing result to {result_file}")
-        await f.write(f"{exercise_name},{num_retries},{returncode}")
+    # Convert output_content list to a single string
+    output_str = "\n".join(output_content)
+
+    # Create exercise result in the database
+    result = create_exercise_result(
+        benchmark_run_id=benchmark_run_id,
+        exercise_name=exercise_name,
+        num_retries=num_retries,
+        return_code=returncode,
+        output_content=output_str,
+    )
+
+    print(f"Saved result to database with ID: {result['id']}")
 
 
 async def process_sample(
@@ -570,6 +578,7 @@ async def process_sample(
     model: str,
     results_dir: Path,
     output_dir: Path,
+    benchmark_run_id: int,  # Added parameter for benchmark run ID
 ) -> tuple[str, int, int]:
     """Process a single code sample."""
     # Set up files and directories
@@ -577,8 +586,7 @@ async def process_sample(
         await setup_sample_files(sample, workspace_dir)
     )
 
-    # Create result and output file paths
-    result_file = results_dir / f"{exercise_name}.txt"
+    # Create output file path (still keeping output files for detailed logs)
     output_file = output_dir / f"{exercise_name}.txt"
 
     print(f"Processing sample {exercise_name}")
@@ -624,14 +632,16 @@ Ensure that the function name in the source code gets translated using the funct
         # Add translation output to collected content
         output_content.extend(translation_output)
 
-        # Write results to files
-        await write_results_to_files(
-            output_content,
-            result_file,
-            output_file,
-            exercise_name,
-            num_retries,
-            result.returncode,
+        # Write detailed output to file
+        await write_output_to_file(output_content, output_file)
+
+        # Save result to database instead of writing to result file
+        await save_result_to_database(
+            benchmark_run_id=benchmark_run_id,
+            exercise_name=exercise_name,
+            num_retries=num_retries,
+            returncode=result.returncode,
+            output_content=output_content,
         )
 
         print(f"Finished processing sample {exercise_name}")
@@ -652,34 +662,57 @@ Ensure that the function name in the source code gets translated using the funct
         output_content.append("\n=== FINAL STATUS: ERROR ===")
 
         # Write detailed output even in case of error
-        async with aiofiles.open(output_file, "w") as f:
-            await f.write("\n".join(output_content))
+        await write_output_to_file(output_content, output_file)
 
-        # Write summary results
-        async with aiofiles.open(result_file, "w") as f:
-            await f.write(f"{exercise_name},{num_retries},1")
+        # Save error result to database
+        await save_result_to_database(
+            benchmark_run_id=benchmark_run_id,
+            exercise_name=exercise_name,
+            num_retries=num_retries,
+            returncode=1,  # Force error code
+            output_content=output_content,
+        )
 
         return exercise_name, num_retries, 1
 
 
-async def collect_results(results_dir: Path) -> None:
-    """Collect and aggregate results from individual exercise files into a single results.txt file.
+async def collect_results(benchmark_run_id: int) -> None:
+    """Collect and aggregate results from the database for a benchmark run.
 
     Args:
-        results_dir: Path to the directory containing individual result files
+        benchmark_run_id: ID of the benchmark run to collect results for
     """
-    results_file = results_dir / "results.txt"
+    # Get the benchmark run
+    benchmark_run = BenchmarkRun.objects.get(id=benchmark_run_id)
 
-    # Write CSV header
-    async with aiofiles.open(results_file, "w") as f:
-        await f.write("Exercise Name,Num Attempts,Return Code\n")
+    # Get all exercise results for this run
+    exercise_results = ExerciseResult.objects.filter(benchmark_run_id=benchmark_run_id)
 
-        # Read and aggregate all result files except results.txt
-        for file_path in results_dir.glob("*.txt"):
-            if file_path.name != "results.txt":
-                async with aiofiles.open(file_path) as f_result:
-                    content = await f_result.read()
-                    await f.write(f"{content.strip()}\n")
+    # Calculate statistics
+    total_exercises = exercise_results.count()
+    successful_exercises = exercise_results.filter(return_code=0).count()
+    success_rate = (
+        (successful_exercises / total_exercises) * 100 if total_exercises > 0 else 0
+    )
+    avg_retries = (
+        exercise_results.aggregate(avg_retries=models.Avg("num_retries"))["avg_retries"]
+        or 0
+    )
+
+    print(
+        f"Benchmark run: {benchmark_run.model_name} ({benchmark_run.source_lang} -> {benchmark_run.target_lang})"
+    )
+    print(f"Start time: {benchmark_run.start_time}")
+    print(f"End time: {benchmark_run.end_time}")
+    print(f"Total exercises: {total_exercises}")
+    print(f"Successful exercises: {successful_exercises} ({success_rate:.2f}%)")
+    print(f"Average retries: {avg_retries:.2f}")
+
+    # Print results for each exercise
+    print("\nExercise results:")
+    print("Exercise Name,Num Retries,Return Code")
+    for result in exercise_results:
+        print(f"{result.exercise_name},{result.num_retries},{result.return_code}")
 
 
 async def limited_gather(tasks: list[asyncio.Task], limit: int) -> list:
@@ -710,16 +743,25 @@ async def evaluate(
     # Create base directory structure
     base_dir = Path(f"results/{source_lang}_to_{target_lang}_{current_time}")
     model_dir = base_dir / model_name
-    results_dir = model_dir / "results"
     output_dir = model_dir / "output"
 
-    # Create all directories
-    os.makedirs(results_dir, exist_ok=True)
+    # Create output directory
     os.makedirs(output_dir, exist_ok=True)
 
     print("Set workspace dir to", workspace_dir)
-    print("Set results dir to", results_dir)
     print("Set output dir to", output_dir)
+
+    # Create benchmark run record in database
+    from benchmark.utils import create_benchmark_run, update_benchmark_run_end_time
+
+    benchmark_run = create_benchmark_run(
+        model_name=model_name,
+        source_lang=source_lang,
+        target_lang=target_lang,
+    )
+    benchmark_run_id = benchmark_run["id"]
+
+    print(f"Created benchmark run with ID: {benchmark_run_id}")
 
     # Initialize sample collector with concrete implementation
     collector = ExercismSampleCollector(
@@ -740,43 +782,47 @@ async def evaluate(
 
     results = []
 
-    if parallel:
-        # Create tasks for parallel processing
-        tasks = []
-        for sample in samples:
-            print(f"Creating task for sample: {sample.source_path}")
-            task = process_sample(
-                sample,
-                workspace_dir,
-                file_manager,
-                sandbox,
-                model,
-                results_dir,
-                output_dir,
-            )
-            tasks.append(task)
+    try:
+        if parallel:
+            # Create tasks for parallel processing
+            tasks = []
+            for sample in samples:
+                print(f"Creating task for sample: {sample.source_path}")
+                task = process_sample(
+                    sample,
+                    workspace_dir,
+                    file_manager,
+                    sandbox,
+                    model,
+                    None,  # No longer needed since we use the database
+                    output_dir,
+                    benchmark_run_id,  # Pass benchmark run ID
+                )
+                tasks.append(task)
 
-        # Use the limited_gather function instead of asyncio.gather
-        results = await limited_gather(tasks, limit=16)  # Adjust 'limit' as needed
-        print(f"Processed {len(results)} samples in parallel")
-    else:
-        # Process samples serially
-        for sample in samples:
-            print(f"Processing sample: {sample.source_path}")
-            result = await process_sample(
-                sample,
-                workspace_dir,
-                file_manager,
-                sandbox,
-                model,
-                results_dir,
-                output_dir,
-            )
-            results.append(result)
-        print(f"Processed {len(results)} samples serially")
-
-    # Collect and aggregate results
-    await collect_results(results_dir)
+            # Use the limited_gather function instead of asyncio.gather
+            results = await limited_gather(tasks, limit=16)  # Adjust 'limit' as needed
+            print(f"Processed {len(results)} samples in parallel")
+        else:
+            # Process samples serially
+            for sample in samples:
+                print(f"Processing sample: {sample.source_path}")
+                result = await process_sample(
+                    sample,
+                    workspace_dir,
+                    file_manager,
+                    sandbox,
+                    model,
+                    None,  # No longer needed since we use the database
+                    output_dir,
+                    benchmark_run_id,  # Pass benchmark run ID
+                )
+                results.append(result)
+            print(f"Processed {len(results)} samples serially")
+    finally:
+        # Update benchmark run end time
+        update_benchmark_run_end_time(benchmark_run_id)
+        print(f"Updated benchmark run {benchmark_run_id} with end time")
 
 
 def get_latest_results_dir() -> Path:
@@ -854,22 +900,20 @@ def translate(models, source, target, num_samples, parallel):
 
 @cli.command()
 @click.option(
-    "--directory",
-    "-d",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
-    help="Directory containing results to collect (default: most recent)",
+    "--benchmark-id",
+    "-b",
+    type=int,
+    help="Benchmark run ID to collect results for",
+    required=True,
 )
-def collect(directory: Path | None) -> None:
-    """Collect and aggregate results from individual exercise files.
+def collect(benchmark_id: int) -> None:
+    """Collect and aggregate results from database for a benchmark run.
 
-    If no directory is specified, uses the most recently created results directory.
+    Args:
+        benchmark_id: ID of the benchmark run to collect results for
     """
-    if directory is None:
-        directory = get_latest_results_dir()
-
-    click.echo(f"Collecting results from {directory}")
-    asyncio.run(collect_results(directory))
-    click.echo("Results collected to results.txt")
+    click.echo(f"Collecting results for benchmark run {benchmark_id}")
+    asyncio.run(collect_results(benchmark_id))
 
 
 if __name__ == "__main__":
