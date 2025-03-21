@@ -3,12 +3,9 @@
 .env
 __pycache__
 
-repos
 swift/build
 swift/swift-syntax
 swift/tree-sitter*
 
 *.pdf
 logs/*
-viz/*
-results/*
