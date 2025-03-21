@@ -1,0 +1,2110 @@
+=== Initial Source Code ===
+Source file: exercises/practice/rail-fence-cipher/.meta/example.py
+from itertools import cycle, chain
+
+
+def fence_pattern(rails, size):
+    zig_zag = cycle(chain(range(rails), range(rails - 2, 0, -1)))
+    return zip(zig_zag, range(size))
+
+
+def encode(msg, rails):
+    fence = fence_pattern(rails, len(msg))
+    return ''.join(msg[idx] for _, idx in sorted(fence))
+
+
+def decode(msg, rails):
+    fence = fence_pattern(rails, len(msg))
+    fence_msg = zip(msg, sorted(fence))
+    return ''.join(char for char, _ in sorted(fence_msg, key=lambda item: item[1][1]))
+
+
+=== Source Interface ===
+def encode(message, rails):
+    pass
+
+
+def decode(encoded_message, rails):
+    pass
+
+
+=== Target Interface ===
+package railfence
+
+func Encode(message string, rails int) string {
+	panic("Please implement the Encode function")
+}
+
+func Decode(message string, rails int) string {
+	panic("Please implement the Decode function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/rail-fence-cipher/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from rail_fence_cipher import (
+    decode,
+    encode,
+)
+
+
+class RailFenceCipherTest(unittest.TestCase):
+    def test_encode_with_two_rails(self):
+        self.assertMultiLineEqual(encode("XOXOXOXOXOXOXOXOXO", 2), "XXXXXXXXXOOOOOOOOO")
+
+    def test_encode_with_three_rails(self):
+        self.assertMultiLineEqual(
+            encode("WEAREDISCOVEREDFLEEATONCE", 3), "WECRLTEERDSOEEFEAOCAIVDEN"
+        )
+
+    def test_encode_with_ending_in_the_middle(self):
+        self.assertMultiLineEqual(encode("EXERCISES", 4), "ESXIEECSR")
+
+    def test_decode_with_three_rails(self):
+        self.assertMultiLineEqual(
+            decode("TEITELHDVLSNHDTISEIIEA", 3), "THEDEVILISINTHEDETAILS"
+        )
+
+    def test_decode_with_five_rails(self):
+        self.assertMultiLineEqual(decode("EIEXMSMESAORIWSCE", 5), "EXERCISMISAWESOME")
+
+    def test_decode_with_six_rails(self):
+        self.assertMultiLineEqual(
+            decode("133714114238148966225439541018335470986172518171757571896261", 6),
+            "112358132134558914423337761098715972584418167651094617711286",
+        )
+
+
+=== Target Test Code ===
+package railfence
+
+import "testing"
+
+func testCases(
+	name string,
+	op func(string, int) string,
+	cases []testCase, t *testing.T,
+) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := op(tc.message, tc.rails); actual != tc.expected {
+				t.Fatalf("%s(%q,%d)\n got:%q\nwant:%q", name, tc.message, tc.rails, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func runBenchmark(op func(string, int) string, cases []testCase, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range cases {
+			op(test.message, test.rails)
+		}
+	}
+}
+
+func TestEncode(t *testing.T) { testCases("Encode", Encode, encodeTests, t) }
+func TestDecode(t *testing.T) { testCases("Decode", Decode, decodeTests, t) }
+
+func BenchmarkEncode(b *testing.B) { runBenchmark(Encode, encodeTests, b) }
+func BenchmarkDecode(b *testing.B) { runBenchmark(Decode, decodeTests, b) }
+
+
+=== Initial Translation ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails,
+// then reads line by line to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Make a copy of fence for sorting
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	// Sort by rail, then by original index
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// For each sorted fence element, pick the corresponding rune from the original message
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes the message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern, maps the characters back to their original positions,
+// and returns the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Make a copy of fence and sort it by rail and then by index (the order in which characters were read)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character in the encoded message with its corresponding fence position from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Now, sort fenceMsg by the original index to restore the initial order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher_test.go:8:10: undefined: testCase
+./rail_fence_cipher_test.go:19:56: undefined: testCase
+./rail_fence_cipher_test.go:30:61: undefined: encodeTests
+./rail_fence_cipher_test.go:31:61: undefined: decodeTests
+./rail_fence_cipher_test.go:33:59: undefined: encodeTests
+./rail_fence_cipher_test.go:34:59: undefined: decodeTests
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build the zig-zag pattern
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails,
+// then reads line by line to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Make a copy of fence for sorting
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	// Sort by rail, then by original index
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// For each sorted fence element, pick the corresponding rune from the original message
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes the message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern, maps the characters back to their original positions,
+// and returns the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Make a copy of fence and sort it by rail and then by index (the order in which characters were read)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character in the encoded message with its corresponding fence position from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Now, sort fenceMsg by the original index to restore the initial order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+// exercises/practice/rail-fence-cipher/.meta/example_test.go
+package railfence
+
+import (
+	"testing"
+	"testing/quick"
+)
+
+// testCase defines a single test scenario for Encode and Decode functions.
+type testCase struct {
+	description string
+	message     string
+	rails       int
+	expected   string
+}
+
+var encodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WEAREDISCOVEREDFLEEATONCE",
+		rails:       3,
+		expected:   "WECRLTEERDSOEEFEAOCAIVDEN",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+var decodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WECRLTEERDSOEEFEAOCAIVDEN",
+		rails:       3,
+		expected:   "WEAREDISCOVEREDFLEEATONCE",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+// testCases is a helper to run test cases for a given function op (Encode or Decode).
+func testCases(name string, op func(string, int) string, cases []testCase, t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := op(tc.message, tc.trails); actual != tc.expected {
+				t.Fatalf("%s(%q, %d)\n got: %q\nwant: %q", name, tc.message, tc.trails, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// runBenchmark is a helper to run benchmarks for a given function op (Encode or Decode).
+func runBenchmark(op func(string, int) string, cases []testCase, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range cases {
+			op(test.message, test.trails)
+		}
+	}
+}
+
+func TestEncode(t *testing.T) {
+	testCases("Encode", Encode, encodeTests, t)
+}
+
+func TestDecode(t *testing.T) {
+	testCases("Decode", Decode, decodeTests, t)
+}
+
+func BenchmarkEncode(b *testing.B) { runBenchmark(Encode, encodeTests, b) }
+func BenchmarkDecode(b *testing.B) { runBenchmark(Decode, decodeTests, b) }
+
+// Optional: QuickCheck properties to ensure Encode and Decode are inverses when rails > 1.
+// We'll test that for any message and rails value (>=2), decoding the encoded message returns the original.
+func TestEncodeDecodeInverse(t *testing.T) {
+	testFunc := func(message string, rails int) bool {
+		// force rails to be at least 2 to have meaningful transformation
+		if rails < 2 {
+			rails = 2
+		}
+		encoded := Encode(message, rails)
+		decoded := Decode(encoded, rails)
+		return message == decoded
+	}
+	if err := quick.Check(testFunc, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher.go:110:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+// It is used to map characters to their positions in the rail fence pattern.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build the zig-zag pattern: 0,1,...,rails-1, rails-2,...,1
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails,
+// then reads line by line to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Make a copy of fence for sorting
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	// Sort by rail, then by original index
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Build encoded message by reading characters in sorted order of fence positions
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes the message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern, maps the characters back to their original positions,
+// and returns the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Make a copy of fence and sort it by rail and then by index (the order in which characters were read during encoding)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character in the encoded message with its corresponding original index from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Now, sort fenceMsg by the original index to restore the initial order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	// Preallocate capacity if possible
+	if size > 0 {
+		sb.Grow(utf8.RuneLen(fenceMsg[0].ch) * size)
+	}
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+// exercises/practice/rail-fence-cipher/.meta/example_test.go
+package railfence
+
+import (
+	"testing"
+	"testing/quick"
+)
+
+// testCase defines a single test scenario for Encode and Decode functions.
+// description: short description of the test case.
+// message: the input message or encoded message.
+// rails: the number of rails to use.
+// expected: the expected output after encoding or decoding.
+type testCase struct {
+	description string
+	message     string
+	rails       int
+	expected   string
+}
+
+var encodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WEAREDISCOVEREDFLEEATONCE",
+		rails:       3,
+		expected:   "WECRLTEERDSOEEFEAOCAIVDEN",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+var decodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WECRLTEERDSOEEFEAOCAIVDEN",
+		rails:       3,
+		expected:   "WEAREDISCOVEREDFLEEATONCE",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+// testCases is a helper to run test cases for a given function (Encode or Decode).
+func testCases(name string, op func(string, int) string, cases []testCase, t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := op(tc.message, tc.rails); actual != tc.expected {
+				t.Fatalf("%s(%q, %d)\n got: %q\nwant: %q", name, tc.message, tc.rails, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// runBenchmark is a helper to run benchmarks for a given function (Encode or Decode).
+func runBenchmark(op func(string, int) string, cases []testCase, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range cases {
+			op(tc.message, tc.rails)
+		}
+	}
+}
+
+// TestEncode runs test cases for the Encode function.
+func TestEncode(t *testing.T) {
+	testCases("Encode", Encode, encodeTests, t)
+}
+
+// TestDecode runs test cases for the Decode function.
+func TestDecode(t *testing.T) {
+	testCases("Decode", Decode, decodeTests, t)
+}
+
+// BenchmarkEncode benchmarks the Encode function.
+func BenchmarkEncode(b *testing.B) { runBenchmark(Encode, encodeTests, b) }
+
+// BenchmarkDecode benchmarks the Decode function.
+func BenchmarkDecode(b *testing.B) { runBenchmark(Decode, decodeTests, b) }
+
+// TestEncodeDecodeInverse uses quick.Check to verify that for any message and rails >= 2,
+// decoding the encoded message returns the original message.
+func TestEncodeDecodeInverse(t *testing.T) {
+	testFunc := func(message string, rails int) bool {
+		if rails < 2 {
+			rails = 2
+		}
+		encoded := Encode(message, rails)
+		decoded := Decode(encoded, rails)
+		return message == decoded
+	}
+	if err := quick.Check(testFunc, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher.go:116:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+// It is used to map characters to their positions in the rail fence pattern.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+// The pattern is built as a zig-zag: 0,1,...,rails-1, rails-2,...,1 and then repeated.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build upward sequence: 0 to rails-1
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		// Build downward sequence: rails-2 down to 1
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails,
+// then reads row by row to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Create a copy of fence for sorting by rail order
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Build the encoded message by reading characters as per sorted fence positions
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes a message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern and maps the characters back to their original positions.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Create a copy of fence and sort it by rail order to mimic how characters were read during encoding
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character from the encoded message with its original index from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Sort the pairs by original index to reconstruct the message
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	if size > 0 {
+		sb.Grow(utf8.RuneLen(fenceMsg[0].ch) * size)
+	}
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+// exercises/practice/rail-fence-cipher/.meta/example_test.go
+package railfence
+
+import (
+	"testing"
+	"testing/quick"
+)
+
+// testCase defines a single test scenario for Encode and Decode functions.
+// description: short description of the test case.
+// message: the input message or encoded message.
+// rails: the number of rails to use.
+// expected: the expected output after encoding or decoding.
+type testCase struct {
+	description string
+	message     string
+	rails       int
+	expected   string
+}
+
+var encodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WEAREDISCOVEREDFLEEATONCE",
+		rails:       3,
+		expected:   "WECRLTEERDSOEEFEAOCAIVDEN",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+var decodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WECRLTEERDSOEEFEAOCAIVDEN",
+		rails:       3,
+		expected:   "WEAREDISCOVEREDFLEEATONCE",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+// testCases is a helper to run test cases for a given function (Encode or Decode).
+func testCases(name string, op func(string, int) string, cases []testCase, t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := op(tc.message, tc.rails); actual != tc.expected {
+				t.Fatalf("%s(%q, %d)\n got: %q\nwant: %q", name, tc.message, tc.rails, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// runBenchmark is a helper to run benchmarks for a given function (Encode or Decode).
+func runBenchmark(op func(string, int) string, cases []testCase, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range cases {
+			op(tc.message, tc.rails)
+		}
+	}
+}
+
+// TestEncode runs test cases for the Encode function.
+func TestEncode(t *testing.T) {
+	testCases("Encode", Encode, encodeTests, t)
+}
+
+// TestDecode runs test cases for the Decode function.
+func TestDecode(t *testing.T) {
+	testCases("Decode", Decode, decodeTests, t)
+}
+
+// BenchmarkEncode benchmarks the Encode function.
+func BenchmarkEncode(b *testing.B) { runBenchmark(Encode, encodeTests, b) }
+
+// BenchmarkDecode benchmarks the Decode function.
+func BenchmarkDecode(b *testing.B) { runBenchmark(Decode, decodeTests, b) }
+
+// TestEncodeDecodeInverse uses quick.Check to verify that for any message and rails >= 2,
+// decoding the encoded message returns the original message.
+func TestEncodeDecodeInverse(t *testing.T) {
+	testFunc := func(message string, rails int) bool {
+		if rails < 2 {
+			rails = 2
+		}
+		encoded := Encode(message, rails)
+		decoded := Decode(encoded, rails)
+		return message == decoded
+	}
+	if err := quick.Check(testFunc, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher.go:115:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+// It is used to map characters to their positions in the rail fence pattern.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+// The pattern is built as a zig-zag: 0, 1, ..., rails-1, rails-2, ..., 1 and then repeated.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build upward sequence: 0 to rails-1
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		// Build downward sequence: rails-2 down to 1
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails
+// and then reads the characters row by row to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Create a copy of the fence pattern and sort it by rail and then by index
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Build the encoded message by taking characters in the order of sorted fence positions
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes a message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern and maps the characters back to their original positions
+// to return the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Create a sorted copy of the fence pattern by rail order (and index within the rail)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character from the encoded message with its corresponding original index from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Sort the pairs by the original index to reconstruct the message in its original order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	if size > 0 {
+		sb.Grow(utf8.RuneLen(fenceMsg[0].ch) * size)
+	}
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+// exercises/practice/rail-fence-cipher/.meta/example_test.go
+package railfence
+
+import (
+	"testing"
+	"testing/quick"
+)
+
+// testCase defines a single test scenario for the Encode and Decode functions.
+// description: a short description of the test case.
+// message: the input message (or encoded message for decoding).
+// rails: the number of rails used in the cipher.
+// expected: the expected output after encoding or decoding.
+type testCase struct {
+	description string
+	message     string
+	rails       int
+	expected   string
+}
+
+var encodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WEAREDISCOVEREDFLEEATONCE",
+		rails:       3,
+		expected:   "WECRLTEERDSOEEFEAOCAIVDEN",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+var decodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WECRLTEERDSOEEFEAOCAIVDEN",
+		rails:       3,
+		expected:   "WEAREDISCOVEREDFLEEATONCE",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+// testCases is a helper to run test cases for either the Encode or Decode function.
+func testCases(name string, op func(string, int) string, cases []testCase, t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := op(tc.message, tc.rails); actual != tc.expected {
+				t.Fatalf("%s(%q, %d)\n got: %q\nwant: %q", name, tc.message, tc.rails, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// runBenchmark is a helper to run benchmarks for either the Encode or Decode function.
+func runBenchmark(op func(string, int) string, cases []testCase, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range cases {
+			op(tc.message, tc.rails)
+		}
+	}
+}
+
+// TestEncode runs test cases for the Encode function.
+func TestEncode(t *testing.T) {
+	testCases("Encode", Encode, encodeTests, t)
+}
+
+// TestDecode runs test cases for the Decode function.
+func TestDecode(t *testing.T) {
+	testCases("Decode", Decode, decodeTests, t)
+}
+
+// BenchmarkEncode benchmarks the Encode function.
+func BenchmarkEncode(b *testing.B) { runBenchmark(Encode, encodeTests, b) }
+
+// BenchmarkDecode benchmarks the Decode function.
+func BenchmarkDecode(b *testing.B) { runBenchmark(Decode, decodeTests, b) }
+
+// TestEncodeDecodeInverse uses quick.Check to verify that for any message and rails >= 2,
+// decoding an encoded message returns the original message.
+func TestEncodeDecodeInverse(t *testing.T) {
+	testFunc := func(message string, rails int) bool {
+		if rails < 2 {
+			rails = 2
+		}
+		encoded := Encode(message, rails)
+		decoded := Decode(encoded, rails)
+		return message == decoded
+	}
+	if err := quick.Check(testFunc, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher.go:116:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+// It is used to map characters to their positions in the rail fence pattern.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+// The pattern is built as a zig-zag: 0, 1, ..., rails-1, rails-2, ..., 1 and then repeated.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build upward sequence: 0 to rails-1
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		// Build downward sequence: rails-2 down to 1
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails
+// and then reads the characters row by row to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Create a copy of the fence pattern and sort it by rail and then by index
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Build the encoded message by taking characters in the order of sorted fence positions
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes a message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern and maps the characters back to their original positions
+// to return the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Create a sorted copy of the fence pattern by rail order (and index within the rail)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character from the encoded message with its corresponding original index from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Sort the pairs by the original index to reconstruct the message in its original order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	if size > 0 {
+		sb.Grow(utf8.RuneLen(fenceMsg[0].ch) * size)
+	}
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher_test.go:8:10: undefined: testCase
+./rail_fence_cipher_test.go:19:56: undefined: testCase
+./rail_fence_cipher_test.go:30:61: undefined: encodeTests
+./rail_fence_cipher_test.go:31:61: undefined: decodeTests
+./rail_fence_cipher_test.go:33:59: undefined: encodeTests
+./rail_fence_cipher_test.go:34:59: undefined: decodeTests
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+// It is used to map characters to their positions in the rail fence pattern.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+// The pattern is built as a zig-zag: 0, 1, ..., rails-1, rails-2, ..., 1 and then repeated.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build upward sequence: 0 to rails-1
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		// Build downward sequence: rails-2 down to 1
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails
+// and then reads the characters row by row to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Create a copy of the fence pattern and sort it by rail and then by index
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Build the encoded message by taking characters in the order of sorted fence positions
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes a message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern and maps the characters back to their original positions
+// to return the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Create a sorted copy of the fence pattern by rail order (and index within the rail)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character from the encoded message with its corresponding original index from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Sort the pairs by the original index to reconstruct the message in its original order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	if size > 0 {
+		sb.Grow(utf8.RuneLen(fenceMsg[0].ch) * size)
+	}
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher_test.go:8:10: undefined: testCase
+./rail_fence_cipher_test.go:19:56: undefined: testCase
+./rail_fence_cipher_test.go:30:61: undefined: encodeTests
+./rail_fence_cipher_test.go:31:61: undefined: decodeTests
+./rail_fence_cipher_test.go:33:59: undefined: encodeTests
+./rail_fence_cipher_test.go:34:59: undefined: decodeTests
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+// It is used to map characters to their positions in the rail fence pattern.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+// The pattern is built as a zig-zag: 0, 1, ..., rails-1, rails-2, ..., 1 and then repeated.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build upward sequence: 0 to rails-1
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		// Build downward sequence: rails-2 down to 1
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails
+// and then reads the characters row by row to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Create a copy of the fence pattern and sort it by rail and then by index
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Build the encoded message by taking characters in the order of sorted fence positions
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes a message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern and maps the characters back to their original positions
+// to return the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Create a sorted copy of the fence pattern by rail order (and index within the rail)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character from the encoded message with its corresponding original index from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Sort the pairs by the original index to reconstruct the message in its original order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	if size > 0 {
+		sb.Grow(utf8.RuneLen(fenceMsg[0].ch) * size)
+	}
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher_test.go:8:10: undefined: testCase
+./rail_fence_cipher_test.go:19:56: undefined: testCase
+./rail_fence_cipher_test.go:30:61: undefined: encodeTests
+./rail_fence_cipher_test.go:31:61: undefined: decodeTests
+./rail_fence_cipher_test.go:33:59: undefined: encodeTests
+./rail_fence_cipher_test.go:34:59: undefined: decodeTests
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+// It is used to map characters to their positions in the rail fence pattern.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+// The pattern is built as a zig-zag: 0, 1, ..., rails-1, rails-2, ..., 1 and then repeated.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build upward sequence: 0 to rails-1
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		// Build downward sequence: rails-2 down to 1
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails
+// and then reads the characters row by row to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Create a copy of the fence pattern and sort it by rail and then by index
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Build the encoded message by taking characters in the order of sorted fence positions
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes a message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern and maps the characters back to their original positions
+// to return the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Create a sorted copy of the fence pattern by rail order (and index within the rail)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character from the encoded message with its corresponding original index from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Sort the pairs by the original index to reconstruct the message in its original order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	if size > 0 {
+		sb.Grow(utf8.RuneLen(fenceMsg[0].ch) * size)
+	}
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+// exercises/practice/rail-fence-cipher/.meta/example_test.go
+package railfence
+
+import (
+	"testing"
+	"testing/quick"
+)
+
+// testCase defines a single test scenario for the Encode and Decode functions.
+// description: a short description of the test case.
+// message: the input message (or encoded message for decoding).
+// rails: the number of rails used in the cipher.
+// expected: the expected output after encoding or decoding.
+type testCase struct {
+	description string
+	message     string
+	rails       int
+	expected   string
+}
+
+var encodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WEAREDISCOVEREDFLEEATONCE",
+		rails:       3,
+		expected:   "WECRLTEERDSOEEFEAOCAIVDEN",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+var decodeTests = []testCase{
+	{
+		description: "Rail fence cipher example",
+		message:     "WECRLTEERDSOEEFEAOCAIVDEN",
+		rails:       3,
+		expected:   "WEAREDISCOVEREDFLEEATONCE",
+	},
+	{
+		description: "Empty string",
+		message:     "",
+		rails:       3,
+		expected:   "",
+	},
+	{
+		description: "Single rail - no change",
+		message:     "HELLOWORLD",
+		rails:       1,
+		expected:   "HELLOWORLD",
+	},
+}
+
+// testCases is a helper to run test cases for either the Encode or Decode function.
+func testCasesFunc(name string, op func(string, int) string, cases []testCase, t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := op(tc.message, tc.rails); actual != tc.expected {
+				 t.Fatalf("%s(%q, %d)\n got: %q\nwant: %q", name, tc.message, tc.rails, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// runBenchmark is a helper to run benchmarks for either the Encode or Decode function.
+func runBenchmarkFunc(op func(string, int) string, cases []testCase, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range cases {
+			op(tc.message, tc.rails)
+		}
+	}
+}
+
+// TestEncode runs test cases for the Encode function.
+func TestEncode(t *testing.T) {
+	testCasesFunc("Encode", Encode, encodeTests, t)
+}
+
+// TestDecode runs test cases for the Decode function.
+func TestDecode(t *testing.T) {
+	testCasesFunc("Decode", Decode, decodeTests, t)
+}
+
+// BenchmarkEncode benchmarks the Encode function.
+func BenchmarkEncode(b *testing.B) { runBenchmarkFunc(Encode, encodeTests, b) }
+
+// BenchmarkDecode benchmarks the Decode function.
+func BenchmarkDecode(b *testing.B) { runBenchmarkFunc(Decode, decodeTests, b) }
+
+// TestEncodeDecodeInverse uses quick.Check to verify that for any message and rails >= 2,
+// decoding an encoded message returns the original message.
+func TestEncodeDecodeInverse(t *testing.T) {
+	testFunc := func(message string, rails int) bool {
+		if rails < 2 {
+			rails = 2
+		}
+		encoded := Encode(message, rails)
+		decoded := Decode(encoded, rails)
+		return message == decoded
+	}
+	if err := quick.Check(testFunc, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher.go:116:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+// It is used to map characters to their positions in the rail fence pattern.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+// The pattern is built as a zig-zag: 0, 1, ..., rails-1, rails-2, ..., 1 and then repeated.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build upward sequence: 0 to rails-1
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		// Build downward sequence: rails-2 down to 1
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails
+// and then reads the characters row by row to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Create a copy of the fence pattern and sort it by rail and then by index
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Build the encoded message by taking characters in the order of sorted fence positions
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes a message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern and maps the characters back to their original positions
+// to return the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Create a sorted copy of the fence pattern by rail order (and index within the rail)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character from the encoded message with its corresponding original index from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Sort the pairs by the original index to reconstruct the message in its original order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	if size > 0 {
+		sb.Grow(utf8.RuneLen(fenceMsg[0].ch) * size)
+	}
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher_test.go:8:10: undefined: testCase
+./rail_fence_cipher_test.go:19:56: undefined: testCase
+./rail_fence_cipher_test.go:30:61: undefined: encodeTests
+./rail_fence_cipher_test.go:31:61: undefined: decodeTests
+./rail_fence_cipher_test.go:33:59: undefined: encodeTests
+./rail_fence_cipher_test.go:34:59: undefined: decodeTests
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// railIndex represents a pair of rail number and the original position index.
+// It is used to map characters to their positions in the rail fence pattern.
+type railIndex struct {
+	rail  int
+	index int
+}
+
+// fencePattern generates the rail fence pattern for the given number of rails and message size.
+// It returns a slice of railIndex where each element contains the rail number and the original index.
+// The pattern is built as a zig-zag: 0, 1, ..., rails-1, rails-2, ..., 1 and then repeated.
+func fencePattern(rails, size int) []railIndex {
+	pattern := []int{}
+	if rails <= 1 {
+		pattern = []int{0}
+	} else {
+		// Build upward sequence: 0 to rails-1
+		for i := 0; i < rails; i++ {
+			pattern = append(pattern, i)
+		}
+		// Build downward sequence: rails-2 down to 1
+		for i := rails - 2; i >= 1; i-- {
+			pattern = append(pattern, i)
+		}
+	}
+
+	result := make([]railIndex, size)
+	plen := len(pattern)
+	for i := 0; i < size; i++ {
+		rail := pattern[i%plen]
+		result[i] = railIndex{rail: rail, index: i}
+	}
+	return result
+}
+
+// Encode encodes the message using the Rail Fence cipher.
+// It arranges the message characters in a zig-zag pattern across the specified number of rails,
+// then reads the characters row by row to produce the encoded string.
+func Encode(message string, rails int) string {
+	runes := []rune(message)
+	fence := fencePattern(rails, len(runes))
+
+	// Create a copy of the fence pattern and sort it by rail and then by index
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Build the encoded message by taking characters in the order of sorted fence positions
+	encodedRunes := make([]rune, len(runes))
+	for i, pair := range sortedFence {
+		encodedRunes[i] = runes[pair.index]
+	}
+
+	return string(encodedRunes)
+}
+
+// Decode decodes a message encoded with the Rail Fence cipher.
+// It reconstructs the rail fence pattern and maps the characters back to their original positions
+// to return the decoded message.
+func Decode(message string, rails int) string {
+	runes := []rune(message)
+	size := len(runes)
+	fence := fencePattern(rails, size)
+
+	// Create a sorted copy of the fence pattern by rail order (and index within the rail)
+	sortedFence := make([]railIndex, len(fence))
+	copy(sortedFence, fence)
+	sort.Slice(sortedFence, func(i, j int) bool {
+		if sortedFence[i].rail == sortedFence[j].rail {
+			return sortedFence[i].index < sortedFence[j].index
+		}
+		return sortedFence[i].rail < sortedFence[j].rail
+	})
+
+	// Pair each character from the encoded message with its corresponding original index from sortedFence
+	type charWithPos struct {
+		ch  rune
+		pos int
+	}
+	fenceMsg := make([]charWithPos, size)
+	for i, pair := range sortedFence {
+		fenceMsg[i] = charWithPos{ch: runes[i], pos: pair.index}
+	}
+
+	// Sort the pairs by the original index to reconstruct the message in its original order
+	sort.Slice(fenceMsg, func(i, j int) bool {
+		return fenceMsg[i].pos < fenceMsg[j].pos
+	})
+
+	// Build the decoded message
+	var sb strings.Builder
+	if size > 0 {
+		sb.Grow(utf8.RuneLen(fenceMsg[0].ch) * size)
+	}
+	for _, item := range fenceMsg {
+		sb.WriteRune(item.ch)
+	}
+
+	return sb.String()
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/rail-fence-cipher [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/rail-fence-cipher [exercism/rail-fence-cipher.test]
+./rail_fence_cipher_test.go:8:10: undefined: testCase
+./rail_fence_cipher_test.go:19:56: undefined: testCase
+./rail_fence_cipher_test.go:30:61: undefined: encodeTests
+./rail_fence_cipher_test.go:31:61: undefined: decodeTests
+./rail_fence_cipher_test.go:33:59: undefined: encodeTests
+./rail_fence_cipher_test.go:34:59: undefined: decodeTests
+
+
+=== FINAL STATUS: FAILED ===

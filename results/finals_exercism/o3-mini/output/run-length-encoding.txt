@@ -1,0 +1,2072 @@
+=== Initial Source Code ===
+Source file: exercises/practice/run-length-encoding/.meta/example.py
+from itertools import groupby
+from re import sub
+
+
+def decode(string):
+    return sub(r'(\d+)(\D)', lambda main: main.group(2) * int(main.group(1)), string)
+
+
+def encode(string):
+    def single_helper(key, group):
+        size = len(list(group))
+        return key if size == 1 else str(size) + key
+    return ''.join(single_helper(key, group) for key, group in groupby(string))
+
+
+=== Source Interface ===
+def decode(string):
+    pass
+
+
+def encode(string):
+    pass
+
+
+=== Target Interface ===
+package encode
+
+func RunLengthEncode(input string) string {
+	panic("Please implement the RunLengthEncode function")
+}
+
+func RunLengthDecode(input string) string {
+	panic("Please implement the RunLengthDecode function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/run-length-encoding/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from run_length_encoding import (
+    encode,
+    decode,
+)
+
+
+class RunLengthEncodingTest(unittest.TestCase):
+    def test_encode_empty_string(self):
+        self.assertMultiLineEqual(encode(""), "")
+
+    def test_encode_single_characters_only_are_encoded_without_count(self):
+        self.assertMultiLineEqual(encode("XYZ"), "XYZ")
+
+    def test_encode_string_with_no_single_characters(self):
+        self.assertMultiLineEqual(encode("AABBBCCCC"), "2A3B4C")
+
+    def test_encode_single_characters_mixed_with_repeated_characters(self):
+        self.assertMultiLineEqual(
+            encode("WWWWWWWWWWWWBWWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWB"),
+            "12WB12W3B24WB",
+        )
+
+    def test_encode_multiple_whitespace_mixed_in_string(self):
+        self.assertMultiLineEqual(encode("  hsqq qww  "), "2 hs2q q2w2 ")
+
+    def test_encode_lowercase_characters(self):
+        self.assertMultiLineEqual(encode("aabbbcccc"), "2a3b4c")
+
+    def test_decode_empty_string(self):
+        self.assertMultiLineEqual(decode(""), "")
+
+    def test_decode_single_characters_only(self):
+        self.assertMultiLineEqual(decode("XYZ"), "XYZ")
+
+    def test_decode_string_with_no_single_characters(self):
+        self.assertMultiLineEqual(decode("2A3B4C"), "AABBBCCCC")
+
+    def test_decode_single_characters_with_repeated_characters(self):
+        self.assertMultiLineEqual(
+            decode("12WB12W3B24WB"),
+            "WWWWWWWWWWWWBWWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWB",
+        )
+
+    def test_decode_multiple_whitespace_mixed_in_string(self):
+        self.assertMultiLineEqual(decode("2 hs2q q2w2 "), "  hsqq qww  ")
+
+    def test_decode_lowercase_string(self):
+        self.assertMultiLineEqual(decode("2a3b4c"), "aabbbcccc")
+
+    def test_encode_followed_by_decode_gives_original_string(self):
+        self.assertMultiLineEqual(decode(encode("zzz ZZ  zZ")), "zzz ZZ  zZ")
+
+
+=== Target Test Code ===
+package encode
+
+import "testing"
+
+func TestRunLengthEncode(t *testing.T) {
+	for _, tc := range encodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthEncode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthEncode(%q) = %q, want:%q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+func TestRunLengthDecode(t *testing.T) {
+	for _, tc := range decodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthDecode(%q) = %q, want:%q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+func TestRunLengthEncodeDecode(t *testing.T) {
+	for _, tc := range encodeDecodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(RunLengthEncode(tc.input)); actual != tc.expected {
+				t.Errorf("RunLengthDecode(RunLengthEncode(%q)) = %q, want:%q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRunLengthEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range encodeTests {
+			RunLengthEncode(test.input)
+		}
+	}
+}
+
+func BenchmarkRunLengthDecode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range decodeTests {
+			RunLengthDecode(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of a number followed by a non-digit with that non-digit repeated number times.
+func RunLengthDecode(input string) string {
+	re := regexp.MustCompile(` + "\"(\\d+)(\\D)\"" + `)
+	// Replace all matches with expanded characters
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1, the character is kept as is,
+// otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	
+	return sb.String()
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package encode
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Compile the regex to capture one or more digits followed by a character
+	re := regexp.MustCompile(` + "(\\d+)(\\D)` + `)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+// exercises/practice/run-length-encoding/.meta/example_test.go
+package encode
+
+import (
+	"testing"
+)
+
+// Define test cases for RunLengthEncode
+var encodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no encoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple encoding",
+		input:       "AABBBCCCC",
+		expected:   "2A3B4C",
+	},
+	{
+		description: "mixed encoding",
+		input:       "AAAABBBCCDAA",
+		expected:   "4A3B2CD2A",
+	},
+}
+
+// Define test cases for RunLengthDecode
+var decodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no decoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple decoding",
+		input:       "4A3B2CD2A",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+// Define test cases for encode-decode roundtrip
+var encodeDecodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string roundtrip",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "single characters roundtrip",
+		input:       "ABCDEF",
+		expected:   "ABCDEF",
+	},
+	{
+		description: "repeated characters roundtrip",
+		input:       "AAABBBCCC",
+		expected:   "AAABBBCCC",
+	},
+	{
+		description: "mixed roundtrip",
+		input:       "AAAABBBCCDAA",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+func TestRunLengthEncode(t *testing.T) {
+	for _, tc := range encodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthEncode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthEncode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthDecode(t *testing.T) {
+	for _, tc := range decodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthDecode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthEncodeDecode(t *testing.T) {
+	for _, tc := range encodeDecodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(RunLengthEncode(tc.input)); actual != tc.expected {
+				t.Errorf("RunLengthDecode(RunLengthEncode(%q)) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRunLengthEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range encodeTests {
+			RunLengthEncode(tc.input)
+		}
+	}
+}
+
+func BenchmarkRunLengthDecode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range decodeTests {
+			RunLengthDecode(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/run-length-encoding [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/run-length-encoding [exercism/run-length-encoding.test]
+./run_length_encoding.go:15:47: string not terminated
+./run_length_encoding.go:202:1: syntax error: unexpected EOF in argument list; possibly missing comma or )
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Use a regex that matches one or more digits followed by a non-digit character
+	re := regexp.MustCompile(` + "([0-9]+)([^0-9])" + `)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+// exercises/practice/run-length-encoding/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// Test cases for RunLengthEncode
+var encodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no encoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple encoding",
+		input:       "AABBBCCCC",
+		expected:   "2A3B4C",
+	},
+	{
+		description: "mixed encoding",
+		input:       "AAAABBBCCDAA",
+		expected:   "4A3B2CD2A",
+	},
+}
+
+// Test cases for RunLengthDecode
+var decodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no decoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple decoding",
+		input:       "4A3B2CD2A",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+// Test cases for encode-decode roundtrip
+var encodeDecodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string roundtrip",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "single characters roundtrip",
+		input:       "ABCDEF",
+		expected:   "ABCDEF",
+	},
+	{
+		description: "repeated characters roundtrip",
+		input:       "AAABBBCCC",
+		expected:   "AAABBBCCC",
+	},
+	{
+		description: "mixed roundtrip",
+		input:       "AAAABBBCCDAA",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+func TestRunLengthEncode(t *testing.T) {
+	for _, tc := range encodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthEncode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthEncode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthDecode(t *testing.T) {
+	for _, tc := range decodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthDecode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthEncodeDecode(t *testing.T) {
+	for _, tc := range encodeDecodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(RunLengthEncode(tc.input)); actual != tc.expected {
+				t.Errorf("RunLengthDecode(RunLengthEncode(%q)) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRunLengthEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range encodeTests {
+			RunLengthEncode(tc.input)
+		}
+	}
+}
+
+func BenchmarkRunLengthDecode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range decodeTests {
+			RunLengthDecode(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Use a regex that matches one or more digits followed by a non-digit character
+	re := regexp.MustCompile(` + "([0-9]+)([^0-9])" + `)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+// exercises/practice/run-length-encoding/run_length_encoding_test.go
+package meta
+
+import "testing"
+
+// Test cases for RunLengthEncode
+var encodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no encoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple encoding",
+		input:       "AABBBCCCC",
+		expected:   "2A3B4C",
+	},
+	{
+		description: "mixed encoding",
+		input:       "AAAABBBCCDAA",
+		expected:   "4A3B2CD2A",
+	},
+}
+
+// Test cases for RunLengthDecode
+var decodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no decoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple decoding",
+		input:       "4A3B2CD2A",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+// Test cases for encode-decode roundtrip
+var encodeDecodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string roundtrip",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "single characters roundtrip",
+		input:       "ABCDEF",
+		expected:   "ABCDEF",
+	},
+	{
+		description: "repeated characters roundtrip",
+		input:       "AAABBBCCC",
+		expected:   "AAABBBCCC",
+	},
+	{
+		description: "mixed roundtrip",
+		input:       "AAAABBBCCDAA",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+func TestRunLengthEncode(t *testing.T) {
+	for _, tc := range encodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthEncode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthEncode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthDecode(t *testing.T) {
+	for _, tc := range decodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthDecode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthEncodeDecode(t *testing.T) {
+	for _, tc := range encodeDecodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(RunLengthEncode(tc.input)); actual != tc.expected {
+				t.Errorf("RunLengthDecode(RunLengthEncode(%q)) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRunLengthEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range encodeTests {
+			RunLengthEncode(tc.input)
+		}
+	}
+}
+
+func BenchmarkRunLengthDecode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range decodeTests {
+			RunLengthDecode(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Use a regex that matches one or more digits followed by a non-digit character
+	re := regexp.MustCompile(` + "([0-9]+)([^0-9])" + `)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+// exercises/practice/run-length-encoding/.meta/example_test.go
+package meta
+
+import "testing"
+
+// Test cases for RunLengthEncode
+var encodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no encoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple encoding",
+		input:       "AABBBCCCC",
+		expected:   "2A3B4C",
+	},
+	{
+		description: "mixed encoding",
+		input:       "AAAABBBCCDAA",
+		expected:   "4A3B2CD2A",
+	},
+}
+
+// Test cases for RunLengthDecode
+var decodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no decoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple decoding",
+		input:       "4A3B2CD2A",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+// Test cases for encode-decode roundtrip
+var encodeDecodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string roundtrip",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "single characters roundtrip",
+		input:       "ABCDEF",
+		expected:   "ABCDEF",
+	},
+	{
+		description: "repeated characters roundtrip",
+		input:       "AAABBBCCC",
+		expected:   "AAABBBCCC",
+	},
+	{
+		description: "mixed roundtrip",
+		input:       "AAAABBBCCDAA",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+func TestRunLengthEncode(t *testing.T) {
+	for _, tc := range encodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthEncode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthEncode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthDecode(t *testing.T) {
+	for _, tc := range decodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthDecode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthEncodeDecode(t *testing.T) {
+	for _, tc := range encodeDecodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(RunLengthEncode(tc.input)); actual != tc.expected {
+				t.Errorf("RunLengthDecode(RunLengthEncode(%q)) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRunLengthEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range encodeTests {
+			RunLengthEncode(tc.input)
+		}
+	}
+}
+
+func BenchmarkRunLengthDecode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range decodeTests {
+			RunLengthDecode(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Use a regex that matches one or more digits followed by a non-digit character
+	re := regexp.MustCompile(`([0-9]+)([^0-9])`)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+// exercises/practice/run-length-encoding/.meta/example_test.go
+package meta
+
+import "testing"
+
+// Test cases for RunLengthEncode
+var encodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no encoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple encoding",
+		input:       "AABBBCCCC",
+		expected:   "2A3B4C",
+	},
+	{
+		description: "mixed encoding",
+		input:       "AAAABBBCCDAA",
+		expected:   "4A3B2CD2A",
+	},
+}
+
+// Test cases for RunLengthDecode
+var decodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no decoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple decoding",
+		input:       "4A3B2CD2A",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+// Test cases for encode-decode roundtrip
+var encodeDecodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string roundtrip",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "single characters roundtrip",
+		input:       "ABCDEF",
+		expected:   "ABCDEF",
+	},
+	{
+		description: "repeated characters roundtrip",
+		input:       "AAABBBCCC",
+		expected:   "AAABBBCCC",
+	},
+	{
+		description: "mixed roundtrip",
+		input:       "AAAABBBCCDAA",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+func TestRunLengthEncode(t *testing.T) {
+	for _, tc := range encodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthEncode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthEncode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthDecode(t *testing.T) {
+	for _, tc := range decodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthDecode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthEncodeDecode(t *testing.T) {
+	for _, tc := range encodeDecodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(RunLengthEncode(tc.input)); actual != tc.expected {
+				t.Errorf("RunLengthDecode(RunLengthEncode(%q)) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRunLengthEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range encodeTests {
+			RunLengthEncode(tc.input)
+		}
+	}
+}
+
+func BenchmarkRunLengthDecode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range decodeTests {
+			RunLengthDecode(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Use a regex that matches one or more digits followed by a non-digit character
+	re := regexp.MustCompile(` + "([0-9]+)([^0-9])" + `)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+// exercises/practice/run-length-encoding/.meta/example_test.go
+package meta
+
+import "testing"
+
+// Test cases for RunLengthEncode
+var encodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no encoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple encoding",
+		input:       "AABBBCCCC",
+		expected:   "2A3B4C",
+	},
+	{
+		description: "mixed encoding",
+		input:       "AAAABBBCCDAA",
+		expected:   "4A3B2CD2A",
+	},
+}
+
+// Test cases for RunLengthDecode
+var decodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no decoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple decoding",
+		input:       "4A3B2CD2A",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+// Test cases for encode-decode roundtrip
+var encodeDecodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string roundtrip",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "single characters roundtrip",
+		input:       "ABCDEF",
+		expected:   "ABCDEF",
+	},
+	{
+		description: "repeated characters roundtrip",
+		input:       "AAABBBCCC",
+		expected:   "AAABBBCCC",
+	},
+	{
+		description: "mixed roundtrip",
+		input:       "AAAABBBCCDAA",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+func TestRunLengthEncode(t *testing.T) {
+	for _, tc := range encodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthEncode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthEncode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthDecode(t *testing.T) {
+	for _, tc := range decodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthDecode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthEncodeDecode(t *testing.T) {
+	for _, tc := range encodeDecodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(RunLengthEncode(tc.input)); actual != tc.expected {
+				t.Errorf("RunLengthDecode(RunLengthEncode(%q)) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRunLengthEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range encodeTests {
+			RunLengthEncode(tc.input)
+		}
+	}
+}
+
+func BenchmarkRunLengthDecode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range decodeTests {
+			RunLengthDecode(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Use a regex that matches one or more digits followed by a non-digit character
+	re := regexp.MustCompile(` + "([0-9]+)([^0-9])" + `)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+// exercises/practice/run-length-encoding/.meta/example_test.go
+package meta
+
+import "testing"
+
+// Test cases for RunLengthEncode
+var encodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no encoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple encoding",
+		input:       "AABBBCCCC",
+		expected:   "2A3B4C",
+	},
+	{
+		description: "mixed encoding",
+		input:       "AAAABBBCCDAA",
+		expected:   "4A3B2CD2A",
+	},
+}
+
+// Test cases for RunLengthDecode
+var decodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no decoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple decoding",
+		input:       "4A3B2CD2A",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+// Test cases for encode-decode roundtrip
+var encodeDecodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string roundtrip",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "single characters roundtrip",
+		input:       "ABCDEF",
+		expected:   "ABCDEF",
+	},
+	{
+		description: "repeated characters roundtrip",
+		input:       "AAABBBCCC",
+		expected:   "AAABBBCCC",
+	},
+	{
+		description: "mixed roundtrip",
+		input:       "AAAABBBCCDAA",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+func TestRunLengthEncode(t *testing.T) {
+	for _, tc := range encodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthEncode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthEncode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthDecode(t *testing.T) {
+	for _, tc := range decodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthDecode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthEncodeDecode(t *testing.T) {
+	for _, tc := range encodeDecodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(RunLengthEncode(tc.input)); actual != tc.expected {
+				t.Errorf("RunLengthDecode(RunLengthEncode(%q)) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRunLengthEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range encodeTests {
+			RunLengthEncode(tc.input)
+		}
+	}
+}
+
+func BenchmarkRunLengthDecode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range decodeTests {
+			RunLengthDecode(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Use a regex that matches one or more digits followed by a non-digit character
+	re := regexp.MustCompile(` + "([0-9]+)([^0-9])" + `)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Use a regex that matches one or more digits followed by a non-digit character
+	re := regexp.MustCompile(` + "([0-9]+)([^0-9])" + `)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/run-length-encoding/.meta/example.go
+package meta
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// RunLengthDecode decodes a run-length encoded string.
+// It replaces each occurrence of one or more digits followed by a non-digit
+// with that non-digit repeated the specified number of times.
+func RunLengthDecode(input string) string {
+	// Compile a regex that matches one or more digits followed by a non-digit character
+	re := regexp.MustCompile(` + "([0-9]+)([^0-9])" + `)
+	// Replace all matches with the decoded string
+	return re.ReplaceAllStringFunc(input, func(match string) string {
+		groups := re.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return ""
+		}
+		count, err := strconv.Atoi(groups[1])
+		if err != nil {
+			return ""
+		}
+		return strings.Repeat(groups[2], count)
+	})
+}
+
+// RunLengthEncode performs run-length encoding on the input string.
+// For each group of consecutive identical characters, if the group has a length of 1,
+// the character is kept as is; otherwise, it is represented as count followed by the character.
+func RunLengthEncode(input string) string {
+	if len(input) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	runes := []rune(input)
+	count := 1
+	prev := runes[0]
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+		} else {
+			if count == 1 {
+				sb.WriteRune(prev)
+			} else {
+				sb.WriteString(strconv.Itoa(count))
+				sb.WriteRune(prev)
+			}
+			prev = runes[i]
+			count = 1
+		}
+	}
+	// Append the final group
+	if count == 1 {
+		sb.WriteRune(prev)
+	} else {
+		sb.WriteString(strconv.Itoa(count))
+		sb.WriteRune(prev)
+	}
+	return sb.String()
+}
+
+// exercises/practice/run-length-encoding/.meta/example_test.go
+package meta
+
+import "testing"
+
+// Test cases for RunLengthEncode
+var encodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no encoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple encoding",
+		input:       "AABBBCCCC",
+		expected:   "2A3B4C",
+	},
+	{
+		description: "mixed encoding",
+		input:       "AAAABBBCCDAA",
+		expected:   "4A3B2CD2A",
+	},
+}
+
+// Test cases for RunLengthDecode
+var decodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "no decoding needed",
+		input:       "XYZ",
+		expected:   "XYZ",
+	},
+	{
+		description: "simple decoding",
+		input:       "4A3B2CD2A",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+// Test cases for encode-decode roundtrip
+var encodeDecodeTests = []struct {
+	description string
+	input       string
+	expected   string
+}{
+	{
+		description: "empty string roundtrip",
+		input:       "",
+		expected:   "",
+	},
+	{
+		description: "single characters roundtrip",
+		input:       "ABCDEF",
+		expected:   "ABCDEF",
+	},
+	{
+		description: "repeated characters roundtrip",
+		input:       "AAABBBCCC",
+		expected:   "AAABBBCCC",
+	},
+	{
+		description: "mixed roundtrip",
+		input:       "AAAABBBCCDAA",
+		expected:   "AAAABBBCCDAA",
+	},
+}
+
+func TestRunLengthEncode(t *testing.T) {
+	for _, tc := range encodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthEncode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthEncode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthDecode(t *testing.T) {
+	for _, tc := range decodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(tc.input); actual != tc.expected {
+				t.Errorf("RunLengthDecode(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRunLengthEncodeDecode(t *testing.T) {
+	for _, tc := range encodeDecodeTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := RunLengthDecode(RunLengthEncode(tc.input)); actual != tc.expected {
+				t.Errorf("RunLengthDecode(RunLengthEncode(%q)) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRunLengthEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range encodeTests {
+			RunLengthEncode(tc.input)
+		}
+	}
+}
+
+func BenchmarkRunLengthDecode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range decodeTests {
+			RunLengthDecode(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (run_length_encoding.go) and encode (run_length_encoding_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/run-length-encoding
+
+
+=== FINAL STATUS: FAILED ===

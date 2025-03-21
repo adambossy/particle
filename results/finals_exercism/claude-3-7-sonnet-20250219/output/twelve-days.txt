@@ -1,0 +1,543 @@
+=== Initial Source Code ===
+Source file: exercises/practice/twelve-days/.meta/example.py
+GIFTS = ['twelve Drummers Drumming',
+         'eleven Pipers Piping',
+         'ten Lords-a-Leaping',
+         'nine Ladies Dancing',
+         'eight Maids-a-Milking',
+         'seven Swans-a-Swimming',
+         'six Geese-a-Laying',
+         'five Gold Rings',
+         'four Calling Birds',
+         'three French Hens',
+         'two Turtle Doves',
+         'a Partridge in a Pear Tree']
+
+ORDINAL = [None, 'first', 'second', 'third', 'fourth', 'fifth', 'sixth',
+           'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth']
+
+
+def verse(day_number):
+    gifts = GIFTS[-day_number:]
+
+    if len(gifts) > 1:
+        gifts[:-1] = [', '.join(gifts[:-1])]
+
+    gifts = ', and '.join(gifts)
+    return f'On the {ORDINAL[day_number]} day of Christmas my true love gave to me: {gifts}.'
+
+
+def recite(start, end):
+    return [verse(number) for number in range(start, end + 1)]
+
+
+=== Source Interface ===
+def recite(start_verse, end_verse):
+    pass
+
+
+=== Target Interface ===
+package twelve
+
+func Verse(i int) string {
+	panic("Please implement the Verse function")
+}
+
+func Song() string {
+	panic("Please implement the Song function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/twelve-days/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from twelve_days import (
+    recite,
+)
+
+# PLEASE TAKE NOTE: Expected result lists for these test cases use **implicit line joining.**
+# A new line in a result list below **does not** always equal a new list element.
+# Check comma placement carefully!
+
+
+class TwelveDaysTest(unittest.TestCase):
+    def test_first_day_a_partridge_in_a_pear_tree(self):
+        expected = [
+            "On the first day of Christmas my true love gave to me: "
+            "a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(1, 1), expected)
+
+    def test_second_day_two_turtle_doves(self):
+        expected = [
+            "On the second day of Christmas my true love gave to me: "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(2, 2), expected)
+
+    def test_third_day_three_french_hens(self):
+        expected = [
+            "On the third day of Christmas my true love gave to me: "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(3, 3), expected)
+
+    def test_fourth_day_four_calling_birds(self):
+        expected = [
+            "On the fourth day of Christmas my true love gave to me: "
+            "four Calling Birds, "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(4, 4), expected)
+
+    def test_fifth_day_five_gold_rings(self):
+        expected = [
+            "On the fifth day of Christmas my true love gave to me: "
+            "five Gold Rings, "
+            "four Calling Birds, "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(5, 5), expected)
+
+    def test_sixth_day_six_geese_a_laying(self):
+        expected = [
+            "On the sixth day of Christmas my true love gave to me: "
+            "six Geese-a-Laying, "
+            "five Gold Rings, "
+            "four Calling Birds, "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(6, 6), expected)
+
+    def test_seventh_day_seven_swans_a_swimming(self):
+        expected = [
+            "On the seventh day of Christmas my true love gave to me: "
+            "seven Swans-a-Swimming, "
+            "six Geese-a-Laying, "
+            "five Gold Rings, "
+            "four Calling Birds, "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(7, 7), expected)
+
+    def test_eighth_day_eight_maids_a_milking(self):
+        expected = [
+            "On the eighth day of Christmas my true love gave to me: "
+            "eight Maids-a-Milking, "
+            "seven Swans-a-Swimming, "
+            "six Geese-a-Laying, "
+            "five Gold Rings, "
+            "four Calling Birds, "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(8, 8), expected)
+
+    def test_ninth_day_nine_ladies_dancing(self):
+        expected = [
+            "On the ninth day of Christmas my true love gave to me: "
+            "nine Ladies Dancing, "
+            "eight Maids-a-Milking, "
+            "seven Swans-a-Swimming, "
+            "six Geese-a-Laying, "
+            "five Gold Rings, "
+            "four Calling Birds, "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(9, 9), expected)
+
+    def test_tenth_day_ten_lords_a_leaping(self):
+        expected = [
+            "On the tenth day of Christmas my true love gave to me: "
+            "ten Lords-a-Leaping, "
+            "nine Ladies Dancing, "
+            "eight Maids-a-Milking, "
+            "seven Swans-a-Swimming, "
+            "six Geese-a-Laying, "
+            "five Gold Rings, "
+            "four Calling Birds, "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(10, 10), expected)
+
+    def test_eleventh_day_eleven_pipers_piping(self):
+        expected = [
+            "On the eleventh day of Christmas my true love gave to me: "
+            "eleven Pipers Piping, "
+            "ten Lords-a-Leaping, "
+            "nine Ladies Dancing, "
+            "eight Maids-a-Milking, "
+            "seven Swans-a-Swimming, "
+            "six Geese-a-Laying, "
+            "five Gold Rings, "
+            "four Calling Birds, "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(11, 11), expected)
+
+    def test_twelfth_day_twelve_drummers_drumming(self):
+        expected = [
+            "On the twelfth day of Christmas my true love gave to me: "
+            "twelve Drummers Drumming, "
+            "eleven Pipers Piping, "
+            "ten Lords-a-Leaping, "
+            "nine Ladies Dancing, "
+            "eight Maids-a-Milking, "
+            "seven Swans-a-Swimming, "
+            "six Geese-a-Laying, "
+            "five Gold Rings, "
+            "four Calling Birds, "
+            "three French Hens, "
+            "two Turtle Doves, "
+            "and a Partridge in a Pear Tree."
+        ]
+        self.assertEqual(recite(12, 12), expected)
+
+    def test_recites_first_three_verses_of_the_song(self):
+        expected = [recite(n, n)[0] for n in range(1, 4)]
+        self.assertEqual(recite(1, 3), expected)
+
+    def test_recites_three_verses_from_the_middle_of_the_song(self):
+        expected = [recite(n, n)[0] for n in range(4, 7)]
+        self.assertEqual(recite(4, 6), expected)
+
+    def test_recites_the_whole_song(self):
+        expected = [recite(n, n)[0] for n in range(1, 13)]
+        self.assertEqual(recite(1, 12), expected)
+
+
+=== Target Test Code ===
+package twelve
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+)
+
+type testCase struct {
+	input    int
+	expected string
+}
+
+var testCases = []testCase{
+	{1, "On the first day of Christmas my true love gave to me: a Partridge in a Pear Tree."},
+	{2, "On the second day of Christmas my true love gave to me: two Turtle Doves, and a Partridge in a Pear Tree."},
+	{3, "On the third day of Christmas my true love gave to me: three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+	{4, "On the fourth day of Christmas my true love gave to me: four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+	{5, "On the fifth day of Christmas my true love gave to me: five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+	{6, "On the sixth day of Christmas my true love gave to me: six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+	{7, "On the seventh day of Christmas my true love gave to me: seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+	{8, "On the eighth day of Christmas my true love gave to me: eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+	{9, "On the ninth day of Christmas my true love gave to me: nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+	{10, "On the tenth day of Christmas my true love gave to me: ten Lords-a-Leaping, nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+	{11, "On the eleventh day of Christmas my true love gave to me: eleven Pipers Piping, ten Lords-a-Leaping, nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+	{12, "On the twelfth day of Christmas my true love gave to me: twelve Drummers Drumming, eleven Pipers Piping, ten Lords-a-Leaping, nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."},
+}
+
+// diff compares two multi-line strings and returns a helpful comment
+func diff(got, want string) string {
+	g := strings.Split(got, "\n")
+	w := strings.Split(want, "\n")
+	for i := 0; ; i++ {
+		switch {
+		case i < len(g) && i < len(w):
+			if g[i] == w[i] {
+				continue
+			}
+			return fmt.Sprintf("-- first difference in line %d:\n"+
+				"-- got : %q\n-- want: %q\n", i+1, g[i], w[i])
+		case i < len(g):
+			return fmt.Sprintf("-- got %d extra lines after line %d:\n"+
+				"-- first extra line: %q\n", len(g)-len(w), i, g[i])
+		case i < len(w):
+			return fmt.Sprintf("-- got %d correct lines, want %d more lines:\n"+
+				"-- want next: %q\n", i, len(w)-i, w[i])
+		default:
+			return "no differences found"
+		}
+	}
+}
+
+func TestVerse(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("Verse %d", tc.input), func(t *testing.T) {
+			got := Verse(tc.input)
+			if got != tc.expected {
+				t.Errorf("Verse(%d)\n got: %q\nwant: %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestSong(t *testing.T) {
+	var verses []string
+	for _, tc := range testCases {
+		verses = append(verses, tc.expected)
+	}
+	var expected = strings.Join(verses, "\n")
+	actual := Song()
+	if expected != actual {
+		t.Fatalf("Song() =\n%s\n  want:\n%s\n%s", actual, expected, diff(actual, expected))
+	}
+}
+
+func BenchmarkVerse(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Verse(test.input)
+		}
+	}
+}
+
+func BenchmarkSong(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Song()
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/twelve-days/.meta/example.go
+package twelve
+
+import (
+	"fmt"
+	"strings"
+)
+
+var gifts = []string{
+	"twelve Drummers Drumming",
+	"eleven Pipers Piping",
+	"ten Lords-a-Leaping",
+	"nine Ladies Dancing",
+	"eight Maids-a-Milking",
+	"seven Swans-a-Swimming",
+	"six Geese-a-Laying",
+	"five Gold Rings",
+	"four Calling Birds",
+	"three French Hens",
+	"two Turtle Doves",
+	"a Partridge in a Pear Tree",
+}
+
+var ordinal = []string{"", "first", "second", "third", "fourth", "fifth", "sixth",
+	"seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth"}
+
+// Verse returns a specific verse of the song for the given day number
+func Verse(dayNumber int) string {
+	dayGifts := gifts[len(gifts)-dayNumber:]
+	
+	// Reverse the gifts to match the Python ordering
+	for i, j := 0, len(dayGifts)-1; i < j; i, j = i+1, j-1 {
+		dayGifts[i], dayGifts[j] = dayGifts[j], dayGifts[i]
+	}
+	
+	giftText := ""
+	if len(dayGifts) > 1 {
+		giftText = strings.Join(dayGifts[:len(dayGifts)-1], ", ") + ", and " + dayGifts[len(dayGifts)-1]
+	} else {
+		giftText = dayGifts[0]
+	}
+	
+	return fmt.Sprintf("On the %s day of Christmas my true love gave to me: %s.", 
+		ordinal[dayNumber], giftText)
+}
+
+// Song returns the complete song
+func Song() string {
+	return strings.Join(ReciteVerse(1, 12), "\n")
+}
+
+// ReciteVerse returns the verses from start to end inclusive
+func ReciteVerse(start, end int) []string {
+	var verses []string
+	for i := start; i <= end; i++ {
+		verses = append(verses, Verse(i))
+	}
+	return verses
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestVerse (0.00s)
+    --- FAIL: TestVerse/Verse_2 (0.00s)
+        twelve_days_test.go:58: Verse(2)
+             got: "On the second day of Christmas my true love gave to me: a Partridge in a Pear Tree, and two Turtle Doves."
+            want: "On the second day of Christmas my true love gave to me: two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_3 (0.00s)
+        twelve_days_test.go:58: Verse(3)
+             got: "On the third day of Christmas my true love gave to me: two Turtle Doves, a Partridge in a Pear Tree, and three French Hens."
+            want: "On the third day of Christmas my true love gave to me: three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_4 (0.00s)
+        twelve_days_test.go:58: Verse(4)
+             got: "On the fourth day of Christmas my true love gave to me: three French Hens, a Partridge in a Pear Tree, two Turtle Doves, and four Calling Birds."
+            want: "On the fourth day of Christmas my true love gave to me: four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_5 (0.00s)
+        twelve_days_test.go:58: Verse(5)
+             got: "On the fifth day of Christmas my true love gave to me: four Calling Birds, two Turtle Doves, a Partridge in a Pear Tree, three French Hens, and five Gold Rings."
+            want: "On the fifth day of Christmas my true love gave to me: five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_6 (0.00s)
+        twelve_days_test.go:58: Verse(6)
+             got: "On the sixth day of Christmas my true love gave to me: five Gold Rings, three French Hens, a Partridge in a Pear Tree, two Turtle Doves, four Calling Birds, and six Geese-a-Laying."
+            want: "On the sixth day of Christmas my true love gave to me: six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_7 (0.00s)
+        twelve_days_test.go:58: Verse(7)
+             got: "On the seventh day of Christmas my true love gave to me: six Geese-a-Laying, four Calling Birds, two Turtle Doves, a Partridge in a Pear Tree, three French Hens, five Gold Rings, and seven Swans-a-Swimming."
+            want: "On the seventh day of Christmas my true love gave to me: seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_8 (0.00s)
+        twelve_days_test.go:58: Verse(8)
+             got: "On the eighth day of Christmas my true love gave to me: seven Swans-a-Swimming, five Gold Rings, three French Hens, a Partridge in a Pear Tree, two Turtle Doves, four Calling Birds, six Geese-a-Laying, and eight Maids-a-Milking."
+            want: "On the eighth day of Christmas my true love gave to me: eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_9 (0.00s)
+        twelve_days_test.go:58: Verse(9)
+             got: "On the ninth day of Christmas my true love gave to me: eight Maids-a-Milking, six Geese-a-Laying, four Calling Birds, two Turtle Doves, a Partridge in a Pear Tree, three French Hens, five Gold Rings, seven Swans-a-Swimming, and nine Ladies Dancing."
+            want: "On the ninth day of Christmas my true love gave to me: nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_10 (0.00s)
+        twelve_days_test.go:58: Verse(10)
+             got: "On the tenth day of Christmas my true love gave to me: nine Ladies Dancing, seven Swans-a-Swimming, five Gold Rings, three French Hens, a Partridge in a Pear Tree, two Turtle Doves, four Calling Birds, six Geese-a-Laying, eight Maids-a-Milking, and ten Lords-a-Leaping."
+            want: "On the tenth day of Christmas my true love gave to me: ten Lords-a-Leaping, nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_11 (0.00s)
+        twelve_days_test.go:58: Verse(11)
+             got: "On the eleventh day of Christmas my true love gave to me: ten Lords-a-Leaping, eight Maids-a-Milking, six Geese-a-Laying, four Calling Birds, two Turtle Doves, a Partridge in a Pear Tree, three French Hens, five Gold Rings, seven Swans-a-Swimming, nine Ladies Dancing, and eleven Pipers Piping."
+            want: "On the eleventh day of Christmas my true love gave to me: eleven Pipers Piping, ten Lords-a-Leaping, nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+    --- FAIL: TestVerse/Verse_12 (0.00s)
+        twelve_days_test.go:58: Verse(12)
+             got: "On the twelfth day of Christmas my true love gave to me: eleven Pipers Piping, nine Ladies Dancing, seven Swans-a-Swimming, five Gold Rings, three French Hens, a Partridge in a Pear Tree, two Turtle Doves, four Calling Birds, six Geese-a-Laying, eight Maids-a-Milking, ten Lords-a-Leaping, and twelve Drummers Drumming."
+            want: "On the twelfth day of Christmas my true love gave to me: twelve Drummers Drumming, eleven Pipers Piping, ten Lords-a-Leaping, nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree."
+--- FAIL: TestSong (0.00s)
+    twelve_days_test.go:72: Song() =
+        On the first day of Christmas my true love gave to me: twelve Drummers Drumming.
+        On the second day of Christmas my true love gave to me: twelve Drummers Drumming, and ten Lords-a-Leaping.
+        On the third day of Christmas my true love gave to me: ten Lords-a-Leaping, twelve Drummers Drumming, and eight Maids-a-Milking.
+        On the fourth day of Christmas my true love gave to me: eight Maids-a-Milking, twelve Drummers Drumming, ten Lords-a-Leaping, and six Geese-a-Laying.
+        On the fifth day of Christmas my true love gave to me: six Geese-a-Laying, ten Lords-a-Leaping, twelve Drummers Drumming, eight Maids-a-Milking, and four Calling Birds.
+        On the sixth day of Christmas my true love gave to me: four Calling Birds, eight Maids-a-Milking, twelve Drummers Drumming, ten Lords-a-Leaping, six Geese-a-Laying, and two Turtle Doves.
+        On the seventh day of Christmas my true love gave to me: two Turtle Doves, six Geese-a-Laying, ten Lords-a-Leaping, twelve Drummers Drumming, eight Maids-a-Milking, four Calling Birds, and a Partridge in a Pear Tree.
+        On the eighth day of Christmas my true love gave to me: a Partridge in a Pear Tree, four Calling Birds, eight Maids-a-Milking, twelve Drummers Drumming, ten Lords-a-Leaping, six Geese-a-Laying, two Turtle Doves, and three French Hens.
+        On the ninth day of Christmas my true love gave to me: three French Hens, two Turtle Doves, six Geese-a-Laying, ten Lords-a-Leaping, twelve Drummers Drumming, eight Maids-a-Milking, four Calling Birds, a Partridge in a Pear Tree, and five Gold Rings.
+        On the tenth day of Christmas my true love gave to me: five Gold Rings, a Partridge in a Pear Tree, four Calling Birds, eight Maids-a-Milking, twelve Drummers Drumming, ten Lords-a-Leaping, six Geese-a-Laying, two Turtle Doves, three French Hens, and seven Swans-a-Swimming.
+        On the eleventh day of Christmas my true love gave to me: seven Swans-a-Swimming, three French Hens, two Turtle Doves, six Geese-a-Laying, ten Lords-a-Leaping, twelve Drummers Drumming, eight Maids-a-Milking, four Calling Birds, a Partridge in a Pear Tree, five Gold Rings, and nine Ladies Dancing.
+        On the twelfth day of Christmas my true love gave to me: nine Ladies Dancing, five Gold Rings, a Partridge in a Pear Tree, four Calling Birds, eight Maids-a-Milking, twelve Drummers Drumming, ten Lords-a-Leaping, six Geese-a-Laying, two Turtle Doves, three French Hens, seven Swans-a-Swimming, and eleven Pipers Piping.
+          want:
+        On the first day of Christmas my true love gave to me: a Partridge in a Pear Tree.
+        On the second day of Christmas my true love gave to me: two Turtle Doves, and a Partridge in a Pear Tree.
+        On the third day of Christmas my true love gave to me: three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        On the fourth day of Christmas my true love gave to me: four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        On the fifth day of Christmas my true love gave to me: five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        On the sixth day of Christmas my true love gave to me: six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        On the seventh day of Christmas my true love gave to me: seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        On the eighth day of Christmas my true love gave to me: eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        On the ninth day of Christmas my true love gave to me: nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        On the tenth day of Christmas my true love gave to me: ten Lords-a-Leaping, nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        On the eleventh day of Christmas my true love gave to me: eleven Pipers Piping, ten Lords-a-Leaping, nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        On the twelfth day of Christmas my true love gave to me: twelve Drummers Drumming, eleven Pipers Piping, ten Lords-a-Leaping, nine Ladies Dancing, eight Maids-a-Milking, seven Swans-a-Swimming, six Geese-a-Laying, five Gold Rings, four Calling Birds, three French Hens, two Turtle Doves, and a Partridge in a Pear Tree.
+        -- first difference in line 1:
+        -- got : "On the first day of Christmas my true love gave to me: twelve Drummers Drumming."
+        -- want: "On the first day of Christmas my true love gave to me: a Partridge in a Pear Tree."
+FAIL
+FAIL	exercism/twelve-days	0.259s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/twelve-days/.meta/example.go
+package twelve
+
+import (
+	"fmt"
+	"strings"
+)
+
+var gifts = []string{
+	"a Partridge in a Pear Tree",
+	"two Turtle Doves",
+	"three French Hens",
+	"four Calling Birds",
+	"five Gold Rings",
+	"six Geese-a-Laying",
+	"seven Swans-a-Swimming",
+	"eight Maids-a-Milking",
+	"nine Ladies Dancing",
+	"ten Lords-a-Leaping",
+	"eleven Pipers Piping",
+	"twelve Drummers Drumming",
+}
+
+var ordinal = []string{"", "first", "second", "third", "fourth", "fifth", "sixth",
+	"seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth"}
+
+// Verse returns a specific verse of the song for the given day number
+func Verse(dayNumber int) string {
+	dayGifts := gifts[:dayNumber]
+	
+	var result string
+	if dayNumber == 1 {
+		result = gifts[0]
+	} else {
+		// Reverse the gifts to match the expected order (except the last one)
+		reversed := make([]string, len(dayGifts))
+		for i := 0; i < len(dayGifts)-1; i++ {
+			reversed[i] = dayGifts[len(dayGifts)-1-i]
+		}
+		reversed[len(dayGifts)-1] = gifts[0]
+		
+		// Join all but the last gift with commas
+		firstPart := strings.Join(reversed[:len(reversed)-1], ", ")
+		// Append the last gift with "and"
+		result = firstPart + ", and " + reversed[len(reversed)-1]
+	}
+	
+	return fmt.Sprintf("On the %s day of Christmas my true love gave to me: %s.", 
+		ordinal[dayNumber], result)
+}
+
+// Song returns the complete song
+func Song() string {
+	verses := make([]string, 12)
+	for i := 1; i <= 12; i++ {
+		verses[i-1] = Verse(i)
+	}
+	return strings.Join(verses, "\n")
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/twelve-days	0.282s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

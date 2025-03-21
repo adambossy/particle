@@ -1,0 +1,491 @@
+=== Initial Source Code ===
+Source file: exercises/practice/pythagorean-triplet/.meta/example.py
+from math import sqrt, ceil, gcd
+
+
+def triplets_in_range(start, end):
+    for limit in range(4, end + 1, 4):
+        for x_pos, y_pos, z_pos in primitive_triplets(limit):
+            alpha = x_pos
+            beta = y_pos
+            gamma = z_pos
+
+            while alpha < start:
+                alpha = alpha + x_pos
+                beta = beta + y_pos
+                gamma = gamma + z_pos
+
+            while gamma <= end:
+                yield [alpha, beta, gamma]
+
+                alpha = alpha + x_pos
+                beta = beta + y_pos
+                gamma = gamma + z_pos
+
+
+def euclidian_coprimes(limit):
+    mean = limit // 2
+    for idx in range(1, int(ceil(sqrt(mean)))):
+        if mean % idx == 0:
+            member = mean // idx
+            if (member - idx) % 2 == 1 and gcd(member, idx) == 1:
+                yield member, idx
+
+
+def primitive_triplets(limit):
+    """See Euclid's formula
+    (https://en.wikipedia.org/wiki/Pythagorean_triple#Generating_a_triple)
+    for more information
+    """
+    for member_1, member_2 in euclidian_coprimes(limit):
+        calc_1 = member_1 ** 2
+        calc_2 = member_2 ** 2
+
+        alpha = calc_1 - calc_2
+        beta = 2 * member_1 * member_2
+        gamma = calc_1 + calc_2
+
+        if alpha > beta:
+            alpha, beta = beta, alpha
+
+        yield alpha, beta, gamma
+
+
+def triplets_with_sum(number):
+    return [
+        triplet for triplet
+        in triplets_in_range(1, number // 2)
+        if sum(triplet) == number
+        ]
+
+
+=== Source Interface ===
+def triplets_with_sum(number):
+    pass
+
+
+=== Target Interface ===
+package pythagorean
+
+type Triplet [3]int
+
+// Range generates list of all Pythagorean triplets with side lengths
+// in the provided range.
+func Range(min, max int) []Triplet {
+	panic("Please implement the Range function")
+}
+
+// Sum returns a list of all Pythagorean triplets with a certain perimeter.
+func Sum(p int) []Triplet {
+	panic("Please implement the Sum function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/pythagorean-triplet/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from pythagorean_triplet import (
+    triplets_with_sum,
+)
+
+
+class PythagoreanTripletTest(unittest.TestCase):
+    def test_triplets_whose_sum_is_12(self):
+        self.assertCountEqual(triplets_with_sum(12), [[3, 4, 5]])
+
+    def test_triplets_whose_sum_is_108(self):
+        self.assertCountEqual(triplets_with_sum(108), [[27, 36, 45]])
+
+    def test_triplets_whose_sum_is_1000(self):
+        self.assertCountEqual(triplets_with_sum(1000), [[200, 375, 425]])
+
+    def test_no_matching_triplets_for_1001(self):
+        self.assertCountEqual(triplets_with_sum(1001), [])
+
+    def test_returns_all_matching_triplets(self):
+        self.assertCountEqual(triplets_with_sum(90), [[9, 40, 41], [15, 36, 39]])
+
+    def test_several_matching_triplets(self):
+        self.assertCountEqual(
+            triplets_with_sum(840),
+            [
+                [40, 399, 401],
+                [56, 390, 394],
+                [105, 360, 375],
+                [120, 350, 370],
+                [140, 336, 364],
+                [168, 315, 357],
+                [210, 280, 350],
+                [240, 252, 348],
+            ],
+        )
+
+    def test_triplets_for_large_number(self):
+        self.assertCountEqual(
+            triplets_with_sum(30000),
+            [
+                [1200, 14375, 14425],
+                [1875, 14000, 14125],
+                [5000, 12000, 13000],
+                [6000, 11250, 12750],
+                [7500, 10000, 12500],
+            ],
+        )
+
+
+=== Target Test Code ===
+package pythagorean
+
+import (
+	"fmt"
+	"reflect"
+	"testing"
+)
+
+var rangeTests = []struct {
+	min, max int
+	expected []Triplet
+}{
+	{
+		min:      1,
+		max:      10,
+		expected: []Triplet{{3, 4, 5}, {6, 8, 10}},
+	},
+	{
+		min:      11,
+		max:      20,
+		expected: []Triplet{{12, 16, 20}},
+	},
+}
+
+func TestRange(t *testing.T) {
+	for _, tc := range rangeTests {
+		t.Run(fmt.Sprintf("Triplets in Range %d-%d", tc.min, tc.max), func(t *testing.T) {
+			got := Range(tc.min, tc.max)
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Fatalf("Range(%d, %d) = %v, want: %v", tc.min, tc.max, got, tc.expected)
+			}
+		})
+	}
+}
+
+var sumTests = []struct {
+	sum      int
+	expected []Triplet
+}{
+	{
+		sum:      180,
+		expected: []Triplet{{18, 80, 82}, {30, 72, 78}, {45, 60, 75}},
+	},
+	{
+		sum:      1000,
+		expected: []Triplet{{200, 375, 425}},
+	},
+}
+
+func TestSum(t *testing.T) {
+	for _, tc := range sumTests {
+		t.Run(fmt.Sprintf("Triplets with perimeter %d", tc.sum), func(t *testing.T) {
+			got := Sum(tc.sum)
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Fatalf("Sum(%d) = %v, want: %v", tc.sum, got, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRange(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Range(1, 100)
+	}
+}
+
+func BenchmarkSum(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Sum(1000)
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/pythagorean-triplet/.meta/example.go
+package pythagorean
+
+import (
+	"math"
+)
+
+// Triplet represents a pythagorean triplet
+type Triplet [3]int
+
+// Range generates list of all Pythagorean triplets with side lengths
+// in the provided range.
+func Range(min, max int) []Triplet {
+	result := []Triplet{}
+	for _, triplet := range tripletsInRange(min, max) {
+		result = append(result, Triplet{triplet[0], triplet[1], triplet[2]})
+	}
+	return result
+}
+
+// Sum returns a list of all Pythagorean triplets with a certain perimeter.
+func Sum(p int) []Triplet {
+	result := []Triplet{}
+	for _, triplet := range tripletsWithSum(p) {
+		result = append(result, Triplet{triplet[0], triplet[1], triplet[2]})
+	}
+	return result
+}
+
+// tripletsInRange generates pythagorean triplets within a given range
+func tripletsInRange(start, end int) [][]int {
+	var triplets [][]int
+	for limit := 4; limit <= end; limit += 4 {
+		for _, primitive := range primitiveTriplets(limit) {
+			xPos, yPos, zPos := primitive[0], primitive[1], primitive[2]
+			
+			alpha, beta, gamma := xPos, yPos, zPos
+			
+			for alpha < start {
+				alpha += xPos
+				beta += yPos
+				gamma += zPos
+			}
+			
+			for gamma <= end {
+				triplets = append(triplets, []int{alpha, beta, gamma})
+				
+				alpha += xPos
+				beta += yPos
+				gamma += zPos
+			}
+		}
+	}
+	return triplets
+}
+
+// euclidianCoprimes generates pairs of coprime integers using Euclidean algorithm
+func euclidianCoprimes(limit int) [][]int {
+	var pairs [][]int
+	mean := limit / 2
+	
+	for idx := 1; idx < int(math.Ceil(math.Sqrt(float64(mean)))); idx++ {
+		if mean%idx == 0 {
+			member := mean / idx
+			if (member-idx)%2 == 1 && gcd(member, idx) == 1 {
+				pairs = append(pairs, []int{member, idx})
+			}
+		}
+	}
+	return pairs
+}
+
+// primitiveTriplets generates primitive pythagorean triplets
+// See Euclid's formula (https://en.wikipedia.org/wiki/Pythagorean_triple#Generating_a_triple)
+// for more information
+func primitiveTriplets(limit int) [][]int {
+	var triplets [][]int
+	
+	for _, pair := range euclidianCoprimes(limit) {
+		member1, member2 := pair[0], pair[1]
+		calc1 := member1 * member1
+		calc2 := member2 * member2
+		
+		alpha := calc1 - calc2
+		beta := 2 * member1 * member2
+		gamma := calc1 + calc2
+		
+		if alpha > beta {
+			alpha, beta = beta, alpha
+		}
+		
+		triplets = append(triplets, []int{alpha, beta, gamma})
+	}
+	return triplets
+}
+
+// tripletsWithSum finds all pythagorean triplets that sum to a given number
+func tripletsWithSum(number int) [][]int {
+	var result [][]int
+	
+	for _, triplet := range tripletsInRange(1, number/2) {
+		if triplet[0]+triplet[1]+triplet[2] == number {
+			result = append(result, triplet)
+		}
+	}
+	return result
+}
+
+// gcd finds the greatest common divisor of two integers
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestSum (0.00s)
+    --- FAIL: TestSum/Triplets_with_perimeter_180 (0.00s)
+        pythagorean_triplet_test.go:55: Sum(180) = [[45 60 75] [30 72 78] [18 80 82]], want: [[18 80 82] [30 72 78] [45 60 75]]
+FAIL
+FAIL	exercism/pythagorean-triplet	0.271s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/pythagorean-triplet/.meta/example.go
+package pythagorean
+
+import (
+	"math"
+	"sort"
+)
+
+// Triplet represents a pythagorean triplet
+type Triplet [3]int
+
+// Range generates list of all Pythagorean triplets with side lengths
+// in the provided range.
+func Range(min, max int) []Triplet {
+	result := []Triplet{}
+	for _, triplet := range tripletsInRange(min, max) {
+		result = append(result, Triplet{triplet[0], triplet[1], triplet[2]})
+	}
+	return result
+}
+
+// Sum returns a list of all Pythagorean triplets with a certain perimeter.
+func Sum(p int) []Triplet {
+	result := []Triplet{}
+	for _, triplet := range tripletsWithSum(p) {
+		result = append(result, Triplet{triplet[0], triplet[1], triplet[2]})
+	}
+	
+	// Sort the result to match the expected order in tests
+	sort.Slice(result, func(i, j int) bool {
+		// First sort by the first element
+		if result[i][0] != result[j][0] {
+			return result[i][0] < result[j][0]
+		}
+		// If first elements are equal, sort by second element
+		if result[i][1] != result[j][1] {
+			return result[i][1] < result[j][1]
+		}
+		// If both first and second elements are equal, sort by third element
+		return result[i][2] < result[j][2]
+	})
+	
+	return result
+}
+
+// tripletsInRange generates pythagorean triplets within a given range
+func tripletsInRange(start, end int) [][]int {
+	var triplets [][]int
+	for limit := 4; limit <= end; limit += 4 {
+		for _, primitive := range primitiveTriplets(limit) {
+			xPos, yPos, zPos := primitive[0], primitive[1], primitive[2]
+			
+			alpha, beta, gamma := xPos, yPos, zPos
+			
+			for alpha < start {
+				alpha += xPos
+				beta += yPos
+				gamma += zPos
+			}
+			
+			for gamma <= end {
+				triplets = append(triplets, []int{alpha, beta, gamma})
+				
+				alpha += xPos
+				beta += yPos
+				gamma += zPos
+			}
+		}
+	}
+	return triplets
+}
+
+// euclidianCoprimes generates pairs of coprime integers using Euclidean algorithm
+func euclidianCoprimes(limit int) [][]int {
+	var pairs [][]int
+	mean := limit / 2
+	
+	for idx := 1; idx < int(math.Ceil(math.Sqrt(float64(mean)))); idx++ {
+		if mean%idx == 0 {
+			member := mean / idx
+			if (member-idx)%2 == 1 && gcd(member, idx) == 1 {
+				pairs = append(pairs, []int{member, idx})
+			}
+		}
+	}
+	return pairs
+}
+
+// primitiveTriplets generates primitive pythagorean triplets
+// See Euclid's formula (https://en.wikipedia.org/wiki/Pythagorean_triple#Generating_a_triple)
+// for more information
+func primitiveTriplets(limit int) [][]int {
+	var triplets [][]int
+	
+	for _, pair := range euclidianCoprimes(limit) {
+		member1, member2 := pair[0], pair[1]
+		calc1 := member1 * member1
+		calc2 := member2 * member2
+		
+		alpha := calc1 - calc2
+		beta := 2 * member1 * member2
+		gamma := calc1 + calc2
+		
+		if alpha > beta {
+			alpha, beta = beta, alpha
+		}
+		
+		triplets = append(triplets, []int{alpha, beta, gamma})
+	}
+	return triplets
+}
+
+// tripletsWithSum finds all pythagorean triplets that sum to a given number
+func tripletsWithSum(number int) [][]int {
+	var result [][]int
+	
+	for _, triplet := range tripletsInRange(1, number/2) {
+		if triplet[0]+triplet[1]+triplet[2] == number {
+			result = append(result, triplet)
+		}
+	}
+	return result
+}
+
+// gcd finds the greatest common divisor of two integers
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/pythagorean-triplet	0.280s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

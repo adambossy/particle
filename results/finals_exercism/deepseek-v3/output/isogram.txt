@@ -1,0 +1,287 @@
+=== Initial Source Code ===
+Source file: exercises/practice/isogram/.meta/example.py
+def is_isogram(string):
+    characters_lower = [char.lower() for char in string if char.isalpha()]
+    return len(set(characters_lower)) == len(characters_lower)
+
+
+=== Source Interface ===
+def is_isogram(string):
+    pass
+
+
+=== Target Interface ===
+package isogram
+
+func IsIsogram(word string) bool {
+	panic("Please implement the IsIsogram function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/isogram/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from isogram import (
+    is_isogram,
+)
+
+
+class IsogramTest(unittest.TestCase):
+    def test_empty_string(self):
+        self.assertIs(is_isogram(""), True)
+
+    def test_isogram_with_only_lower_case_characters(self):
+        self.assertIs(is_isogram("isogram"), True)
+
+    def test_word_with_one_duplicated_character(self):
+        self.assertIs(is_isogram("eleven"), False)
+
+    def test_word_with_one_duplicated_character_from_the_end_of_the_alphabet(self):
+        self.assertIs(is_isogram("zzyzx"), False)
+
+    def test_longest_reported_english_isogram(self):
+        self.assertIs(is_isogram("subdermatoglyphic"), True)
+
+    def test_word_with_duplicated_character_in_mixed_case(self):
+        self.assertIs(is_isogram("Alphabet"), False)
+
+    def test_word_with_duplicated_character_in_mixed_case_lowercase_first(self):
+        self.assertIs(is_isogram("alphAbet"), False)
+
+    def test_hypothetical_isogrammic_word_with_hyphen(self):
+        self.assertIs(is_isogram("thumbscrew-japingly"), True)
+
+    def test_hypothetical_word_with_duplicated_character_following_hyphen(self):
+        self.assertIs(is_isogram("thumbscrew-jappingly"), False)
+
+    def test_isogram_with_duplicated_hyphen(self):
+        self.assertIs(is_isogram("six-year-old"), True)
+
+    def test_made_up_name_that_is_an_isogram(self):
+        self.assertIs(is_isogram("Emily Jung Schwartzkopf"), True)
+
+    def test_duplicated_character_in_the_middle(self):
+        self.assertIs(is_isogram("accentor"), False)
+
+    def test_same_first_and_last_characters(self):
+        self.assertIs(is_isogram("angola"), False)
+
+    def test_word_with_duplicated_character_and_with_two_hyphens(self):
+        self.assertIs(is_isogram("up-to-date"), False)
+
+
+=== Target Test Code ===
+package isogram
+
+import "testing"
+
+func TestIsIsogram(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := IsIsogram(tc.input); actual != tc.expected {
+				t.Fatalf("IsIsogram(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkIsIsogram(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, c := range testCases {
+			IsIsogram(c.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if a word is an isogram, meaning it has no repeating letters.
+func IsIsogram(word string) bool {
+	charactersLower := make([]rune, 0, len(word))
+	for _, char := range word {
+		if unicode.IsLetter(char) {
+			charactersLower = append(charactersLower, unicode.ToLower(char))
+		}
+	}
+	uniqueCharacters := make(map[rune]bool)
+	for _, char := range charactersLower {
+		if uniqueCharacters[char] {
+			return false
+		}
+		uniqueCharacters[char] = true
+	}
+	return len(uniqueCharacters) == len(charactersLower)
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if a word is an isogram, meaning it has no repeating letters.
+func IsIsogram(word string) bool {
+	charactersLower := make([]rune, 0, len(word))
+	for _, char := range word {
+		if unicode.IsLetter(char) {
+			charactersLower = append(charactersLower, unicode.ToLower(char))
+		}
+	}
+	uniqueCharacters := make(map[rune]bool)
+	for _, char := range charactersLower {
+		if uniqueCharacters[char] {
+			return false
+		}
+		uniqueCharacters[char] = true
+	}
+	return len(uniqueCharacters) == len(charactersLower)
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if a word is an isogram, meaning it has no repeating letters.
+func IsIsogram(word string) bool {
+	charactersLower := make([]rune, 0, len(word))
+	for _, char := range word {
+		if unicode.IsLetter(char) {
+			charactersLower = append(charactersLower, unicode.ToLower(char))
+		}
+	}
+	uniqueCharacters := make(map[rune]bool)
+	for _, char := range charactersLower {
+		if uniqueCharacters[char] {
+			return false
+		}
+		uniqueCharacters[char] = true
+	}
+	return len(uniqueCharacters) == len(charactersLower)
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if a word is an isogram, meaning it has no repeating letters.
+func IsIsogram(word string) bool {
+	charactersLower := make([]rune, 0, len(word))
+	for _, char := range word {
+		if unicode.IsLetter(char) {
+			charactersLower = append(charactersLower, unicode.ToLower(char))
+		}
+	}
+	uniqueCharacters := make(map[rune]bool)
+	for _, char := range charactersLower {
+		if uniqueCharacters[char] {
+			return false
+		}
+		uniqueCharacters[char] = true
+	}
+	return len(uniqueCharacters) == len(charactersLower)
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if a word is an isogram, meaning it has no repeating letters.
+func IsIsogram(word string) bool {
+	charactersLower := make([]rune, 0, len(word))
+	for _, char := range word {
+		if unicode.IsLetter(char) {
+			charactersLower = append(charactersLower, unicode.ToLower(char))
+		}
+	}
+	uniqueCharacters := make(map[rune]bool)
+	for _, char := range charactersLower {
+		if uniqueCharacters[char] {
+			return false
+		}
+		uniqueCharacters[char] = true
+	}
+	return len(uniqueCharacters) == len(charactersLower)
+}
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Missing end token '<｜tool▁calls▁end｜>' in function calls: <｜tool▁calls▁begin｜><｜tool▁call▁begin｜>function<｜t..."}}
+
+=== FINAL STATUS: ERROR ===

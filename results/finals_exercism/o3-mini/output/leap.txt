@@ -1,0 +1,685 @@
+=== Initial Source Code ===
+Source file: exercises/practice/leap/.meta/example.py
+def leap_year(year):
+    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+
+
+=== Source Interface ===
+def leap_year(year):
+    pass
+
+
+=== Target Interface ===
+// This is a "stub" file.  It's a little start on your solution.
+// It's not a complete solution though; you have to write some code.
+
+// Package leap should have a package comment that summarizes what it's about.
+// https://golang.org/doc/effective_go.html#commentary
+package leap
+
+// IsLeapYear should have a comment documenting it.
+func IsLeapYear(year int) bool {
+	// Write some code here to pass the test suite.
+	// Then remove all the stock comments.
+	// They're here to help you get started but they only clutter a finished solution.
+	// If you leave them in, reviewers may protest!
+	panic("Please implement the IsLeapYear function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/leap/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from leap import (
+    leap_year,
+)
+
+
+class LeapTest(unittest.TestCase):
+    def test_year_not_divisible_by_4_in_common_year(self):
+        self.assertIs(leap_year(2015), False)
+
+    def test_year_divisible_by_2_not_divisible_by_4_in_common_year(self):
+        self.assertIs(leap_year(1970), False)
+
+    def test_year_divisible_by_4_not_divisible_by_100_in_leap_year(self):
+        self.assertIs(leap_year(1996), True)
+
+    def test_year_divisible_by_4_and_5_is_still_a_leap_year(self):
+        self.assertIs(leap_year(1960), True)
+
+    def test_year_divisible_by_100_not_divisible_by_400_in_common_year(self):
+        self.assertIs(leap_year(2100), False)
+
+    def test_year_divisible_by_100_but_not_by_3_is_still_not_a_leap_year(self):
+        self.assertIs(leap_year(1900), False)
+
+    def test_year_divisible_by_400_is_leap_year(self):
+        self.assertIs(leap_year(2000), True)
+
+    def test_year_divisible_by_400_but_not_by_125_is_still_a_leap_year(self):
+        self.assertIs(leap_year(2400), True)
+
+    def test_year_divisible_by_200_not_divisible_by_400_in_common_year(self):
+        self.assertIs(leap_year(1800), False)
+
+
+=== Target Test Code ===
+package leap
+
+import "testing"
+
+func TestLeapYears(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := IsLeapYear(tc.year)
+			if actual != tc.expected {
+				t.Fatalf("IsLeapYear(%d) = %t, want %t", tc.year, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark 400 years interval to get fair weighting of different years.
+func Benchmark400(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for y := 1600; y < 2000; y++ {
+			IsLeapYear(y)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/leap/.meta/example.go
+package meta
+
+// IsLeapYear determines if a given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is also divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (leap.go) and leap (leap_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/leap
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/leap/.meta/example.go
+package leap
+
+// IsLeapYear determines if a given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+// exercises/practice/leap/leap_test.go
+package leap
+
+import "testing"
+
+// testCases defines a set of test cases for the IsLeapYear function.
+var testCases = []struct {
+	year        int
+	expected    bool
+	description string
+}{
+	{year: 1600, expected: true, description: "year 1600 is a leap year"},
+	{year: 1700, expected: false, description: "year 1700 is not a leap year"},
+	{year: 1800, expected: false, description: "year 1800 is not a leap year"},
+	{year: 1900, expected: false, description: "year 1900 is not a leap year"},
+	{year: 2000, expected: true, description: "year 2000 is a leap year"},
+	{year: 2016, expected: true, description: "year 2016 is a leap year"},
+	{year: 2019, expected: false, description: "year 2019 is not a leap year"},
+}
+
+// TestLeapYears tests the IsLeapYear function.
+func TestLeapYears(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := IsLeapYear(tc.year)
+			if actual != tc.expected {
+				t.Fatalf("IsLeapYear(%d) = %t, want %t", tc.year, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark400 benchmarks IsLeapYear over a 400-year interval to ensure fair weighting of different years.
+func Benchmark400(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for y := 1600; y < 2000; y++ {
+			IsLeapYear(y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap.go:11:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercism/leap/leap.go
+package leap
+
+// IsLeapYear determines if a given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+// exercism/leap/leap_test.go
+package leap
+
+import "testing"
+
+// testCases defines a set of test cases for the IsLeapYear function.
+var testCases = []struct {
+	year        int
+	expected    bool
+	description string
+}{
+	{year: 1600, expected: true, description: "year 1600 is a leap year"},
+	{year: 1700, expected: false, description: "year 1700 is not a leap year"},
+	{year: 1800, expected: false, description: "year 1800 is not a leap year"},
+	{year: 1900, expected: false, description: "year 1900 is not a leap year"},
+	{year: 2000, expected: true, description: "year 2000 is a leap year"},
+	{year: 2016, expected: true, description: "year 2016 is a leap year"},
+	{year: 2019, expected: false, description: "year 2019 is not a leap year"},
+}
+
+// TestLeapYears tests the IsLeapYear function using the defined test cases.
+func TestLeapYears(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := IsLeapYear(tc.year)
+			if actual != tc.expected {
+				t.Fatalf("IsLeapYear(%d) = %t, want %t", tc.year, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark400 benchmarks IsLeapYear over a 400-year interval for performance testing.
+func Benchmark400(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for y := 1600; y < 2000; y++ {
+			IsLeapYear(y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap.go:11:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercism/leap/leap.go
+package leap
+
+// IsLeapYear determines if a given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+// exercism/leap/leap_test.go
+package leap
+
+import "testing"
+
+// testCases defines a set of test cases for the IsLeapYear function.
+var testCases = []struct {
+	year        int
+	expected    bool
+	description string
+}{
+	{year: 1600, expected: true, description: "year 1600 is a leap year"},
+	{year: 1700, expected: false, description: "year 1700 is not a leap year"},
+	{year: 1800, expected: false, description: "year 1800 is not a leap year"},
+	{year: 1900, expected: false, description: "year 1900 is not a leap year"},
+	{year: 2000, expected: true, description: "year 2000 is a leap year"},
+	{year: 2016, expected: true, description: "year 2016 is a leap year"},
+	{year: 2019, expected: false, description: "year 2019 is not a leap year"},
+}
+
+// TestLeapYears tests the IsLeapYear function using the defined test cases.
+func TestLeapYears(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if res := IsLeapYear(tc.year); res != tc.expected {
+				t.Errorf("IsLeapYear(%d) = %t, want %t", tc.year, res, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark400 benchmarks IsLeapYear over a 400-year interval for performance testing.
+func Benchmark400(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for y := 1600; y < 2000; y++ {
+			IsLeapYear(y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap.go:11:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercism/leap/leap.go
+package leap
+
+// IsLeapYear returns true if the given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+// exercism/leap/leap_test.go
+package leap
+
+import "testing"
+
+// testCases defines a set of test cases for the IsLeapYear function.
+var testCases = []struct {
+	year        int
+	expected    bool
+	description string
+}{
+	{year: 1600, expected: true, description: "year 1600 is a leap year"},
+	{year: 1700, expected: false, description: "year 1700 is not a leap year"},
+	{year: 1800, expected: false, description: "year 1800 is not a leap year"},
+	{year: 1900, expected: false, description: "year 1900 is not a leap year"},
+	{year: 2000, expected: true, description: "year 2000 is a leap year"},
+	{year: 2016, expected: true, description: "year 2016 is a leap year"},
+	{year: 2019, expected: false, description: "year 2019 is not a leap year"},
+}
+
+// TestLeapYears tests the IsLeapYear function using a variety of test cases.
+func TestLeapYears(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if res := IsLeapYear(tc.year); res != tc.expected {
+				t.Errorf("IsLeapYear(%d) = %t, want %t", tc.year, res, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark400 benchmarks the IsLeapYear function over a 400-year interval to ensure performance.
+func Benchmark400(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for y := 1600; y < 2000; y++ {
+			IsLeapYear(y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap.go:11:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercism/leap/leap.go
+package leap
+
+// IsLeapYear returns true if the given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+// exercism/leap/leap_test.go
+package leap
+
+import "testing"
+
+// testCases defines a set of test cases for the IsLeapYear function.
+var testCases = []struct {
+	year        int
+	expected    bool
+	description string
+}{
+	{year: 1600, expected: true, description: "year 1600 is a leap year"},
+	{year: 1700, expected: false, description: "year 1700 is not a leap year"},
+	{year: 1800, expected: false, description: "year 1800 is not a leap year"},
+	{year: 1900, expected: false, description: "year 1900 is not a leap year"},
+	{year: 2000, expected: true, description: "year 2000 is a leap year"},
+	{year: 2016, expected: true, description: "year 2016 is a leap year"},
+	{year: 2019, expected: false, description: "year 2019 is not a leap year"},
+}
+
+// TestLeapYears tests the IsLeapYear function using the defined test cases.
+func TestLeapYears(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if res := IsLeapYear(tc.year); res != tc.expected {
+				t.Errorf("IsLeapYear(%d) = %t, want %t", tc.year, res, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark400 benchmarks the IsLeapYear function over a 400-year interval for performance testing.
+func Benchmark400(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for y := 1600; y < 2000; y++ {
+			IsLeapYear(y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap.go:11:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 6 ===
+// exercism/leap/leap.go
+package leap
+
+// IsLeapYear returns true if the given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+// exercism/leap/leap_test.go
+package leap
+
+import "testing"
+
+// testCases defines a set of test cases for the IsLeapYear function.
+var testCases = []struct {
+	year        int
+	expected    bool
+	description string
+}{
+	{year: 1600, expected: true, description: "year 1600 is a leap year"},
+	{year: 1700, expected: false, description: "year 1700 is not a leap year"},
+	{year: 1800, expected: false, description: "year 1800 is not a leap year"},
+	{year: 1900, expected: false, description: "year 1900 is not a leap year"},
+	{year: 2000, expected: true, description: "year 2000 is a leap year"},
+	{year: 2016, expected: true, description: "year 2016 is a leap year"},
+	{year: 2019, expected: false, description: "year 2019 is not a leap year"},
+}
+
+// TestLeapYears tests the IsLeapYear function using the defined test cases.
+func TestLeapYears(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if res := IsLeapYear(tc.year); res != tc.expected {
+				t.Errorf("IsLeapYear(%d) = %t, want %t", tc.year, res, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark400 benchmarks the IsLeapYear function over a 400-year interval for performance testing.
+func Benchmark400(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for y := 1600; y < 2000; y++ {
+			IsLeapYear(y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap.go:11:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercism/leap/leap.go
+package leap
+
+// IsLeapYear returns true if the given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+// exercism/leap/leap_test.go
+package leap
+
+import "testing"
+
+// testCases defines a set of test cases for the IsLeapYear function.
+var testCases = []struct {
+	year        int
+	expected    bool
+	description string
+}{
+	{year: 1600, expected: true, description: "year 1600 is a leap year"},
+	{year: 1700, expected: false, description: "year 1700 is not a leap year"},
+	{year: 1800, expected: false, description: "year 1800 is not a leap year"},
+	{year: 1900, expected: false, description: "year 1900 is not a leap year"},
+	{year: 2000, expected: true, description: "year 2000 is a leap year"},
+	{year: 2016, expected: true, description: "year 2016 is a leap year"},
+	{year: 2019, expected: false, description: "year 2019 is not a leap year"},
+}
+
+// TestLeapYears tests the IsLeapYear function using the defined test cases.
+func TestLeapYears(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if res := IsLeapYear(tc.year); res != tc.expected {
+				t.Errorf("IsLeapYear(%d) = %t, want %t", tc.year, res, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark400 benchmarks the IsLeapYear function over a 400-year interval for performance testing.
+func Benchmark400(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for y := 1600; y < 2000; y++ {
+			IsLeapYear(y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap.go:11:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercism/leap/leap.go
+package leap
+
+// IsLeapYear returns true if the given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+// exercism/leap/leap_test.go
+package leap
+
+import "testing"
+
+// testCases defines a set of test cases for the IsLeapYear function.
+var testCases = []struct {
+	year        int
+	expected    bool
+	description string
+}{
+	{year: 1600, expected: true, description: "year 1600 is a leap year"},
+	{year: 1700, expected: false, description: "year 1700 is not a leap year"},
+	{year: 1800, expected: false, description: "year 1800 is not a leap year"},
+	{year: 1900, expected: false, description: "year 1900 is not a leap year"},
+	{year: 2000, expected: true, description: "year 2000 is a leap year"},
+	{year: 2016, expected: true, description: "year 2016 is a leap year"},
+	{year: 2019, expected: false, description: "year 2019 is not a leap year"},
+}
+
+// TestLeapYears tests the IsLeapYear function using the defined test cases.
+func TestLeapYears(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if res := IsLeapYear(tc.year); res != tc.expected {
+				t.Errorf("IsLeapYear(%d) = %t, want %t", tc.year, res, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark400 benchmarks the IsLeapYear function over a 400-year interval for performance testing.
+func Benchmark400(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for y := 1600; y < 2000; y++ {
+			_ = IsLeapYear(y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap.go:11:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 9 ===
+// exercism/leap/leap.go
+package leap
+
+// IsLeapYear returns true if the given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap_test.go:6:21: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercism/leap/leap.go
+package leap
+
+// IsLeapYear returns true if the given year is a leap year.
+// A leap year is divisible by 4 but not by 100, unless it is divisible by 400.
+func IsLeapYear(year int) bool {
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/leap [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/leap [exercism/leap.test]
+./leap_test.go:6:21: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

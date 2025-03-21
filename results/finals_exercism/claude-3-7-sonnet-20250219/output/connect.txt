@@ -1,0 +1,396 @@
+=== Initial Source Code ===
+Source file: exercises/practice/connect/.meta/example.py
+
+class ConnectGame:
+
+    DIRECTIONS = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, -1), (-1, 1)]
+    WHITE = 'O'
+    BLACK = 'X'
+
+    def __init__(self, lines):
+        self.board = ConnectGame.make_board(lines)
+        assert len(self.board) > 0
+
+        self.width = len(self.board[0])
+        self.height = len(self.board)
+        assert self.width > 0 and self.height > 0
+
+        for line in self.board:
+            assert len(line) == self.width
+
+    def valid(self, width, height):
+        return 0 <= width < self.width and 0 <= height < self.height
+
+    @staticmethod
+    def make_board(lines):
+        return [''.join(cur_line.split()) for cur_line in lines.splitlines()]
+
+    def player_reach_dest(self, player, width, height):
+        if player == self.BLACK:
+            return width == self.width - 1
+        if player == self.WHITE:
+            return height == self.height - 1
+        return None
+
+    def walk_board(self, player, width, height, visited=None):
+        if not visited:
+            visited = []
+        if (width, height) in visited:
+            return False
+
+        if (not self.valid(width, height)) or self.board[height][width] != player:
+            return False
+
+        if self.player_reach_dest(player, width, height):
+            return True
+
+        for vector in self.DIRECTIONS:
+            if self.walk_board(player, width + vector[0], height + vector[1], visited + [(width, height)]):
+                return True
+        return None
+
+    def check_player_is_winner(self, player):
+        if player == self.BLACK:
+            for height in range(self.height):
+                if self.walk_board(player, 0, height):
+                    return True
+        if player == self.WHITE:
+            for width in range(self.width):
+                if self.walk_board(player, width, 0):
+                    return True
+        return None
+
+    def get_winner(self):
+        if self.check_player_is_winner(self.BLACK):
+            return self.BLACK
+        if self.check_player_is_winner(self.WHITE):
+            return self.WHITE
+        return ''
+
+
+=== Source Interface ===
+
+class ConnectGame:
+    def __init__(self, board):
+        pass
+
+    def get_winner(self):
+        pass
+
+
+=== Target Interface ===
+package connect
+
+func ResultOf(lines []string) (string, error) {
+	panic("Please implement the ResultOf function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/connect/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from connect import (
+    ConnectGame,
+)
+
+
+class ConnectTest(unittest.TestCase):
+    def test_an_empty_board_has_no_winner(self):
+        game = ConnectGame(
+            """. . . . .
+                . . . . .
+                 . . . . .
+                  . . . . .
+                   . . . . ."""
+        )
+        winner = game.get_winner()
+        self.assertEqual(winner, "")
+
+    def test_x_can_win_on_a_1x1_board(self):
+        game = ConnectGame("""X""")
+        winner = game.get_winner()
+        self.assertEqual(winner, "X")
+
+    def test_o_can_win_on_a_1x1_board(self):
+        game = ConnectGame("""O""")
+        winner = game.get_winner()
+        self.assertEqual(winner, "O")
+
+    def test_only_edges_does_not_make_a_winner(self):
+        game = ConnectGame(
+            """O O O X
+                X . . X
+                 X . . X
+                  X O O O"""
+        )
+        winner = game.get_winner()
+        self.assertEqual(winner, "")
+
+    def test_illegal_diagonal_does_not_make_a_winner(self):
+        game = ConnectGame(
+            """X O . .
+                O X X X
+                 O X O .
+                  . O X .
+                   X X O O"""
+        )
+        winner = game.get_winner()
+        self.assertEqual(winner, "")
+
+    def test_nobody_wins_crossing_adjacent_angles(self):
+        game = ConnectGame(
+            """X . . .
+                . X O .
+                 O . X O
+                  . O . X
+                   . . O ."""
+        )
+        winner = game.get_winner()
+        self.assertEqual(winner, "")
+
+    def test_x_wins_crossing_from_left_to_right(self):
+        game = ConnectGame(
+            """. O . .
+                O X X X
+                 O X O .
+                  X X O X
+                   . O X ."""
+        )
+        winner = game.get_winner()
+        self.assertEqual(winner, "X")
+
+    def test_o_wins_crossing_from_top_to_bottom(self):
+        game = ConnectGame(
+            """. O . .
+                O X X X
+                 O O O .
+                  X X O X
+                   . O X ."""
+        )
+        winner = game.get_winner()
+        self.assertEqual(winner, "O")
+
+    def test_x_wins_using_a_convoluted_path(self):
+        game = ConnectGame(
+            """. X X . .
+                X . X . X
+                 . X . X .
+                  . X X . .
+                   O O O O O"""
+        )
+        winner = game.get_winner()
+        self.assertEqual(winner, "X")
+
+    def test_x_wins_using_a_spiral_path(self):
+        game = ConnectGame(
+            """O X X X X X X X X
+                O X O O O O O O O
+                 O X O X X X X X O
+                  O X O X O O O X O
+                   O X O X X X O X O
+                    O X O O O X O X O
+                     O X X X X X O X O
+                      O O O O O O O X O
+                       X X X X X X X X O"""
+        )
+        winner = game.get_winner()
+        self.assertEqual(winner, "X")
+
+
+=== Target Test Code ===
+package connect
+
+import (
+	"strings"
+	"testing"
+)
+
+// Simply strip the spaces of all the strings to get a canonical
+// input. The spaces are only for readability of the tests.
+func prepare(lines []string) []string {
+	newLines := make([]string, len(lines))
+	for i, l := range lines {
+		newLines[i] = strings.ReplaceAll(l, " ", "")
+	}
+	return newLines
+}
+
+func TestResultOf(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := ResultOf(prepare(tc.board))
+			// We don't expect errors for any of the test cases
+			if err != nil {
+				t.Errorf("ResultOf() returned error %v\nboard: \n%s\nwant: %q", err, strings.Join(tc.board, "\n"), tc.expected)
+			} else if actual != tc.expected {
+				t.Errorf("ResultOf() returned wrong result \nboard: \n%s\ngot: %q\nwant: %q", strings.Join(tc.board, "\n"), actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkResultOf(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+
+	b.StopTimer()
+
+	for _, tt := range testCases {
+		board := prepare(tt.board)
+		b.StartTimer()
+
+		for i := 0; i < b.N; i++ {
+			ResultOf(board)
+		}
+
+		b.StopTimer()
+	}
+
+}
+
+
+=== Initial Translation ===
+// exercises/practice/connect/.meta/example.go
+package connect
+
+import (
+	"strings"
+)
+
+// ResultOf determines the winner of a connect game
+func ResultOf(lines []string) (string, error) {
+	game := NewConnectGame(lines)
+	return game.getWinner(), nil
+}
+
+// Point represents a coordinate on the game board
+type Point struct {
+	x, y int
+}
+
+// ConnectGame represents a connect game
+type ConnectGame struct {
+	board  []string
+	width  int
+	height int
+}
+
+const (
+	white = 'O'
+	black = 'X'
+)
+
+// Possible movement directions on the board
+var directions = []Point{
+	{0, 1}, {0, -1}, {1, 0}, {-1, 0}, {1, -1}, {-1, 1},
+}
+
+// NewConnectGame creates a new ConnectGame from the given lines
+func NewConnectGame(lines []string) *ConnectGame {
+	board := makeBoard(lines)
+	width := 0
+	if len(board) > 0 {
+		width = len(board[0])
+	}
+	height := len(board)
+
+	return &ConnectGame{
+		board:  board,
+		width:  width,
+		height: height,
+	}
+}
+
+// makeBoard creates a game board from input lines
+func makeBoard(lines []string) []string {
+	board := make([]string, 0, len(lines))
+	for _, line := range lines {
+		board = append(board, strings.ReplaceAll(line, " ", ""))
+	}
+	return board
+}
+
+// valid checks if the coordinates are within the board
+func (g *ConnectGame) valid(x, y int) bool {
+	return 0 <= x && x < g.width && 0 <= y && y < g.height
+}
+
+// playerReachDest checks if the player has reached their destination
+func (g *ConnectGame) playerReachDest(player rune, x, y int) bool {
+	if player == black {
+		return x == g.width-1
+	}
+	if player == white {
+		return y == g.height-1
+	}
+	return false
+}
+
+// walkBoard walks through the board to check for a winning path
+func (g *ConnectGame) walkBoard(player rune, x, y int, visited map[Point]bool) bool {
+	p := Point{x, y}
+	if visited[p] {
+		return false
+	}
+
+	if !g.valid(x, y) || rune(g.board[y][x]) != player {
+		return false
+	}
+
+	if g.playerReachDest(player, x, y) {
+		return true
+	}
+
+	visited[p] = true
+	for _, dir := range directions {
+		if g.walkBoard(player, x+dir.x, y+dir.y, visited) {
+			return true
+		}
+	}
+	return false
+}
+
+// checkPlayerIsWinner checks if the given player has won
+func (g *ConnectGame) checkPlayerIsWinner(player rune) bool {
+	if player == black {
+		for y := 0; y < g.height; y++ {
+			if g.walkBoard(player, 0, y, make(map[Point]bool)) {
+				return true
+			}
+		}
+	}
+	if player == white {
+		for x := 0; x < g.width; x++ {
+			if g.walkBoard(player, x, 0, make(map[Point]bool)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// getWinner returns the winner of the game
+func (g *ConnectGame) getWinner() string {
+	if g.checkPlayerIsWinner(black) {
+		return "X"
+	}
+	if g.checkPlayerIsWinner(white) {
+		return "O"
+	}
+	return ""
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/connect	0.271s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

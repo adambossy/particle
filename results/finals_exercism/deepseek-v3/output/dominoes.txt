@@ -1,0 +1,859 @@
+=== Initial Source Code ===
+Source file: exercises/practice/dominoes/.meta/example.py
+from itertools import permutations
+from functools import reduce
+
+
+def swap(item_1, item_2):
+    return (item_2, item_1)
+
+
+def build_chain(chain, domino):
+    if chain is not None:
+        last = chain[-1]
+        if len(chain) == 1 and last[0] == domino[0]:
+            return [swap(*last), domino]
+        elif len(chain) == 1 and last[0] == domino[1]:
+            return [swap(*last), swap(*domino)]
+        elif last[1] == domino[0]:
+            return chain + [domino]
+        elif last[1] == domino[1]:
+            return chain + [swap(*domino)]
+    return None
+
+
+def can_chain(dominoes):
+    if not any(dominoes):
+        return []
+    for perm in permutations(dominoes):
+        chain = reduce(build_chain, perm[1:], [perm[0]])
+        if chain is not None and chain[0][0] == chain[-1][1]:
+            return chain
+    return None
+
+
+=== Source Interface ===
+def can_chain(dominoes):
+    pass
+
+
+=== Target Interface ===
+package dominoes
+
+// Define the Domino type here.
+
+func MakeChain(input []Domino) ([]Domino, bool) {
+	panic("Please implement the MakeChain function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/dominoes/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from dominoes import (
+    can_chain,
+)
+
+
+class DominoesTest(unittest.TestCase):
+    def test_empty_input_empty_output(self):
+        input_dominoes = []
+        output_chain = can_chain(input_dominoes)
+        self.assert_correct_chain(input_dominoes, output_chain)
+
+    def test_singleton_input_singleton_output(self):
+        input_dominoes = [(1, 1)]
+        output_chain = can_chain(input_dominoes)
+        self.assert_correct_chain(input_dominoes, output_chain)
+
+    def test_singleton_that_can_t_be_chained(self):
+        input_dominoes = [(1, 2)]
+        output_chain = can_chain(input_dominoes)
+        self.refute_correct_chain(input_dominoes, output_chain)
+
+    def test_three_elements(self):
+        input_dominoes = [(1, 2), (3, 1), (2, 3)]
+        output_chain = can_chain(input_dominoes)
+        self.assert_correct_chain(input_dominoes, output_chain)
+
+    def test_can_reverse_dominoes(self):
+        input_dominoes = [(1, 2), (1, 3), (2, 3)]
+        output_chain = can_chain(input_dominoes)
+        self.assert_correct_chain(input_dominoes, output_chain)
+
+    def test_can_t_be_chained(self):
+        input_dominoes = [(1, 2), (4, 1), (2, 3)]
+        output_chain = can_chain(input_dominoes)
+        self.refute_correct_chain(input_dominoes, output_chain)
+
+    def test_disconnected_simple(self):
+        input_dominoes = [(1, 1), (2, 2)]
+        output_chain = can_chain(input_dominoes)
+        self.refute_correct_chain(input_dominoes, output_chain)
+
+    def test_disconnected_double_loop(self):
+        input_dominoes = [(1, 2), (2, 1), (3, 4), (4, 3)]
+        output_chain = can_chain(input_dominoes)
+        self.refute_correct_chain(input_dominoes, output_chain)
+
+    def test_disconnected_single_isolated(self):
+        input_dominoes = [(1, 2), (2, 3), (3, 1), (4, 4)]
+        output_chain = can_chain(input_dominoes)
+        self.refute_correct_chain(input_dominoes, output_chain)
+
+    def test_need_backtrack(self):
+        input_dominoes = [(1, 2), (2, 3), (3, 1), (2, 4), (2, 4)]
+        output_chain = can_chain(input_dominoes)
+        self.assert_correct_chain(input_dominoes, output_chain)
+
+    def test_separate_loops(self):
+        input_dominoes = [(1, 2), (2, 3), (3, 1), (1, 1), (2, 2), (3, 3)]
+        output_chain = can_chain(input_dominoes)
+        self.assert_correct_chain(input_dominoes, output_chain)
+
+    def test_nine_elements(self):
+        input_dominoes = [
+            (1, 2),
+            (5, 3),
+            (3, 1),
+            (1, 2),
+            (2, 4),
+            (1, 6),
+            (2, 3),
+            (3, 4),
+            (5, 6),
+        ]
+        output_chain = can_chain(input_dominoes)
+        self.assert_correct_chain(input_dominoes, output_chain)
+
+    def test_separate_three_domino_loops(self):
+        input_dominoes = [(1, 2), (2, 3), (3, 1), (4, 5), (5, 6), (6, 4)]
+        output_chain = can_chain(input_dominoes)
+        self.refute_correct_chain(input_dominoes, output_chain)
+
+    # Utility methods
+
+    def normalize_dominoes(self, dominoes):
+        return list(sorted(tuple(sorted(domino)) for domino in dominoes))
+
+    def assert_same_dominoes(self, input_dominoes, output_chain):
+        msg = (
+            "Dominoes used in the output must be the same "
+            "as the ones given in the input"
+        )
+        input_normal = self.normalize_dominoes(input_dominoes)
+        output_normal = self.normalize_dominoes(output_chain)
+        self.assertEqual(input_normal, output_normal, msg)
+
+    def assert_consecutive_dominoes_match(self, output_chain):
+        for i in range(len(output_chain) - 1):
+            msg = (
+                "In chain {}, right end of domino {} ({}) "
+                "and left end of domino {} ({}) must match"
+            )
+            msg = msg.format(
+                output_chain, i, output_chain[i], i + 1, output_chain[i + 1]
+            )
+            self.assertEqual(output_chain[i][1], output_chain[i + 1][0], msg)
+
+    def assert_dominoes_at_ends_match(self, output_chain):
+        msg = (
+            "In chain {}, left end of first domino ({}) and "
+            "right end of last domino ({}) must match"
+        )
+        msg = msg.format(output_chain, output_chain[0], output_chain[-1])
+        self.assertEqual(output_chain[0][0], output_chain[-1][1], msg)
+
+    def assert_correct_chain(self, input_dominoes, output_chain):
+        msg = "There should be a chain for {}".format(input_dominoes)
+        self.assertIsNotNone(output_chain, msg)
+        self.assert_same_dominoes(input_dominoes, output_chain)
+        if not any(output_chain):
+            return
+        self.assert_consecutive_dominoes_match(output_chain)
+        self.assert_dominoes_at_ends_match(output_chain)
+
+    def refute_correct_chain(self, input_dominoes, output_chain):
+        msg = "There should be no valid chain for {}".format(input_dominoes)
+        self.assertIsNone(output_chain, msg)
+
+
+=== Target Test Code ===
+package dominoes
+
+import (
+	"errors"
+	"reflect"
+	"sort"
+	"testing"
+)
+
+func TestMakeChain(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			c, ok := MakeChain(tc.dominoes)
+			if ok != tc.valid {
+				t.Fatalf("MakeChain(%v)\nexpected 'ok' result: %t, actual 'ok': %t", tc.dominoes, tc.valid, ok)
+			}
+			if ok {
+				// There can be a variety of "valid" chains. Verify the chain is valid.
+				if err := verifyChain(tc.dominoes, c); err != nil {
+					t.Fatalf("MakeChain(%v)\nverifying chain failed with error: %v\nchain: %v", tc.dominoes, err, c)
+				}
+			}
+		})
+	}
+}
+
+var (
+	errWrongLengthChain          = errors.New("wrong length chain")
+	errChainIsNotLegalAdj        = errors.New("chain is not legal - adjacent mismatch")
+	errChainIsNotLegalEnd        = errors.New("chain is not legal - ends mismatch")
+	errChainSetNotSameAsInputSet = errors.New("chain dominoes not same as input")
+)
+
+func verifyChain(input, chain []Domino) error {
+	if len(input) != len(chain) {
+		return errWrongLengthChain
+	}
+
+	switch len(input) {
+	case 0:
+		return nil
+	case 1:
+		if input[0] != chain[0] {
+			return errChainSetNotSameAsInputSet
+		}
+		return nil
+	}
+
+	// Check adjacent pairs.
+	for i := 0; i < len(chain)-1; i++ {
+		if chain[i][1] != chain[i+1][0] {
+			return errChainIsNotLegalAdj
+		}
+	}
+	// Check end dominoes.
+	if chain[0][0] != chain[len(chain)-1][1] {
+		return errChainIsNotLegalEnd
+	}
+
+	// Make copies of input and chain.
+	cinput := copyDominoes(input)
+	cchain := copyDominoes(chain)
+
+	sortDominoes(cinput)
+	sortDominoes(cchain)
+
+	// Compare for equality (same set in input and chain).
+	if !reflect.DeepEqual(cinput, cchain) {
+		return errChainSetNotSameAsInputSet
+	}
+	return nil
+}
+
+func copyDominoes(d []Domino) (c []Domino) {
+	c = make([]Domino, len(d))
+	// Put each domino in "canonical position" [a,b] where a <= b.
+	for i := range d {
+		c[i] = d[i]
+		if c[i][0] > c[i][1] {
+			c[i][0], c[i][1] = c[i][1], c[i][0]
+		}
+	}
+	return c
+}
+
+func sortDominoes(d []Domino) {
+	sort.Slice(d,
+		func(i, j int) bool {
+			if d[i][0] < d[j][0] {
+				return true
+			}
+			if d[i][0] > d[j][0] {
+				return false
+			}
+			return d[i][1] < d[j][1]
+		})
+}
+
+func BenchmarkMakeChain(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			MakeChain(test.dominoes)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/dominoes/.meta/example.go
+package dominoes
+
+import (
+	"errors"
+	"github.com/golang-collections/collections/stack"
+)
+
+// Define the Domino type here.
+type Domino [2]int
+
+func swap(item1, item2 Domino) (Domino, Domino) {
+	return item2, item1
+}
+
+func buildChain(chain []Domino, domino Domino) []Domino {
+	if chain != nil {
+		last := chain[len(chain)-1]
+		if len(chain) == 1 && last[0] == domino[0] {
+			return append([]Domino{swap(last, domino)}, domino)
+		} else if len(chain) == 1 && last[0] == domino[1] {
+			return append([]Domino{swap(last, swap(domino, domino))}, swap(domino, domino))
+		} else if last[1] == domino[0] {
+			return append(chain, domino)
+		} else if last[1] == domino[1] {
+			return append(chain, swap(domino, domino))
+		}
+	}
+	return nil
+}
+
+func MakeChain(input []Domino) ([]Domino, bool) {
+	if len(input) == 0 {
+		return []Domino{}, true
+	}
+
+	// Generate all permutations of the input
+	permutations := generatePermutations(input)
+
+	for _, perm := range permutations {
+		chain := []Domino{perm[0]}
+		for i := 1; i < len(perm); i++ {
+			chain = buildChain(chain, perm[i])
+			if chain == nil {
+				break
+			}
+		}
+		if chain != nil && chain[0][0] == chain[len(chain)-1][1] {
+			return chain, true
+		}
+	}
+	return nil, false
+}
+
+func generatePermutations(input []Domino) [][]Domino {
+	if len(input) == 0 {
+		return [][]Domino{}
+	}
+
+	if len(input) == 1 {
+		return [][]Domino{input}
+	}
+
+	var result [][]Domino
+	for i := range input {
+		current := make([]Domino, len(input))
+		copy(current, input)
+		elem := current[i]
+		current = append(current[:i], current[i+1:]...)
+		subPerms := generatePermutations(current)
+		for _, sub := range subPerms {
+			result = append(result, append([]Domino{elem}, sub...))
+		}
+	}
+	return result
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dominoes [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dominoes [exercism/dominoes.test]
+./dominoes.go:5:2: imported and not used: "errors"
+./dominoes.go:6:2: imported and not used: "github.com/golang-collections/collections/stack"
+./dominoes.go:20:27: multiple-value swap(last, domino) (value of type (Domino, Domino)) in single-value context
+./dominoes.go:22:27: multiple-value swap(last, swap(domino, domino)) (value of type (Domino, Domino)) in single-value context
+./dominoes.go:22:38: multiple-value swap(domino, domino) (value of type (Domino, Domino)) in single-value context
+./dominoes.go:22:62: multiple-value swap(domino, domino) (value of type (Domino, Domino)) in single-value context
+./dominoes.go:26:25: multiple-value swap(domino, domino) (value of type (Domino, Domino)) in single-value context
+./dominoes_test.go:11:21: undefined: testCases
+./dominoes_test.go:104:24: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/dominoes/.meta/example.go
+package dominoes
+
+import (
+	"sort"
+)
+
+// Define the Domino type here.
+type Domino [2]int
+
+func swap(d Domino) Domino {
+	return Domino{d[1], d[0]}
+}
+
+func buildChain(chain []Domino, domino Domino) []Domino {
+	if len(chain) > 0 {
+		last := chain[len(chain)-1]
+		if len(chain) == 1 {
+			if last[0] == domino[0] {
+				return []Domino{swap(last), domino}
+			} else if last[0] == domino[1] {
+				return []Domino{swap(last), swap(domino)}
+			}
+		}
+		if last[1] == domino[0] {
+			return append(chain, domino)
+		} else if last[1] == domino[1] {
+			return append(chain, swap(domino))
+		}
+	}
+	return nil
+}
+
+func MakeChain(input []Domino) ([]Domino, bool) {
+	if len(input) == 0 {
+		return []Domino{}, true
+	}
+
+	permutations := generatePermutations(input)
+
+	for _, perm := range permutations {
+		chain := []Domino{perm[0]}
+		for i := 1; i < len(perm); i++ {
+			chain = buildChain(chain, perm[i])
+			if chain == nil {
+				break
+			}
+	}
+	if chain != nil && chain[0][0] == chain[len(chain)-1][1] {
+		return chain, true
+}
+	return nil, false
+}
+
+func generatePermutations(input []Domino) [][]Domino {
+	if len(input) == 0 {
+		return [][]Domino{}
+	}
+
+	if len(input) == 1 {
+		return [][]Domino{input}
+	}
+
+	var result [][]Domino
+	for i := range input {
+		current := make([]Domino, len(input))
+		copy(current, input)
+		elem := current[i]
+		current = append(current[:i], current[i+1:]...)
+		subPerms := generatePermutations(current)
+		for _, sub := range subPerms {
+			result = append(result, append([]Domino{elem}, sub...))
+		}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dominoes [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dominoes [exercism/dominoes.test]
+./dominoes.go:55:6: syntax error: unexpected generatePermutations, expecting (
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/dominoes/.meta/example.go
+package dominoes
+
+import (
+	"errors"
+	"reflect"
+	"sort"
+)
+
+// Define the Domino type here.
+type Domino [2]int
+
+func swap(d Domino) Domino {
+	return Domino{d[1], d[0]}
+}
+
+func buildChain(chain []Domino, domino Domino) []Domino {
+	if len(chain) > 0 {
+		last := chain[len(chain)-1]
+		if len(chain) == 1 {
+			if last[0] == domino[0] {
+				return []Domino{swap(last), domino}
+			} else if last[0] == domino[1] {
+				return []Domino{swap(last), swap(domino)}
+			}
+		}
+		if last[1] == domino[0] {
+			return append(chain, domino)
+		} else if last[1] == domino[1] {
+			return append(chain, swap(domino))
+		}
+	}
+	return nil
+}
+
+func generatePermutations(input []Domino) [][]Domino {
+	if len(input) == 0 {
+		return [][]Domino{}
+	}
+
+	if len(input) == 1 {
+		return [][]Domino{input}
+	}
+
+	var result [][]Domino
+	for i := range input {
+		current := make([]Domino, len(input))
+		copy(current, input)
+		elem := current[i]
+		current = append(current[:i], current[i+1:]...)
+		subPerms := generatePermutations(current)
+		for _, sub := range subPerms {
+			result = append(result, append([]Domino{elem}, sub...))
+		}
+	}
+	return result
+}
+
+func MakeChain(input []Domino) ([]Domino, bool) {
+	if len(input) == 0 {
+		return []Domino{}, true
+	}
+
+	permutations := generatePermutations(input)
+
+	for _, perm := range permutations {
+		chain := []Domino{perm[0]}
+		for i := 1; i < len(perm); i++ {
+			chain = buildChain(chain, perm[i])
+			if chain == nil {
+				break
+			}
+		}
+		if chain != nil && chain[0][0] == chain[len(chain)-1][1] {
+			return chain, true
+		}
+	}
+	return nil, false
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dominoes [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dominoes [exercism/dominoes.test]
+./dominoes_test.go:11:21: undefined: testCases
+./dominoes_test.go:104:24: undefined: testCases
+./dominoes.go:5:2: imported and not used: "errors"
+./dominoes.go:6:2: imported and not used: "reflect"
+./dominoes.go:7:2: imported and not used: "sort"
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/dominoes/.meta/example.go
+package dominoes
+
+import (
+	"reflect"
+	"sort"
+)
+
+// Define the Domino type here.
+type Domino [2]int
+
+func swap(d Domino) Domino {
+	return Domino{d[1], d[0]}
+}
+
+func generatePermutations(input []Domino) [][]Domino {
+	if len(input) == 0 {
+		return [][]Domino{}
+	}
+
+	if len(input) == 1 {
+		return [][]Domino{input}
+	}
+
+	var result [][]Domino
+	for i := range input {
+		current := make([]Domino, len(input))
+		copy(current, input)
+		elem := current[i]
+		current = append(current[:i], current[i+1:]...)
+		subPerms := generatePermutations(current)
+		for _, sub := range subPerms {
+			result = append(result, append([]Domino{elem}, sub...))
+		}
+	}
+	return result
+}
+
+func buildChain(chain []Domino, domino Domino) []Domino {
+	if len(chain) > 0 {
+		last := chain[len(chain)-1]
+		if len(chain) == 1 {
+			if last[0] == domino[0] {
+				return []Domino{swap(last), domino}
+			} else if last[0] == domino[1] {
+				return []Domino{swap(last), swap(domino)}
+			}
+		}
+		if last[1] == domino[0] {
+			return append(chain, domino)
+		} else if last[1] == domino[1] {
+			return append(chain, swap(domino))
+		}
+	}
+	return nil
+}
+
+func MakeChain(input []Domino) ([]Domino, bool) {
+	if len(input) == 0 {
+		return []Domino{}, true
+	}
+
+	permutations := generatePermutations(input)
+	for _, perm := range permutations {
+		chain := []Domino{perm[0]}
+		for i := 1; i < len(perm); i++ {
+			chain = buildChain(chain, perm[i])
+			if nil == chain {
+				break
+			}
+		}
+		if nil == chain {
+			continue
+		}
+		if chain[0][0] == chain[len(chain)-1][1] {
+			return chain, true
+		}
+		return chain, false
+	}
+	return nil, false
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dominoes [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dominoes [exercism/dominoes.test]
+./dominoes_test.go:11:21: undefined: testCases
+./dominoes_test.go:104:24: undefined: testCases
+./dominoes.go:5:2: imported and not used: "reflect"
+./dominoes.go:6:2: imported and not used: "sort"
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/dominoes/.meta/example.go
+package dominoes
+
+// Define the Domino type here.
+type Domino [2]int
+
+func swap(d Domino) Domino {
+	return Domino{d[1], d[0]}
+}
+
+func generatePermutations(input []Domino) [][]Domino {
+	if len(input) == 0 {
+		return [][]Domino{}
+	}
+
+	if len(input) == 1 {
+		return [][]Domino{input}
+	}
+
+	var result [][]Domino
+	for i := range input {
+		current := make([]Domino, len(input))
+		copy(current, input)
+		elem := current[i]
+		current = append(current[:i], current[i+1:]...)
+		subPerms := generatePermutations(current)
+		for _, sub := range subPerms {
+			result = append(result, append([]Domino{elem}, sub...))
+		}
+	}
+	return result
+}
+
+func buildChain(chain []Domino, domino Domino) []Domino {
+	if len(chain) > 0 {
+		last := chain[len(chain)-1]
+		if len(chain) == 1 {
+			if last[0] == domino[0] {
+				return []Domino{swap(last), domino}
+			} else if last[0] == domino[1] {
+				return []Domino{swap(last), swap(domino)}
+			}
+		}
+		if last[1] == domino[0] {
+			return append(chain, domino)
+		} else if last[1] == domino[1] {
+			return append(chain, swap(domino))
+		}
+	}
+	return nil
+}
+
+func MakeChain(input []Domino) ([]Domino, bool) {
+	if len(input) == 0 {
+		return []Domino{}, true
+	}
+
+	permutations := generatePermutations(input)
+	for _, perm := range permutations {
+		chain := []Domino{perm[0]}
+		for i := 1; i < len(perm); i++ {
+			chain = buildChain(chain, perm[i])
+			if nil == chain {
+				break
+			}
+		}
+		if nil == chain {
+			continue
+		}
+		if chain[0][0] == chain[len(chain)-1][1] {
+			return chain, true
+		}
+	}
+	return nil, false
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dominoes [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dominoes [exercism/dominoes.test]
+./dominoes_test.go:11:21: undefined: testCases
+./dominoes_test.go:104:24: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/dominoes/.meta/example.go
+package dominoes
+
+// Define the Domino type here.
+type Domino [2]int
+
+func swap(d Domino) Domino {
+	return Domino{d[1], d[0]}
+}
+
+func generatePermutations(input []Domino) [][]Domino {
+	if len(input) == 0 {
+		return [][]Domino{}
+	}
+
+	if len(input) == 1 {
+		return [][]Domino{input}
+	}
+
+	var result [][]Domino
+	for i := range input {
+		current := make([]Domino, len(input))
+		copy(current, input)
+		elem := current[i]
+		current = append(current[:i], current[i+1:]...)
+		subPerms := generatePermutations(current)
+		for _, sub := range subPerms {
+			result = append(result, append([]Domino{elem}, sub...))
+		}
+	}
+	return result
+}
+
+func buildChain(chain []Domino, domino Domino) []Domino {
+	if len(chain) > 0 {
+		last := chain[len(chain)-1]
+		if len(chain) == 1 {
+			if last[0] == domino[0] {
+				return []Domino{swap(last), domino}
+			} else if last[0] == domino[1] {
+				return []Domino{swap(last), swap(domino)}
+			}
+		}
+		if last[1] == domino[0] {
+			return append(chain, domino)
+		} else if last[1] == domino[1] {
+			return append(chain, swap(domino))
+		}
+	}
+	return nil
+}
+
+func MakeChain(input []Domino) ([]Domino, bool) {
+	if len(input) == 0 {
+		return []Domino{}, true
+	}
+
+	permutations := generatePermutations(input)
+	for _, perm := range permutations {
+		chain := []Domino{perm[0]}
+		for i := 1; i < len(perm); i++ {
+			chain = buildChain(chain, perm[i])
+			if chain == nil {
+				break
+			}
+		}
+		if chain != nil && chain[0][0] == chain[len(chain)-1][1] {
+			return chain, true
+		}
+	}
+	return nil, false
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dominoes [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dominoes [exercism/dominoes.test]
+./dominoes_test.go:11:21: undefined: testCases
+./dominoes_test.go:104:24: undefined: testCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): 
+
+=== FINAL STATUS: ERROR ===

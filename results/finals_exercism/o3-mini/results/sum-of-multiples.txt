@@ -1,0 +1,1 @@
+sum-of-multiples,10,2

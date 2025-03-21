@@ -1,0 +1,304 @@
+=== Initial Source Code ===
+Source file: exercises/practice/pig-latin/.meta/example.py
+import re
+
+
+re_cons = re.compile('^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)')
+re_vowel = re.compile('^([aeiou]|y[^aeiou]|xr)[a-z]*')
+
+
+def split_initial_consonant_sound(word):
+    return re_cons.match(word).groups()
+
+
+def starts_with_vowel_sound(word):
+    return re_vowel.match(word) is not None
+
+
+def translate(text):
+    words = []
+    for word in text.split():
+        if starts_with_vowel_sound(word):
+            words.append(word + 'ay')
+        else:
+            head, tail = split_initial_consonant_sound(word)
+            words.append(tail + head + 'ay')
+    return ' '.join(words)
+
+
+=== Source Interface ===
+def translate(text):
+    pass
+
+
+=== Target Interface ===
+package piglatin
+
+func Sentence(sentence string) string {
+	panic("Please implement the Sentence function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/pig-latin/canonical-data.json
+# File last updated on 2025-01-10
+
+import unittest
+
+from pig_latin import (
+    translate,
+)
+
+
+class PigLatinTest(unittest.TestCase):
+    def test_word_beginning_with_a(self):
+        self.assertEqual(translate("apple"), "appleay")
+
+    def test_word_beginning_with_e(self):
+        self.assertEqual(translate("ear"), "earay")
+
+    def test_word_beginning_with_i(self):
+        self.assertEqual(translate("igloo"), "iglooay")
+
+    def test_word_beginning_with_o(self):
+        self.assertEqual(translate("object"), "objectay")
+
+    def test_word_beginning_with_u(self):
+        self.assertEqual(translate("under"), "underay")
+
+    def test_word_beginning_with_a_vowel_and_followed_by_a_qu(self):
+        self.assertEqual(translate("equal"), "equalay")
+
+    def test_word_beginning_with_p(self):
+        self.assertEqual(translate("pig"), "igpay")
+
+    def test_word_beginning_with_k(self):
+        self.assertEqual(translate("koala"), "oalakay")
+
+    def test_word_beginning_with_x(self):
+        self.assertEqual(translate("xenon"), "enonxay")
+
+    def test_word_beginning_with_q_without_a_following_u(self):
+        self.assertEqual(translate("qat"), "atqay")
+
+    def test_word_beginning_with_consonant_and_vowel_containing_qu(self):
+        self.assertEqual(translate("liquid"), "iquidlay")
+
+    def test_word_beginning_with_ch(self):
+        self.assertEqual(translate("chair"), "airchay")
+
+    def test_word_beginning_with_qu(self):
+        self.assertEqual(translate("queen"), "eenquay")
+
+    def test_word_beginning_with_qu_and_a_preceding_consonant(self):
+        self.assertEqual(translate("square"), "aresquay")
+
+    def test_word_beginning_with_th(self):
+        self.assertEqual(translate("therapy"), "erapythay")
+
+    def test_word_beginning_with_thr(self):
+        self.assertEqual(translate("thrush"), "ushthray")
+
+    def test_word_beginning_with_sch(self):
+        self.assertEqual(translate("school"), "oolschay")
+
+    def test_word_beginning_with_yt(self):
+        self.assertEqual(translate("yttria"), "yttriaay")
+
+    def test_word_beginning_with_xr(self):
+        self.assertEqual(translate("xray"), "xrayay")
+
+    def test_y_is_treated_like_a_consonant_at_the_beginning_of_a_word(self):
+        self.assertEqual(translate("yellow"), "ellowyay")
+
+    def test_y_is_treated_like_a_vowel_at_the_end_of_a_consonant_cluster(self):
+        self.assertEqual(translate("rhythm"), "ythmrhay")
+
+    def test_y_as_second_letter_in_two_letter_word(self):
+        self.assertEqual(translate("my"), "ymay")
+
+    def test_a_whole_phrase(self):
+        self.assertEqual(translate("quick fast run"), "ickquay astfay unray")
+
+
+=== Target Test Code ===
+package piglatin
+
+import (
+	"testing"
+)
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Fatalf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import (
+	"regexp"
+	"strings"
+)
+
+var (
+	reCons   = regexp.MustCompile(`^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)`)
+	reVowel  = regexp.MustCompile(`^([aeiou]|y[^aeiou]|xr)[a-z]*`)
+)
+
+func splitInitialConsonantSound(word string) (string, string) {
+	matches := reCons.FindStringSubmatch(word)
+	return matches[1], matches[2]
+}
+
+func startsWithVowelSound(word string) bool {
+	return reVowel.MatchString(word)
+}
+
+func Sentence(sentence string) string {
+	words := []string{}
+	for _, word := range strings.Fields(sentence) {
+		if startsWithVowelSound(word) {
+			words = append(words, word+"ay")
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			words = append(words, tail+head+"ay")
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin_test.go:8:21: undefined: testCases
+./pig_latin_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import (
+	"regexp"
+	"strings"
+)
+
+var (
+	reCons   = regexp.MustCompile(`^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)`)
+	reVowel  = regexp.MustCompile(`^([aeiou]|y[^aeiou]|xr)[a-z]*`)
+)
+
+func splitInitialConsonantSound(word string) (string, string) {
+	matches := reCons.FindStringSubmatch(word)
+	return matches[1], matches[2]
+}
+
+func startsWithVowelSound(word string) bool {
+	return reVowel.MatchString(word)
+}
+
+func Sentence(sentence string) string {
+	words := []string{}
+	for _, word := range strings.Fields(sentence) {
+		if startsWithVowelSound(word) {
+			words = append(words, word+"ay")
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			words = append(words, tail+head+"ay")
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin_test.go:8:21: undefined: testCases
+./pig_latin_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import (
+	"regexp"
+	"strings"
+)
+
+var (
+	reCons   = regexp.MustCompile(`^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)`)
+	reVowel  = regexp.MustCompile(`^([aeiou]|y[^aeiou]|xr)[a-z]*`)
+)
+
+func splitInitialConsonantSound(word string) (string, string) {
+	matches := reCons.FindStringSubmatch(word)
+	return matches[1], matches[2]
+}
+
+func startsWithVowelSound(word string) bool {
+	return reVowel.MatchString(word)
+}
+
+func Sentence(sentence string) string {
+	words := []string{}
+	for _, word := range strings.Fields(sentence) {
+		if startsWithVowelSound(word) {
+			words = append(words, word+"ay")
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			words = append(words, tail+head+"ay")
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin_test.go:8:21: undefined: testCases
+./pig_latin_test.go:22:22: undefined: testCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): 
+
+=== FINAL STATUS: ERROR ===

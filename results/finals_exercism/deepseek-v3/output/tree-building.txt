@@ -1,0 +1,794 @@
+=== Initial Source Code ===
+Source file: exercises/practice/tree-building/.meta/example.py
+class Record:
+    def __init__(self, record_id, parent_id):
+        self.record_id = record_id
+        self.parent_id = parent_id
+
+    def equal_id(self):
+        return self.record_id == self.parent_id
+
+
+class Node:
+    def __init__(self, node_id):
+        self.node_id = node_id
+        self.children = []
+
+
+def validate_record(record):
+    if record.equal_id() and record.record_id != 0:
+        raise ValueError('Only root should have equal record and parent id.')
+
+    if not record.equal_id() and record.parent_id >= record.record_id:
+        raise ValueError("Node parent_id should be smaller than it's record_id.")
+
+
+def BuildTree(records):
+    parent_dict = {}
+    node_dict = {}
+    ordered_id = sorted(idx.record_id for idx in records)
+
+    for record in records:
+        validate_record(record)
+        parent_dict[record.record_id] = record.parent_id
+        node_dict[record.record_id] = Node(record.record_id)
+
+    root_id = 0
+    root = None
+
+    for index, record_id in enumerate(ordered_id):
+        if index != record_id:
+            raise ValueError('Record id is invalid or out of order.')
+
+        if record_id == root_id:
+            root = node_dict[record_id]
+        else:
+            parent_id = parent_dict[record_id]
+            node_dict[parent_id].children.append(node_dict[record_id])
+
+    return root
+
+
+=== Source Interface ===
+class Record:
+    def __init__(self, record_id, parent_id):
+        self.record_id = record_id
+        self.parent_id = parent_id
+
+
+class Node:
+    def __init__(self, node_id):
+        self.node_id = node_id
+        self.children = []
+
+
+def BuildTree(records):
+    root = None
+    records.sort(key=lambda x: x.record_id)
+    ordered_id = [i.record_id for i in records]
+    if records:
+        if ordered_id[-1] != len(ordered_id) - 1:
+            raise ValueError('broken tree')
+        if ordered_id[0] != 0:
+            raise ValueError('invalid')
+    trees = []
+    parent = {}
+    for i in range(len(ordered_id)):
+        for j in records:
+            if ordered_id[i] == j.record_id:
+                if j.record_id == 0:
+                    if j.parent_id != 0:
+                        raise ValueError('error!')
+                if j.record_id < j.parent_id:
+                    raise ValueError('something went wrong!')
+                if j.record_id == j.parent_id:
+                    if j.record_id != 0:
+                        raise ValueError('error!')
+                trees.append(Node(ordered_id[i]))
+    for i in range(len(ordered_id)):
+        for j in trees:
+            if i == j.node_id:
+                parent = j
+        for j in records:
+            if j.parent_id == i:
+                for k in trees:
+                    if k.node_id == 0:
+                        continue
+                    if j.record_id == k.node_id:
+                        child = k
+                        parent.children.append(child)
+    if len(trees) > 0:
+        root = trees[0]
+    return root
+
+
+=== Target Interface ===
+package tree
+
+type Record struct {
+	ID     int
+	Parent int
+	// feel free to add fields as you see fit
+}
+
+type Node struct {
+	ID       int
+	Children []*Node
+	// feel free to add fields as you see fit
+}
+
+func Build(records []Record) (*Node, error) {
+	panic("Please implement the Build function")
+}
+
+
+=== Source Test Code ===
+import unittest
+
+from tree_building import Record, BuildTree
+
+
+class TreeBuildingTest(unittest.TestCase):
+    """
+        Record(record_id, parent_id): records given to be processed
+        Node(node_id): Node in tree
+        BuildTree(records): records as argument and returns tree
+        BuildTree should raise ValueError if given records are invalid
+    """
+
+    def test_empty_list_input(self):
+        records = []
+        root = BuildTree(records)
+        self.assertIsNone(root)
+
+    def test_one_node(self):
+        records = [
+            Record(0, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_leaf(root, node_id=0)
+
+    def test_three_nodes_in_order(self):
+        records = [
+            Record(0, 0),
+            Record(1, 0),
+            Record(2, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, node_id=0, children_count=2)
+        self.assert_node_is_leaf(root.children[0], node_id=1)
+        self.assert_node_is_leaf(root.children[1], node_id=2)
+
+    def test_three_nodes_in_reverse_order(self):
+        records = [
+            Record(2, 0),
+            Record(1, 0),
+            Record(0, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, node_id=0, children_count=2)
+        self.assert_node_is_leaf(root.children[0], node_id=1)
+        self.assert_node_is_leaf(root.children[1], node_id=2)
+
+    def test_more_than_two_children(self):
+        records = [
+            Record(0, 0),
+            Record(1, 0),
+            Record(2, 0),
+            Record(3, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, node_id=0, children_count=3)
+        self.assert_node_is_leaf(root.children[0], node_id=1)
+        self.assert_node_is_leaf(root.children[1], node_id=2)
+        self.assert_node_is_leaf(root.children[2], node_id=3)
+
+    def test_binary_tree(self):
+        records = [
+            Record(6, 2),
+            Record(0, 0),
+            Record(3, 1),
+            Record(2, 0),
+            Record(4, 1),
+            Record(5, 2),
+            Record(1, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, 0, 2)
+        self.assert_node_is_branch(root.children[0], 1, 2)
+        self.assert_node_is_branch(root.children[1], 2, 2)
+        self.assert_node_is_leaf(root.children[0].children[0], 3)
+        self.assert_node_is_leaf(root.children[0].children[1], 4)
+        self.assert_node_is_leaf(root.children[1].children[0], 5)
+        self.assert_node_is_leaf(root.children[1].children[1], 6)
+
+    def test_unbalanced_tree(self):
+        records = [
+            Record(0, 0),
+            Record(1, 0),
+            Record(2, 0),
+            Record(3, 1),
+            Record(4, 1),
+            Record(5, 1),
+            Record(6, 2),
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, 0, 2)
+        self.assert_node_is_branch(root.children[0], 1, 3)
+        self.assert_node_is_branch(root.children[1], 2, 1)
+        self.assert_node_is_leaf(root.children[0].children[0], 3)
+        self.assert_node_is_leaf(root.children[0].children[1], 4)
+        self.assert_node_is_leaf(root.children[0].children[2], 5)
+        self.assert_node_is_leaf(root.children[1].children[0], 6)
+
+    def test_root_node_has_parent(self):
+        records = [
+            Record(0, 1),
+            Record(1, 0)
+        ]
+        # Root parent_id should be equal to record_id(0)
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Node parent_id should be smaller than it's record_id.")
+
+    def test_no_root_node(self):
+        records = [
+            Record(1, 0),
+            Record(2, 0)
+        ]
+        # Record with record_id 0 (root) is missing
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Record id is invalid or out of order.")
+
+    def test_non_continuous(self):
+        records = [
+            Record(2, 0),
+            Record(4, 2),
+            Record(1, 0),
+            Record(0, 0)
+        ]
+        # Record with record_id 3 is missing
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Record id is invalid or out of order.")
+
+    def test_cycle_directly(self):
+        records = [
+            Record(5, 2),
+            Record(3, 2),
+            Record(2, 2),
+            Record(4, 1),
+            Record(1, 0),
+            Record(0, 0),
+            Record(6, 3)
+        ]
+        # Cycle caused by Record 2 with parent_id pointing to itself
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Only root should have equal record and parent id.")
+
+    def test_cycle_indirectly(self):
+        records = [
+            Record(5, 2),
+            Record(3, 2),
+            Record(2, 6),
+            Record(4, 1),
+            Record(1, 0),
+            Record(0, 0),
+            Record(6, 3)
+        ]
+        # Cycle caused by Record 2 with parent_id(6) greater than record_id(2)
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Node parent_id should be smaller than it's record_id.")
+
+    def test_higher_id_parent_of_lower_id(self):
+        records = [
+            Record(0, 0),
+            Record(2, 0),
+            Record(1, 2)
+        ]
+        # Record 1 have parent_id(2) greater than record_id(1)
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Node parent_id should be smaller than it's record_id.")
+
+    def assert_node_is_branch(self, node, node_id, children_count):
+        self.assertEqual(node.node_id, node_id)
+        self.assertNotEqual(len(node.children), 0)
+        self.assertEqual(len(node.children), children_count)
+
+    def assert_node_is_leaf(self, node, node_id):
+        self.assertEqual(node.node_id, node_id)
+        self.assertEqual(len(node.children), 0)
+
+
+=== Target Test Code ===
+//nolint:gosec // In the context of this exercise, it is fine to use math.Rand instead of crypto.Rand.
+package tree
+
+import (
+	"fmt"
+	"math/rand"
+	"testing"
+)
+
+// Define a function Build(records []Record) (*Node, error)
+// where Record is a struct containing int fields ID and Parent
+// and Node is a struct containing int field ID and []*Node field Children.
+
+var successTestCases = []struct {
+	name     string
+	input    []Record
+	expected *Node
+}{
+	{
+		name:     "empty input",
+		input:    []Record{},
+		expected: nil,
+	},
+	{
+		name: "one node",
+		input: []Record{
+			{ID: 0},
+		},
+		expected: &Node{
+			ID: 0,
+		},
+	},
+	{
+		name: "three nodes in order",
+		input: []Record{
+			{ID: 0},
+			{ID: 1, Parent: 0},
+			{ID: 2, Parent: 0},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{ID: 1},
+				{ID: 2},
+			},
+		},
+	},
+	{
+		name: "three nodes in reverse order",
+		input: []Record{
+			{ID: 2, Parent: 0},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{ID: 1},
+				{ID: 2},
+			},
+		},
+	},
+	{
+		name: "three levels of nesting",
+		input: []Record{
+			{ID: 2, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 3, Parent: 2},
+			{ID: 0},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{
+					ID: 1,
+					Children: []*Node{
+						{
+							ID: 2,
+							Children: []*Node{
+								{ID: 3},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		name: "more than two children",
+		input: []Record{
+			{ID: 3, Parent: 0},
+			{ID: 2, Parent: 0},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{ID: 1},
+				{ID: 2},
+				{ID: 3},
+			},
+		},
+	},
+	{
+		name: "binary tree",
+		input: []Record{
+			{ID: 5, Parent: 1},
+			{ID: 3, Parent: 2},
+			{ID: 2, Parent: 0},
+			{ID: 4, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+			{ID: 6, Parent: 2},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{
+					ID: 1,
+					Children: []*Node{
+						{ID: 4},
+						{ID: 5},
+					},
+				},
+				{
+					ID: 2,
+					Children: []*Node{
+						{ID: 3},
+						{ID: 6},
+					},
+				},
+			},
+		},
+	},
+	{
+		name: "unbalanced tree",
+		input: []Record{
+			{ID: 5, Parent: 2},
+			{ID: 3, Parent: 2},
+			{ID: 2, Parent: 0},
+			{ID: 4, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+			{ID: 6, Parent: 2},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{
+					ID: 1,
+					Children: []*Node{
+						{ID: 4},
+					},
+				},
+				{
+					ID: 2,
+					Children: []*Node{
+						{ID: 3},
+						{ID: 5},
+						{ID: 6},
+					},
+				},
+			},
+		},
+	},
+}
+
+var failureTestCases = []struct {
+	name  string
+	input []Record
+}{
+	{
+		name: "one root node and has parent",
+		input: []Record{
+			{ID: 0, Parent: 1},
+		},
+	},
+	{
+		name: "root node has parent",
+		input: []Record{
+			{ID: 0, Parent: 1},
+			{ID: 1, Parent: 0},
+		},
+	},
+	{
+		name: "no root node",
+		input: []Record{
+			{ID: 1, Parent: 0},
+		},
+	},
+	{
+		name: "duplicate node",
+		input: []Record{
+			{ID: 0, Parent: 0},
+			{ID: 1, Parent: 0},
+			{ID: 1, Parent: 0},
+		},
+	},
+	{
+		name: "duplicate root",
+		input: []Record{
+			{ID: 0, Parent: 0},
+			{ID: 0, Parent: 0},
+		},
+	},
+	{
+		name: "non-continuous",
+		input: []Record{
+			{ID: 2, Parent: 0},
+			{ID: 4, Parent: 2},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+		},
+	},
+	{
+		name: "cycle directly",
+		input: []Record{
+			{ID: 5, Parent: 2},
+			{ID: 3, Parent: 2},
+			{ID: 2, Parent: 2},
+			{ID: 4, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+			{ID: 6, Parent: 3},
+		},
+	},
+	{
+		name: "cycle indirectly",
+		input: []Record{
+			{ID: 5, Parent: 2},
+			{ID: 3, Parent: 2},
+			{ID: 2, Parent: 6},
+			{ID: 4, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+			{ID: 6, Parent: 3},
+		},
+	},
+	{
+		name: "higher id parent of lower id",
+		input: []Record{
+			{ID: 0},
+			{ID: 2, Parent: 0},
+			{ID: 1, Parent: 2},
+		},
+	},
+}
+
+func (n Node) String() string {
+	return fmt.Sprintf("%d:%s", n.ID, n.Children)
+}
+
+func TestMakeTreeSuccess(t *testing.T) {
+	for _, tt := range successTestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := Build(tt.input)
+			if err != nil {
+				var _ error = err
+				t.Fatalf("Build for test case %q returned error %q. Error not expected.",
+					tt.name, err)
+			}
+			if !nodeEqual(actual, tt.expected) {
+				t.Fatalf("Build for test case %q returned %s but was expected to return %s.",
+					tt.name, actual, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMakeTreeFailure(t *testing.T) {
+	for _, tt := range failureTestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := Build(tt.input)
+			if err == nil {
+				t.Fatalf("Build for test case %q returned %s but was expected to fail.",
+					tt.name, actual)
+			}
+		})
+	}
+}
+
+func shuffleRecords(records []Record) []Record {
+	gen := rand.New(rand.NewSource(42))
+	newRecords := make([]Record, len(records))
+	for i, idx := range gen.Perm(len(records)) {
+		newRecords[i] = records[idx]
+	}
+	return newRecords
+}
+
+// Binary tree
+func makeTwoTreeRecords() []Record {
+	records := make([]Record, 1<<16)
+	for i := range records {
+		if i == 0 {
+			records[i] = Record{ID: 0}
+		} else {
+			records[i] = Record{ID: i, Parent: i >> 1}
+		}
+	}
+	return shuffleRecords(records)
+}
+
+var twoTreeRecords = makeTwoTreeRecords()
+
+func BenchmarkTwoTree(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Build(twoTreeRecords)
+	}
+}
+
+// Each node but the root node and leaf nodes has ten children.
+func makeTenTreeRecords() []Record {
+	records := make([]Record, 10000)
+	for i := range records {
+		if i == 0 {
+			records[i] = Record{ID: 0}
+		} else {
+			records[i] = Record{ID: i, Parent: i / 10}
+		}
+	}
+	return shuffleRecords(records)
+}
+
+var tenTreeRecords = makeTenTreeRecords()
+
+func BenchmarkTenTree(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Build(tenTreeRecords)
+	}
+}
+
+func makeShallowRecords() []Record {
+	records := make([]Record, 10000)
+	for i := range records {
+		records[i] = Record{ID: i, Parent: 0}
+	}
+	return shuffleRecords(records)
+}
+
+var shallowRecords = makeShallowRecords()
+
+func BenchmarkShallowTree(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Build(shallowRecords)
+	}
+}
+
+func nodeEqual(node1, node2 *Node) bool {
+	switch {
+	case node1 == nil && node2 == nil:
+		return true
+	case node1 == nil && node2 != nil:
+		return false
+	case node1 != nil && node2 == nil:
+		return false
+	default:
+		return node1.ID == node2.ID && nodeSliceEqual(node1.Children, node2.Children)
+	}
+}
+
+func nodeSliceEqual(nodes1, nodes2 []*Node) bool {
+	if len(nodes1) == 0 && len(nodes2) == 0 {
+		return true
+	}
+	if len(nodes1) != len(nodes2) {
+		return false
+	}
+	for i := range nodes1 {
+		if !nodeEqual(nodes1[i], nodes2[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Initial Translation ===
+// exercises/practice/tree-building/.meta/example.go
+package tree
+
+import (
+	"errors"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent ID.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and Children.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// validateRecord checks if the record is valid.
+func validateRecord(record Record) error {
+	if record.ID == record.Parent && record.ID != 0 {
+		return errors.New("Only root should have equal record and parent id.")
+	}
+
+	if record.ID != record.Parent && record.Parent >= record.ID {
+		return errors.New("Node parent_id should be smaller than it's record_id.")
+	}
+	return nil
+}
+
+// Build constructs a tree from the given records.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	parentDict := make(map[int]int)
+	nodeDict := make(map[int]*Node)
+
+	for _, record := range records {
+		if err := validateRecord(record); err != nil {
+			return nil, err
+		}
+		parentDict[record.ID] = record.Parent
+		nodeDict[record.ID] = &Node{ID: record.ID}
+	}
+
+	orderedID := make([]int, 0, len(records))
+	for _, record := range records {
+		orderedID = append(orderedID, record.ID)
+	}
+	sort.Ints(orderedID)
+
+	for index, recordID := range orderedID {
+		if index != recordID {
+			return nil, errors.New("Record id is invalid or out of order.")
+		}
+
+		if recordID == 0 {
+			continue
+		}
+
+		parentID := parentDict[recordID]
+		if parentNode, ok := nodeDict[parentID]; ok {
+			parentNode.Children = append(parentNode.Children, nodeDict[recordID])
+		}
+	}
+
+	if root, ok := nodeDict[0]; ok {
+		return root, nil
+	}
+
+	return nil, errors.New("No root node found")
+}
+
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/tree-building	0.289s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

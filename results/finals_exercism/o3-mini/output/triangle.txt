@@ -1,0 +1,865 @@
+=== Initial Source Code ===
+Source file: exercises/practice/triangle/.meta/example.py
+def valid(sides):
+    return sum(sorted(sides)[:2]) >= sorted(sides)[2] and all(
+        side > 0 for side in sides
+    )
+
+
+def equilateral(sides):
+    return valid(sides) and all(sides[0] == side for side in sides)
+
+
+def isosceles(sides):
+    return valid(sides) and any(
+        side_1 == side_2 for side_1, side_2 in zip(sorted(sides), sorted(sides)[1:])
+    )
+
+
+def scalene(sides):
+    return valid(sides) and not isosceles(sides)
+
+
+=== Source Interface ===
+def equilateral(sides):
+    pass
+
+
+def isosceles(sides):
+    pass
+
+
+def scalene(sides):
+    pass
+
+
+=== Target Interface ===
+// This is a "stub" file.  It's a little start on your solution.
+// It's not a complete solution though; you have to write some code.
+
+// Package triangle should have a package comment that summarizes what it's about.
+// https://golang.org/doc/effective_go.html#commentary
+package triangle
+
+
+// Notice KindFromSides() returns this type. Pick a suitable data type.
+type Kind
+
+const (
+    // Pick values for the following identifiers used by the test program.
+    NaT // not a triangle
+    Equ // equilateral
+    Iso // isosceles
+    Sca // scalene
+)
+
+// KindFromSides should have a comment documenting it.
+func KindFromSides(a, b, c float64) Kind {
+	// Write some code here to pass the test suite.
+	// Then remove all the stock comments.
+	// They're here to help you get started but they only clutter a finished solution.
+	// If you leave them in, reviewers may protest!
+	var k Kind
+	return k
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/triangle/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from triangle import (
+    equilateral,
+    isosceles,
+    scalene,
+)
+
+
+class EquilateralTriangleTest(unittest.TestCase):
+    def test_all_sides_are_equal(self):
+        self.assertIs(equilateral([2, 2, 2]), True)
+
+    def test_any_side_is_unequal(self):
+        self.assertIs(equilateral([2, 3, 2]), False)
+
+    def test_no_sides_are_equal(self):
+        self.assertIs(equilateral([5, 4, 6]), False)
+
+    def test_all_zero_sides_is_not_a_triangle(self):
+        self.assertIs(equilateral([0, 0, 0]), False)
+
+    def test_sides_may_be_floats(self):
+        self.assertIs(equilateral([0.5, 0.5, 0.5]), True)
+
+
+class IsoscelesTriangleTest(unittest.TestCase):
+    def test_last_two_sides_are_equal(self):
+        self.assertIs(isosceles([3, 4, 4]), True)
+
+    def test_first_two_sides_are_equal(self):
+        self.assertIs(isosceles([4, 4, 3]), True)
+
+    def test_first_and_last_sides_are_equal(self):
+        self.assertIs(isosceles([4, 3, 4]), True)
+
+    def test_equilateral_triangles_are_also_isosceles(self):
+        self.assertIs(isosceles([4, 4, 4]), True)
+
+    def test_no_sides_are_equal(self):
+        self.assertIs(isosceles([2, 3, 4]), False)
+
+    def test_first_triangle_inequality_violation(self):
+        self.assertIs(isosceles([1, 1, 3]), False)
+
+    def test_second_triangle_inequality_violation(self):
+        self.assertIs(isosceles([1, 3, 1]), False)
+
+    def test_third_triangle_inequality_violation(self):
+        self.assertIs(isosceles([3, 1, 1]), False)
+
+    def test_sides_may_be_floats(self):
+        self.assertIs(isosceles([0.5, 0.4, 0.5]), True)
+
+
+class ScaleneTriangleTest(unittest.TestCase):
+    def test_no_sides_are_equal(self):
+        self.assertIs(scalene([5, 4, 6]), True)
+
+    def test_all_sides_are_equal(self):
+        self.assertIs(scalene([4, 4, 4]), False)
+
+    def test_first_and_second_sides_are_equal(self):
+        self.assertIs(scalene([4, 4, 3]), False)
+
+    def test_first_and_third_sides_are_equal(self):
+        self.assertIs(scalene([3, 4, 3]), False)
+
+    def test_second_and_third_sides_are_equal(self):
+        self.assertIs(scalene([4, 3, 3]), False)
+
+    def test_may_not_violate_triangle_inequality(self):
+        self.assertIs(scalene([7, 3, 2]), False)
+
+    def test_sides_may_be_floats(self):
+        self.assertIs(scalene([0.5, 0.4, 0.6]), True)
+
+
+=== Target Test Code ===
+package triangle
+
+import (
+	"testing"
+)
+
+type testCase struct {
+	description string
+	expected    Kind
+	a, b, c     float64
+}
+
+var testCases = []testCase{
+	{description: "same length (2)", expected: Equ, a: 2, b: 2, c: 2},
+	{description: "same length (10)", expected: Equ, a: 10, b: 10, c: 10},
+	{description: "b = c = 4", expected: Iso, a: 3, b: 4, c: 4},
+	{description: "a = c = 4", expected: Iso, a: 4, b: 3, c: 4},
+	{description: "a = b = 4", expected: Iso, a: 4, b: 4, c: 3},
+	{description: "a = b = 10", expected: Iso, a: 10, b: 10, c: 2},
+	{description: "no sides equal (3, 4, 5)", expected: Sca, a: 3, b: 4, c: 5},
+	{description: "no sides equal (10, 11, 12)", expected: Sca, a: 10, b: 11, c: 12},
+	{description: "no sides equal (5, 4, 2)", expected: Sca, a: 5, b: 4, c: 2},
+	{description: "no sides equal (0.4, 0.6, 0.3)", expected: Sca, a: .4, b: .6, c: .3},
+	{description: "no sides equal (5, 4, 6) | 2a=b+c", expected: Sca, a: 5, b: 4, c: 6},
+	{description: "no sides equal (6, 4, 5) | 2c=a+b", expected: Sca, a: 6, b: 4, c: 5},
+	{description: "all sides zero", expected: NaT, a: 0, b: 0, c: 0},
+	{description: "negative length", expected: NaT, a: 3, b: 4, c: -5},
+	{description: "not a triangle (1, 1, 3)", expected: NaT, a: 1, b: 1, c: 3},
+	{description: "not a triangle (2, 5, 2)", expected: NaT, a: 2, b: 5, c: 2},
+	{description: "not a triangle (7, 3, 2)", expected: NaT, a: 7, b: 3, c: 2},
+}
+
+// Test that the kinds are not equal to each other.
+// If they are equal, then TestKind will return false positives.
+func TestKindsNotEqual(t *testing.T) {
+	kindsAndNames := []struct {
+		kind Kind
+		name string
+	}{
+		{Equ, "Equ"},
+		{Iso, "Iso"},
+		{Sca, "Sca"},
+		{NaT, "NaT"},
+	}
+
+	for i, pair1 := range kindsAndNames {
+		for j := i + 1; j < len(kindsAndNames); j++ {
+			pair2 := kindsAndNames[j]
+			if pair1.kind == pair2.kind {
+				t.Fatalf("the value of %s should not be equal to the value of %s", pair1.name, pair2.name)
+			}
+		}
+	}
+}
+
+func TestKind(t *testing.T) {
+	for _, test := range testCases {
+		t.Run(test.description, func(t *testing.T) {
+			got := KindFromSides(test.a, test.b, test.c)
+			if got != test.expected {
+				t.Fatalf("KindFromSides(%v, %v, %v) = %v, want: %v", test.a, test.b, test.c, got, test.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkKind(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			KindFromSides(test.a, test.b, test.c)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/triangle/triangle.go
+// Package triangle provides functions to classify triangles based on side lengths.
+package triangle
+
+// Kind represents the triangle type.
+// It can be one of the following: not a triangle (NaT), equilateral (Equ), isosceles (Iso), or scalene (Sca).
+// Here, Kind is defined as a string.
+
+type Kind string
+
+const (
+	// NaT indicates that the given sides do not form a valid triangle.
+	NaT Kind = "not a triangle"
+
+	// Equ indicates an equilateral triangle where all three sides are equal.
+	Equ Kind = "equilateral"
+
+	// Iso indicates an isosceles triangle, which has at least two equal sides.
+	Iso Kind = "isosceles"
+
+	// Sca indicates a scalene triangle, where all three sides are different.
+	Sca Kind = "scalene"
+)
+
+// KindFromSides determines the kind of triangle for the given side lengths a, b, and c.
+// It returns one of the Kind constants: Equ, Iso, Sca, or NaT if the sides do not form a valid triangle.
+func KindFromSides(a, b, c float64) Kind {
+	if !isValidTriangle(a, b, c) {
+		return NaT
+	}
+
+	// Check for equilateral: all sides equal.
+	if a == b && b == c {
+		return Equ
+	}
+
+	// Check for isosceles: at least two sides equal.
+	if a == b || b == c || a == c {
+		return Iso
+	}
+
+	// If it's a valid triangle and neither equilateral nor isosceles, it must be scalene.
+	return Sca
+}
+
+// isValidTriangle checks whether the provided side lengths can form a valid triangle.
+// A triangle is valid if all sides are greater than 0 and the sum of any two sides is strictly greater than the third side.
+func isValidTriangle(a, b, c float64) bool {
+	if a <= 0 || b <= 0 || c <= 0 {
+		return false
+	}
+	if a+b <= c || a+c <= b || b+c <= a {
+		return false
+	}
+	return true
+}
+
+// exercises/practice/triangle/.meta/example.go
+package meta
+
+import (
+	"sort"
+)
+
+// Valid checks if the sides can form a valid triangle (including degenerate triangles) based on the following criteria:
+// 1. All sides must be greater than 0.
+// 2. The sum of the two smallest sides is greater than or equal to the largest side.
+func Valid(sides []float64) bool {
+	if len(sides) != 3 {
+		// For our purposes, a triangle must have exactly 3 sides.
+		return false
+	}
+	// Create a copy of sides to avoid modifying the original slice
+	s := make([]float64, 3)
+	copy(s, sides)
+	sort.Float64s(s)
+	if s[0]+s[1] < s[2] {
+		return false
+	}
+	for _, side := range sides {
+		if side <= 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// Equilateral returns true if the triangle is valid and all three sides are equal.
+func Equilateral(sides []float64) bool {
+	if !Valid(sides) {
+		return false
+	}
+	return sides[0] == sides[1] && sides[1] == sides[2]
+}
+
+// Isosceles returns true if the triangle is valid and has at least one pair of equal sides.
+func Isosceles(sides []float64) bool {
+	if !Valid(sides) {
+		return false
+	}
+	// Create a sorted copy of the sides
+	s := make([]float64, 3)
+	copy(s, sides)
+	sort.Float64s(s)
+	return s[0] == s[1] || s[1] == s[2]
+}
+
+// Scalene returns true if the triangle is valid and no sides are equal.
+func Scalene(sides []float64) bool {
+	if !Valid(sides) {
+		return false
+	}
+	return !Isosceles(sides)
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/triangle [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/triangle [exercism/triangle.test]
+./triangle.go:59:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/triangle/triangle.go
+// Package triangle provides functions to classify triangles based on side lengths.
+package triangle
+
+// Kind represents the triangle type.
+// It can be one of the following: not a triangle (NaT), equilateral (Equ), isosceles (Iso), or scalene (Sca).
+// Here, Kind is defined as a string.
+
+type Kind string
+
+const (
+	// NaT indicates that the given sides do not form a valid triangle.
+	NaT Kind = "not a triangle"
+
+	// Equ indicates an equilateral triangle where all three sides are equal.
+	Equ Kind = "equilateral"
+
+	// Iso indicates an isosceles triangle, which has at least two equal sides.
+	Iso Kind = "isosceles"
+
+	// Sca indicates a scalene triangle, where all three sides are different.
+	Sca Kind = "scalene"
+)
+
+// KindFromSides determines the kind of triangle for the given side lengths a, b, and c.
+// It returns one of the Kind constants: Equ, Iso, Sca, or NaT if the sides do not form a valid triangle.
+func KindFromSides(a, b, c float64) Kind {
+	if !isValidTriangle(a, b, c) {
+		return NaT
+	}
+	
+	if a == b && b == c {
+		return Equ
+	}
+	
+	if a == b || b == c || a == c {
+		return Iso
+	}
+	
+	return Sca
+}
+
+// isValidTriangle checks whether the provided side lengths can form a valid triangle.
+// A triangle is valid if all sides are greater than 0 and the sum of any two sides is greater than or equal to the third side.
+// This implementation allows degenerate triangles where the sum of two sides equals the third side.
+func isValidTriangle(a, b, c float64) bool {
+	if a <= 0 || b <= 0 || c <= 0 {
+		return false
+	}
+	
+	// Allow degenerate triangles: using >=; if the sum of two sides is less than the third, it's invalid.
+	if a+b < c || a+c < b || b+c < a {
+		return false
+	}
+	
+	return true
+}
+
+// -----------------------------------------------
+
+// exercises/practice/triangle/.meta/example.go
+// Package meta provides auxiliary functions for triangle validation and classification.
+package meta
+
+import (
+	"sort"
+)
+
+// Valid checks if the sides can form a valid triangle (including degenerate triangles) based on the following criteria:
+// 1. All sides must be greater than 0.
+// 2. The sum of the two smallest sides is greater than or equal to the largest side.
+func Valid(sides []float64) bool {
+	if len(sides) != 3 {
+		return false
+	}
+
+	s := make([]float64, 3)
+	copy(s, sides)
+	sort.Float64s(s)
+
+	if s[0]+s[1] < s[2] {
+		return false
+	}
+
+	for _, side := range sides {
+		if side <= 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Equilateral returns true if the triangle is valid and all three sides are equal.
+func Equilateral(sides []float64) bool {
+	if !Valid(sides) {
+		return false
+	}
+	
+	return sides[0] == sides[1] && sides[1] == sides[2]
+}
+
+// Isosceles returns true if the triangle is valid and has at least one pair of equal sides.
+func Isosceles(sides []float64) bool {
+	if !Valid(sides) {
+		return false
+	}
+	
+	s := make([]float64, 3)
+	copy(s, sides)
+	sort.Float64s(s)
+	
+	return s[0] == s[1] || s[1] == s[2]
+}
+
+// Scalene returns true if the triangle is valid and no sides are equal.
+func Scalene(sides []float64) bool {
+	if !Valid(sides) {
+		return false
+	}
+	
+	return !Isosceles(sides)
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/triangle [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/triangle [exercism/triangle.test]
+./triangle.go:63:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/triangle/triangle.go
+package triangle
+
+// Kind represents the type of a triangle.
+// It can be one of the following: not a triangle (NaT), equilateral (Equ), isosceles (Iso), or scalene (Sca).
+// Kind is implemented as a string.
+
+type Kind string
+
+const (
+	// NaT indicates that the given side lengths do not form a valid triangle.
+	NaT Kind = "not a triangle"
+
+	// Equ indicates an equilateral triangle, where all three sides are equal.
+	Equ Kind = "equilateral"
+
+	// Iso indicates an isosceles triangle, which has at least two equal sides.
+	Iso Kind = "isosceles"
+
+	// Sca indicates a scalene triangle, where all three sides are different.
+	Sca Kind = "scalene"
+)
+
+// KindFromSides returns the Kind of triangle for the given side lengths.
+// It returns Equ for equilateral triangles, Iso for isosceles triangles, Sca for scalene triangles,
+// and NaT if the sides do not form a valid triangle.
+func KindFromSides(a, b, c float64) Kind {
+	if !isValidTriangle(a, b, c) {
+		return NaT
+	}
+
+	if a == b && b == c {
+		return Equ
+	}
+
+	if a == b || b == c || a == c {
+		return Iso
+	}
+
+	return Sca
+}
+
+// isValidTriangle checks whether three side lengths can form a triangle.
+// A triangle is valid if all sides are greater than 0 and the sum of any two sides is
+// greater than or equal to the third side (degenerate triangles are allowed).
+func isValidTriangle(a, b, c float64) bool {
+	if a <= 0 || b <= 0 || c <= 0 {
+		return false
+	}
+	
+	if a+b < c || a+c < b || b+c < a {
+		return false
+	}
+
+	return true
+}
+
+// ============================================================
+// Below is the test file for the triangle package.
+// File: exercises/practice/triangle/triangle_test.go
+
+// Note: In your project, this code should be in a separate file named triangle_test.go.
+
+// +build !solution
+
+// Uncomment the build tag above if needed to separate tests.
+
+/*
+// exercises/practice/triangle/triangle_test.go
+package triangle
+
+import (
+	"testing"
+)
+
+type testCase struct {
+	description string
+	expected    Kind
+	 a, b, c   float64
+}
+
+var testCases = []testCase{
+	{description: "same length (2)", expected: Equ, a: 2, b: 2, c: 2},
+	{description: "same length (10)", expected: Equ, a: 10, b: 10, c: 10},
+	{description: "b = c = 4", expected: Iso, a: 3, b: 4, c: 4},
+	{description: "a = c = 4", expected: Iso, a: 4, b: 3, c: 4},
+	{description: "a = b = 4", expected: Iso, a: 4, b: 4, c: 3},
+	{description: "a = b = 10", expected: Iso, a: 10, b: 10, c: 2},
+	{description: "no sides equal (3, 4, 5)", expected: Sca, a: 3, b: 4, c: 5},
+	{description: "no sides equal (10, 11, 12)", expected: Sca, a: 10, b: 11, c: 12},
+	{description: "no sides equal (5, 4, 2)", expected: Sca, a: 5, b: 4, c: 2},
+	{description: "no sides equal (0.4, 0.6, 0.3)", expected: Sca, a: 0.4, b: 0.6, c: 0.3},
+	{description: "no sides equal (5, 4, 6) | 2a=b+c", expected: Sca, a: 5, b: 4, c: 6},
+	{description: "no sides equal (6, 4, 5) | 2c=a+b", expected: Sca, a: 6, b: 4, c: 5},
+	{description: "all sides zero", expected: NaT, a: 0, b: 0, c: 0},
+	{description: "negative length", expected: NaT, a: 3, b: 4, c: -5},
+	{description: "not a triangle (1, 1, 3)", expected: NaT, a: 1, b: 1, c: 3},
+	{description: "not a triangle (2, 5, 2)", expected: NaT, a: 2, b: 5, c: 2},
+	{description: "not a triangle (7, 3, 2)", expected: NaT, a: 7, b: 3, c: 2},
+}
+
+func TestKindsNotEqual(t *testing.T) {
+	kindsAndNames := []struct {
+		kind Kind
+		name string
+	}{
+		{Equ, "Equ"},
+		{Iso, "Iso"},
+		{Sca, "Sca"},
+		{NaT, "NaT"},
+	}
+
+	for i, pair1 := range kindsAndNames {
+		for j := i + 1; j < len(kindsAndNames); j++ {
+			pair2 := kindsAndNames[j]
+			if pair1.kind == pair2.kind {
+				t.Fatalf("the value of %s should not be equal to the value of %s", pair1.name, pair2.name)
+			}
+		}
+	}
+}
+
+func TestKind(t *testing.T) {
+	for _, test := range testCases {
+		t.Run(test.description, func(t *testing.T) {
+			got := KindFromSides(test.a, test.b, test.c)
+			if got != test.expected {
+				t.Fatalf("KindFromSides(%v, %v, %v) = %v, want: %v", test.a, test.b, test.c, got, test.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkKind(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			_ = KindFromSides(test.a, test.b, test.c)
+		}
+	}
+}
+*/
+
+// ============================================================
+// End of triangle_test.go (tests should be placed in a separate file).
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/triangle [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/triangle
+./triangle.go:64:1: misplaced +build comment
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/triangle/triangle.go
+package triangle
+
+// Kind represents the type of a triangle.
+// It may be one of the following values:
+//   NaT: not a triangle
+//   Equ: equilateral (all sides are equal)
+//   Iso: isosceles (at least two sides are equal)
+//   Sca: scalene (all sides are different)
+
+type Kind string
+
+const (
+	NaT Kind = "not a triangle"
+	Equ Kind = "equilateral"
+	Iso Kind = "isosceles"
+	Sca Kind = "scalene"
+)
+
+// KindFromSides returns the type of triangle that the given side lengths form.
+// It returns Equ if all sides are equal, Iso if two sides are equal, Sca if no sides are equal,
+// and NaT if the sides do not form a valid triangle.
+func KindFromSides(a, b, c float64) Kind {
+	if !isValidTriangle(a, b, c) {
+		return NaT
+	}
+
+	if a == b && b == c {
+		return Equ
+	}
+
+	if a == b || b == c || a == c {
+		return Iso
+	}
+
+	return Sca
+}
+
+// isValidTriangle checks whether three sides can form a valid triangle.
+// A triangle is valid if all sides are greater than 0 and the sum of any two sides is not less than the third side.
+func isValidTriangle(a, b, c float64) bool {
+	if a <= 0 || b <= 0 || c <= 0 {
+		return false
+	}
+	if a+b < c || a+c < b || b+c < a {
+		return false
+	}
+	return true
+}
+
+// ------------------------------------------------------------
+
+// exercises/practice/triangle/triangle_test.go
+package triangle
+
+import (
+	"testing"
+)
+
+type testCase struct {
+	description string
+	expected    Kind
+	a, b, c   float64
+}
+
+var testCases = []testCase{
+	{description: "same length (2)", expected: Equ, a: 2, b: 2, c: 2},
+	{description: "same length (10)", expected: Equ, a: 10, b: 10, c: 10},
+	{description: "b = c = 4", expected: Iso, a: 3, b: 4, c: 4},
+	{description: "a = c = 4", expected: Iso, a: 4, b: 3, c: 4},
+	{description: "a = b = 4", expected: Iso, a: 4, b: 4, c: 3},
+	{description: "a = b = 10", expected: Iso, a: 10, b: 10, c: 2},
+	{description: "no sides equal (3, 4, 5)", expected: Sca, a: 3, b: 4, c: 5},
+	{description: "no sides equal (10, 11, 12)", expected: Sca, a: 10, b: 11, c: 12},
+	{description: "no sides equal (5, 4, 2)", expected: Sca, a: 5, b: 4, c: 2},
+	{description: "no sides equal (0.4, 0.6, 0.3)", expected: Sca, a: 0.4, b: 0.6, c: 0.3},
+	{description: "no sides equal (5, 4, 6) | 2a=b+c", expected: Sca, a: 5, b: 4, c: 6},
+	{description: "no sides equal (6, 4, 5) | 2c=a+b", expected: Sca, a: 6, b: 4, c: 5},
+	{description: "all sides zero", expected: NaT, a: 0, b: 0, c: 0},
+	{description: "negative length", expected: NaT, a: 3, b: 4, c: -5},
+	{description: "not a triangle (1, 1, 3)", expected: NaT, a: 1, b: 1, c: 3},
+	{description: "not a triangle (2, 5, 2)", expected: NaT, a: 2, b: 5, c: 2},
+	{description: "not a triangle (7, 3, 2)", expected: NaT, a: 7, b: 3, c: 2},
+}
+
+// TestKindsNotEqual verifies that all triangle kinds have distinct string values.
+func TestKindsNotEqual(t *testing.T) {
+	kindsAndNames := []struct {
+		kind Kind
+		name string
+	}{
+		{Equ, "Equ"},
+		{Iso, "Iso"},
+		{Sca, "Sca"},
+		{NaT, "NaT"},
+	}
+
+	for i, pair1 := range kindsAndNames {
+		for j := i + 1; j < len(kindsAndNames); j++ {
+			pair2 := kindsAndNames[j]
+			if pair1.kind == pair2.kind {
+				t.Fatalf("the value of %s should not be equal to the value of %s", pair1.name, pair2.name)
+			}
+		}
+	}
+}
+
+// TestKind runs a series of tests using different side lengths and verifies that
+// the KindFromSides function returns the expected triangle kind.
+func TestKind(t *testing.T) {
+	for _, test := range testCases {
+		t.Run(test.description, func(t *testing.T) {
+			got := KindFromSides(test.a, test.b, test.c)
+			if got != test.expected {
+				t.Fatalf("KindFromSides(%v, %v, %v) = %v, want: %v", test.a, test.b, test.c, got, test.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkKind measures the performance of the KindFromSides function
+// by running it repeatedly on the provided test cases.
+func BenchmarkKind(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			_ = KindFromSides(test.a, test.b, test.c)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/triangle [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/triangle [exercism/triangle.test]
+./triangle.go:54:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/triangle/triangle.go
+package triangle
+
+// Kind represents the type of a triangle.
+// It may be one of the following values:
+//   NaT: not a triangle
+//   Equ: equilateral (all sides are equal)
+//   Iso: isosceles (at least two sides are equal)
+//   Sca: scalene (all sides are different)
+
+type Kind string
+
+const (
+	NaT Kind = "not a triangle"
+	Equ Kind = "equilateral"
+	Iso Kind = "isosceles"
+	Sca Kind = "scalene"
+)
+
+// KindFromSides returns the type of triangle for the given side lengths a, b, and c.
+// It returns Equ if all sides are equal, Iso if two sides are equal, Sca if no sides are equal,
+// and NaT if the sides do not form a valid triangle.
+func KindFromSides(a, b, c float64) Kind {
+	if !isValidTriangle(a, b, c) {
+		return NaT
+	}
+
+	if a == b && b == c {
+		return Equ
+	}
+
+	if a == b || b == c || a == c {
+		return Iso
+	}
+
+	return Sca
+}
+
+// isValidTriangle checks whether three side lengths can form a valid triangle.
+// A triangle is valid if all sides are greater than 0 and the sum of any two sides is not less than the third side.
+func isValidTriangle(a, b, c float64) bool {
+	if a <= 0 || b <= 0 || c <= 0 {
+		return false
+	}
+	// Degenerate triangles are allowed (i.e., sum of two sides equals the third)
+	if a+b < c || a+c < b || b+c < a {
+		return false
+	}
+	return true
+}
+
+// exercises/practice/triangle/triangle_test.go
+// Note: The test code below should be placed in a separate file named triangle_test.go in the same package.
+
+
+=== Test Results (Attempt 4) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/triangle	0.270s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

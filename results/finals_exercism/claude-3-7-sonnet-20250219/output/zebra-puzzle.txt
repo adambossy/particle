@@ -1,0 +1,651 @@
+=== Initial Source Code ===
+Source file: exercises/practice/zebra-puzzle/.meta/example.py
+"""This solution for the Zebra Puzzle is adapted from a solution
+by Peter Norvig for the course "Design of Computer Programs" on Udacity.
+https://www.udacity.com/course/cs212
+"""
+
+from itertools import permutations
+
+
+def just_right_of(width, height):
+    return width - height == 1
+
+
+def next_to(width, height):
+    return abs(width - height) == 1
+
+
+def solution():
+    houses = first, _, middle, _, _ = range(5)
+    orderings = list(permutations(houses))
+
+    # The following you are about to witness is code from someone who loves 'comprehensions'.
+    # I just fixed the PEP-8 violations...
+    # Someone please write this in a way that it is actually read-able?
+    # Anyways, enjoy.
+    # - J08K <3 (1:05 AM, nov 29th, 2021)
+
+    result = next(
+        [{
+            english_man: 'Englishman',
+            spaniard: 'Spaniard',
+            ukrainian: 'Ukrainian',
+            japanese: 'Japanese',
+            norwegian: 'Norwegian'
+        }[idx] for idx in (water, zebra)]
+        for (red, green, ivory, yellow, blue) in orderings
+        if just_right_of(green, ivory)
+        for (english_man, spaniard, ukrainian, japanese, norwegian) in orderings
+        if english_man is red if norwegian is first if next_to(norwegian, blue)
+        for (coffee, tea, milk, orange_juice, water) in orderings if coffee is green
+        if ukrainian is tea if milk is middle
+        for (old_gold, kools, chesterfields, lucky_strike, parliaments
+             ) in orderings if kools is yellow if lucky_strike is orange_juice
+        if japanese is parliaments
+        for (dog, snails, fox, horse, zebra) in orderings if spaniard is dog
+        if old_gold is snails if next_to(chesterfields, fox)
+        if next_to(kools, horse))
+    return result
+
+
+def drinks_water():
+    answer, _ = solution()
+    return answer
+
+
+def owns_zebra():
+    _, answer = solution()
+    return answer
+
+
+=== Source Interface ===
+def drinks_water():
+    pass
+
+
+def owns_zebra():
+    pass
+
+
+=== Target Interface ===
+package zebra
+
+type Solution struct {
+	DrinksWater string
+	OwnsZebra   string
+}
+
+func SolvePuzzle() Solution {
+	panic("Please implement the SolvePuzzle function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/zebra-puzzle/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from zebra_puzzle import (
+    drinks_water,
+    owns_zebra,
+)
+
+
+class ZebraPuzzleTest(unittest.TestCase):
+    def test_resident_who_drinks_water(self):
+        self.assertEqual(drinks_water(), "Norwegian")
+
+    def test_resident_who_owns_zebra(self):
+        self.assertEqual(owns_zebra(), "Japanese")
+
+
+=== Target Test Code ===
+package zebra
+
+import "testing"
+
+func TestSolvePuzzle(t *testing.T) {
+	expected := Solution{DrinksWater: "Norwegian", OwnsZebra: "Japanese"}
+	actual := SolvePuzzle()
+	if expected != actual {
+		t.Fatalf("FAILED:\nExpected: %#v\nActual: %#v",
+			expected, actual)
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		SolvePuzzle()
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/zebra-puzzle/.meta/example.go
+package zebra
+
+import (
+	"slices"
+)
+
+// SolvePuzzle solves the zebra puzzle and returns who drinks water and who owns the zebra
+func SolvePuzzle() Solution {
+	// Find who drinks water and who owns zebra
+	drinksWater := DrinksWater()
+	ownsZebra := OwnsZebra()
+	
+	return Solution{
+		DrinksWater: drinksWater,
+		OwnsZebra:   ownsZebra,
+	}
+}
+
+// DrinksWater determines who drinks water in the zebra puzzle
+func DrinksWater() string {
+	answer, _ := solution()
+	return answer
+}
+
+// OwnsZebra determines who owns the zebra in the zebra puzzle
+func OwnsZebra() string {
+	_, answer := solution()
+	return answer
+}
+
+// solution solves the complete zebra puzzle
+// This solution is adapted from a solution by Peter Norvig for the course 
+// "Design of Computer Programs" on Udacity.
+// https://www.udacity.com/course/cs212
+func solution() (string, string) {
+	houses := []int{0, 1, 2, 3, 4}
+	first, middle := houses[0], houses[2]
+	
+	// Generate all possible permutations of houses
+	orderings := permutations(houses)
+	
+	// Find the solution that satisfies all constraints
+	for _, redGreenIvoryYellowBlue := range orderings {
+		red := redGreenIvoryYellowBlue[0]
+		green := redGreenIvoryYellowBlue[1]
+		ivory := redGreenIvoryYellowBlue[2]
+		yellow := redGreenIvoryYellowBlue[3]
+		blue := redGreenIvoryYellowBlue[4]
+		
+		if !justRightOf(green, ivory) {
+			continue
+		}
+		
+		for _, englishSpaniardUkrainianJapaneseNorwegian := range orderings {
+			englishMan := englishSpaniardUkrainianJapaneseNorwegian[0]
+			spaniard := englishSpaniardUkrainianJapaneseNorwegian[1]
+			ukrainian := englishSpaniardUkrainianJapaneseNorwegian[2]
+			japanese := englishSpaniardUkrainianJapaneseNorwegian[3]
+			norwegian := englishSpaniardUkrainianJapaneseNorwegian[4]
+			
+			if englishMan != red || norwegian != first || !nextTo(norwegian, blue) {
+				continue
+			}
+			
+			for _, coffeaTeaMilkOrangeJuiceWater := range orderings {
+				coffee := coffeaTeaMilkOrangeJuiceWater[0]
+				tea := coffeaTeaMilkOrangeJuiceWater[1]
+				milk := coffeaTeaMilkOrangeJuiceWater[2]
+				orangeJuice := coffeaTeaMilkOrangeJuiceWater[3]
+				water := coffeaTeaMilkOrangeJuiceWater[4]
+				
+				if coffee != green || ukrainian != tea || milk != middle {
+					continue
+				}
+				
+				for _, oldGoldKoolsChesterfieldsLuckyStrikeParliaments := range orderings {
+					oldGold := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[0]
+					kools := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[1]
+					chesterfields := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[2]
+					luckyStrike := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[3]
+					parliaments := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[4]
+					
+					if kools != yellow || luckyStrike != orangeJuice || japanese != parliaments {
+						continue
+					}
+					
+					for _, dogSnailsFoxHorseZebra := range orderings {
+						dog := dogSnailsFoxHorseZebra[0]
+						snails := dogSnailsFoxHorseZebra[1]
+						fox := dogSnailsFoxHorseZebra[2]
+						horse := dogSnailsFoxHorseZebra[3]
+						zebra := dogSnailsFoxHorseZebra[4]
+						
+						if spaniard != dog || oldGold != snails || !nextTo(chesterfields, fox) || !nextTo(kools, horse) {
+							continue
+						}
+						
+						// Found the solution
+						nationalities := make([]string, 5)
+						nationalities[englishMan] = "Englishman"
+						nationalities[spaniard] = "Spaniard"
+						nationalities[ukrainian] = "Ukrainian"
+						nationalities[japanese] = "Japanese"
+						nationalities[norwegian] = "Norwegian"
+						
+						return nationalities[water], nationalities[zebra]
+					}
+				}
+			}
+		}
+	}
+	
+	// Should never reach here if the puzzle is solvable
+	return "", ""
+}
+
+// justRightOf checks if width is immediately to the right of height
+func justRightOf(width, height int) bool {
+	return width-height == 1
+}
+
+// nextTo checks if width is adjacent to height
+func nextTo(width, height int) bool {
+	return abs(width-height) == 1
+}
+
+// abs returns the absolute value of x
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// permutations generates all possible permutations of the given slice
+func permutations(items []int) [][]int {
+	var result [][]int
+	generatePermutations(items, 0, &result)
+	return result
+}
+
+// generatePermutations is a helper function to generate all permutations
+func generatePermutations(items []int, start int, result *[][]int) {
+	if start == len(items)-1 {
+		// Make a copy of the current permutation
+		perm := make([]int, len(items))
+		copy(perm, items)
+		*result = append(*result, perm)
+		return
+	}
+	
+	for i := start; i < len(items); i++ {
+		// Swap elements at indices start and i
+		items[start], items[i] = items[i], items[start]
+		
+		// Recursively generate permutations for the rest of the elements
+		generatePermutations(items, start+1, result)
+		
+		// Backtrack: restore the original order
+		items[start], items[i] = items[i], items[start]
+	}
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+zebra_puzzle.go:5:2: package slices is not in GOROOT (/usr/local/go/src/slices)
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/zebra-puzzle/.meta/example.go
+package zebra
+
+// SolvePuzzle solves the zebra puzzle and returns who drinks water and who owns the zebra
+func SolvePuzzle() Solution {
+	// Find who drinks water and who owns zebra
+	drinksWater := DrinksWater()
+	ownsZebra := OwnsZebra()
+	
+	return Solution{
+		DrinksWater: drinksWater,
+		OwnsZebra:   ownsZebra,
+	}
+}
+
+// DrinksWater determines who drinks water in the zebra puzzle
+func DrinksWater() string {
+	answer, _ := solution()
+	return answer
+}
+
+// OwnsZebra determines who owns the zebra in the zebra puzzle
+func OwnsZebra() string {
+	_, answer := solution()
+	return answer
+}
+
+// solution solves the complete zebra puzzle
+// This solution is adapted from a solution by Peter Norvig for the course 
+// "Design of Computer Programs" on Udacity.
+// https://www.udacity.com/course/cs212
+func solution() (string, string) {
+	houses := []int{0, 1, 2, 3, 4}
+	first, middle := houses[0], houses[2]
+	
+	// Generate all possible permutations of houses
+	orderings := permutations(houses)
+	
+	// Find the solution that satisfies all constraints
+	for _, redGreenIvoryYellowBlue := range orderings {
+		red := redGreenIvoryYellowBlue[0]
+		green := redGreenIvoryYellowBlue[1]
+		ivory := redGreenIvoryYellowBlue[2]
+		yellow := redGreenIvoryYellowBlue[3]
+		blue := redGreenIvoryYellowBlue[4]
+		
+		if !justRightOf(green, ivory) {
+			continue
+		}
+		
+		for _, englishSpaniardUkrainianJapaneseNorwegian := range orderings {
+			englishMan := englishSpaniardUkrainianJapaneseNorwegian[0]
+			spaniard := englishSpaniardUkrainianJapaneseNorwegian[1]
+			ukrainian := englishSpaniardUkrainianJapaneseNorwegian[2]
+			japanese := englishSpaniardUkrainianJapaneseNorwegian[3]
+			norwegian := englishSpaniardUkrainianJapaneseNorwegian[4]
+			
+			if englishMan != red || norwegian != first || !nextTo(norwegian, blue) {
+				continue
+			}
+			
+			for _, coffeaTeaMilkOrangeJuiceWater := range orderings {
+				coffee := coffeaTeaMilkOrangeJuiceWater[0]
+				tea := coffeaTeaMilkOrangeJuiceWater[1]
+				milk := coffeaTeaMilkOrangeJuiceWater[2]
+				orangeJuice := coffeaTeaMilkOrangeJuiceWater[3]
+				water := coffeaTeaMilkOrangeJuiceWater[4]
+				
+				if coffee != green || ukrainian != tea || milk != middle {
+					continue
+				}
+				
+				for _, oldGoldKoolsChesterfieldsLuckyStrikeParliaments := range orderings {
+					oldGold := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[0]
+					kools := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[1]
+					chesterfields := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[2]
+					luckyStrike := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[3]
+					parliaments := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[4]
+					
+					if kools != yellow || luckyStrike != orangeJuice || japanese != parliaments {
+						continue
+					}
+					
+					for _, dogSnailsFoxHorseZebra := range orderings {
+						dog := dogSnailsFoxHorseZebra[0]
+						snails := dogSnailsFoxHorseZebra[1]
+						fox := dogSnailsFoxHorseZebra[2]
+						horse := dogSnailsFoxHorseZebra[3]
+						zebra := dogSnailsFoxHorseZebra[4]
+						
+						if spaniard != dog || oldGold != snails || !nextTo(chesterfields, fox) || !nextTo(kools, horse) {
+							continue
+						}
+						
+						// Found the solution
+						nationalities := make([]string, 5)
+						nationalities[englishMan] = "Englishman"
+						nationalities[spaniard] = "Spaniard"
+						nationalities[ukrainian] = "Ukrainian"
+						nationalities[japanese] = "Japanese"
+						nationalities[norwegian] = "Norwegian"
+						
+						return nationalities[water], nationalities[zebra]
+					}
+				}
+			}
+		}
+	}
+	
+	// Should never reach here if the puzzle is solvable
+	return "", ""
+}
+
+// justRightOf checks if width is immediately to the right of height
+func justRightOf(width, height int) bool {
+	return width-height == 1
+}
+
+// nextTo checks if width is adjacent to height
+func nextTo(width, height int) bool {
+	return abs(width-height) == 1
+}
+
+// abs returns the absolute value of x
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// permutations generates all possible permutations of the given slice
+func permutations(items []int) [][]int {
+	var result [][]int
+	generatePermutations(items, 0, &result)
+	return result
+}
+
+// generatePermutations is a helper function to generate all permutations
+func generatePermutations(items []int, start int, result *[][]int) {
+	if start == len(items)-1 {
+		// Make a copy of the current permutation
+		perm := make([]int, len(items))
+		copy(perm, items)
+		*result = append(*result, perm)
+		return
+	}
+	
+	for i := start; i < len(items); i++ {
+		// Swap elements at indices start and i
+		items[start], items[i] = items[i], items[start]
+		
+		// Recursively generate permutations for the rest of the elements
+		generatePermutations(items, start+1, result)
+		
+		// Backtrack: restore the original order
+		items[start], items[i] = items[i], items[start]
+	}
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/zebra-puzzle [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/zebra-puzzle [exercism/zebra-puzzle.test]
+./zebra_puzzle.go:5:20: undefined: Solution
+./zebra_puzzle.go:10:9: undefined: Solution
+./zebra_puzzle_test.go:6:14: undefined: Solution
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/zebra-puzzle/.meta/example.go
+package zebra
+
+// Solution represents who drinks water and who owns the zebra
+type Solution struct {
+	DrinksWater string
+	OwnsZebra   string
+}
+
+// SolvePuzzle solves the zebra puzzle and returns who drinks water and who owns the zebra
+func SolvePuzzle() Solution {
+	// Find who drinks water and who owns zebra
+	drinksWater := DrinksWater()
+	ownsZebra := OwnsZebra()
+	
+	return Solution{
+		DrinksWater: drinksWater,
+		OwnsZebra:   ownsZebra,
+	}
+}
+
+// DrinksWater determines who drinks water in the zebra puzzle
+func DrinksWater() string {
+	answer, _ := solution()
+	return answer
+}
+
+// OwnsZebra determines who owns the zebra in the zebra puzzle
+func OwnsZebra() string {
+	_, answer := solution()
+	return answer
+}
+
+// solution solves the complete zebra puzzle
+// This solution is adapted from a solution by Peter Norvig for the course 
+// "Design of Computer Programs" on Udacity.
+// https://www.udacity.com/course/cs212
+func solution() (string, string) {
+	houses := []int{0, 1, 2, 3, 4}
+	first, middle := houses[0], houses[2]
+	
+	// Generate all possible permutations of houses
+	orderings := permutations(houses)
+	
+	// Find the solution that satisfies all constraints
+	for _, redGreenIvoryYellowBlue := range orderings {
+		red := redGreenIvoryYellowBlue[0]
+		green := redGreenIvoryYellowBlue[1]
+		ivory := redGreenIvoryYellowBlue[2]
+		yellow := redGreenIvoryYellowBlue[3]
+		blue := redGreenIvoryYellowBlue[4]
+		
+		if !justRightOf(green, ivory) {
+			continue
+		}
+		
+		for _, englishSpaniardUkrainianJapaneseNorwegian := range orderings {
+			englishMan := englishSpaniardUkrainianJapaneseNorwegian[0]
+			spaniard := englishSpaniardUkrainianJapaneseNorwegian[1]
+			ukrainian := englishSpaniardUkrainianJapaneseNorwegian[2]
+			japanese := englishSpaniardUkrainianJapaneseNorwegian[3]
+			norwegian := englishSpaniardUkrainianJapaneseNorwegian[4]
+			
+			if englishMan != red || norwegian != first || !nextTo(norwegian, blue) {
+				continue
+			}
+			
+			for _, coffeaTeaMilkOrangeJuiceWater := range orderings {
+				coffee := coffeaTeaMilkOrangeJuiceWater[0]
+				tea := coffeaTeaMilkOrangeJuiceWater[1]
+				milk := coffeaTeaMilkOrangeJuiceWater[2]
+				orangeJuice := coffeaTeaMilkOrangeJuiceWater[3]
+				water := coffeaTeaMilkOrangeJuiceWater[4]
+				
+				if coffee != green || ukrainian != tea || milk != middle {
+					continue
+				}
+				
+				for _, oldGoldKoolsChesterfieldsLuckyStrikeParliaments := range orderings {
+					oldGold := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[0]
+					kools := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[1]
+					chesterfields := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[2]
+					luckyStrike := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[3]
+					parliaments := oldGoldKoolsChesterfieldsLuckyStrikeParliaments[4]
+					
+					if kools != yellow || luckyStrike != orangeJuice || japanese != parliaments {
+						continue
+					}
+					
+					for _, dogSnailsFoxHorseZebra := range orderings {
+						dog := dogSnailsFoxHorseZebra[0]
+						snails := dogSnailsFoxHorseZebra[1]
+						fox := dogSnailsFoxHorseZebra[2]
+						horse := dogSnailsFoxHorseZebra[3]
+						zebra := dogSnailsFoxHorseZebra[4]
+						
+						if spaniard != dog || oldGold != snails || !nextTo(chesterfields, fox) || !nextTo(kools, horse) {
+							continue
+						}
+						
+						// Found the solution
+						nationalities := make([]string, 5)
+						nationalities[englishMan] = "Englishman"
+						nationalities[spaniard] = "Spaniard"
+						nationalities[ukrainian] = "Ukrainian"
+						nationalities[japanese] = "Japanese"
+						nationalities[norwegian] = "Norwegian"
+						
+						return nationalities[water], nationalities[zebra]
+					}
+				}
+			}
+		}
+	}
+	
+	// Should never reach here if the puzzle is solvable
+	return "", ""
+}
+
+// justRightOf checks if width is immediately to the right of height
+func justRightOf(width, height int) bool {
+	return width-height == 1
+}
+
+// nextTo checks if width is adjacent to height
+func nextTo(width, height int) bool {
+	return abs(width-height) == 1
+}
+
+// abs returns the absolute value of x
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// permutations generates all possible permutations of the given slice
+func permutations(items []int) [][]int {
+	var result [][]int
+	generatePermutations(items, 0, &result)
+	return result
+}
+
+// generatePermutations is a helper function to generate all permutations
+func generatePermutations(items []int, start int, result *[][]int) {
+	if start == len(items)-1 {
+		// Make a copy of the current permutation
+		perm := make([]int, len(items))
+		copy(perm, items)
+		*result = append(*result, perm)
+		return
+	}
+	
+	for i := start; i < len(items); i++ {
+		// Swap elements at indices start and i
+		items[start], items[i] = items[i], items[start]
+		
+		// Recursively generate permutations for the rest of the elements
+		generatePermutations(items, start+1, result)
+		
+		// Backtrack: restore the original order
+		items[start], items[i] = items[i], items[start]
+	}
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/zebra-puzzle	0.280s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

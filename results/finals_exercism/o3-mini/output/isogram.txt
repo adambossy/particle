@@ -1,0 +1,729 @@
+=== Initial Source Code ===
+Source file: exercises/practice/isogram/.meta/example.py
+def is_isogram(string):
+    characters_lower = [char.lower() for char in string if char.isalpha()]
+    return len(set(characters_lower)) == len(characters_lower)
+
+
+=== Source Interface ===
+def is_isogram(string):
+    pass
+
+
+=== Target Interface ===
+package isogram
+
+func IsIsogram(word string) bool {
+	panic("Please implement the IsIsogram function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/isogram/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from isogram import (
+    is_isogram,
+)
+
+
+class IsogramTest(unittest.TestCase):
+    def test_empty_string(self):
+        self.assertIs(is_isogram(""), True)
+
+    def test_isogram_with_only_lower_case_characters(self):
+        self.assertIs(is_isogram("isogram"), True)
+
+    def test_word_with_one_duplicated_character(self):
+        self.assertIs(is_isogram("eleven"), False)
+
+    def test_word_with_one_duplicated_character_from_the_end_of_the_alphabet(self):
+        self.assertIs(is_isogram("zzyzx"), False)
+
+    def test_longest_reported_english_isogram(self):
+        self.assertIs(is_isogram("subdermatoglyphic"), True)
+
+    def test_word_with_duplicated_character_in_mixed_case(self):
+        self.assertIs(is_isogram("Alphabet"), False)
+
+    def test_word_with_duplicated_character_in_mixed_case_lowercase_first(self):
+        self.assertIs(is_isogram("alphAbet"), False)
+
+    def test_hypothetical_isogrammic_word_with_hyphen(self):
+        self.assertIs(is_isogram("thumbscrew-japingly"), True)
+
+    def test_hypothetical_word_with_duplicated_character_following_hyphen(self):
+        self.assertIs(is_isogram("thumbscrew-jappingly"), False)
+
+    def test_isogram_with_duplicated_hyphen(self):
+        self.assertIs(is_isogram("six-year-old"), True)
+
+    def test_made_up_name_that_is_an_isogram(self):
+        self.assertIs(is_isogram("Emily Jung Schwartzkopf"), True)
+
+    def test_duplicated_character_in_the_middle(self):
+        self.assertIs(is_isogram("accentor"), False)
+
+    def test_same_first_and_last_characters(self):
+        self.assertIs(is_isogram("angola"), False)
+
+    def test_word_with_duplicated_character_and_with_two_hyphens(self):
+        self.assertIs(is_isogram("up-to-date"), False)
+
+
+=== Target Test Code ===
+package isogram
+
+import "testing"
+
+func TestIsIsogram(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := IsIsogram(tc.input); actual != tc.expected {
+				t.Fatalf("IsIsogram(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkIsIsogram(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, c := range testCases {
+			IsIsogram(c.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and filters alphabetic characters.
+// It returns true if the count of unique alphabetic characters equals the total number of alphabetic characters.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and filters alphabetic characters.
+// It returns true if there are no repeating alphabetic characters.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+// exercises/practice/isogram/.meta/example_test.go
+package isogram
+
+import "testing"
+
+// testCase defines a single test case for IsIsogram.
+type testCase struct {
+	description string
+	input       string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{description: "empty string", input: "", expected: true},
+	{description: "isogram word", input: "isogram", expected: true},
+	{description: "duplicated letters: eleven", input: "eleven", expected: false},
+	{description: "case insensitive duplicate: Alphabet", input: "Alphabet", expected: false},
+	{description: "long isogram with hyphen: thumbscrew-japingly", input: "thumbscrew-japingly", expected: true},
+	{description: "mixed case with spaces: Emily Jung Schwartzkopf", input: "Emily Jung Schwartzkopf", expected: true},
+}
+
+func TestIsIsogram(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := IsIsogram(tc.input); actual != tc.expected {
+				t.Fatalf("IsIsogram(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkIsIsogram(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsIsogram(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and considers only alphabetic characters.
+// It returns true if there are no repeating alphabetic characters, otherwise false.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+// exercises/practice/isogram/.meta/example_test.go
+package isogram
+
+import "testing"
+
+// testCase defines a single test case for IsIsogram.
+// description: brief description of the test case.
+// input: the string to test.
+// expected: the expected boolean result.
+type testCase struct {
+	description string
+	input       string
+	expected    bool
+}
+
+// testCases is a collection of test cases for the IsIsogram function.
+var testCases = []testCase{
+	{description: "empty string", input: "", expected: true},
+	{description: "isogram word", input: "isogram", expected: true},
+	{description: "duplicated letters: eleven", input: "eleven", expected: false},
+	{description: "case insensitive duplicate: Alphabet", input: "Alphabet", expected: false},
+	{description: "long isogram with hyphen: thumbscrew-japingly", input: "thumbscrew-japingly", expected: true},
+	{description: "mixed case with spaces: Emily Jung Schwartzkopf", input: "Emily Jung Schwartzkopf", expected: true},
+}
+
+// TestIsIsogram runs a set of tests against the IsIsogram function.
+func TestIsIsogram(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := IsIsogram(tc.input); actual != tc.expected {
+				t.Fatalf("IsIsogram(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsIsogram benchmarks the IsIsogram function using the test cases.
+func BenchmarkIsIsogram(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsIsogram(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and considers only alphabetic characters.
+// It returns true if there are no repeating alphabetic characters, otherwise false.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and considers only alphabetic characters.
+// It returns true if there are no repeating alphabetic characters, otherwise false.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and considers only alphabetic characters.
+// It returns true if there are no repeating alphabetic characters, otherwise false.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and considers only alphabetic characters.
+// It returns true if there are no repeating alphabetic characters, otherwise false.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+// exercises/practice/isogram/.meta/example_test.go
+package isogram
+
+import "testing"
+
+// testCase defines a single test case for the IsIsogram function.
+// description: a brief description of the test case.
+// input: the input string to test.
+// expected: the expected boolean result indicating whether the string is an isogram.
+type testCase struct {
+	description string
+	input       string
+	expected    bool
+}
+
+// testCases contains a set of test cases for the IsIsogram function.
+var testCases = []testCase{
+	{description: "empty string", input: "", expected: true},
+	{description: "isogram word", input: "isogram", expected: true},
+	{description: "duplicated letters: eleven", input: "eleven", expected: false},
+	{description: "case insensitive duplicate: Alphabet", input: "Alphabet", expected: false},
+	{description: "long isogram with hyphen: thumbscrew-japingly", input: "thumbscrew-japingly", expected: true},
+	{description: "mixed case with spaces: Emily Jung Schwartzkopf", input: "Emily Jung Schwartzkopf", expected: true},
+}
+
+// TestIsIsogram runs tests against the IsIsogram function.
+func TestIsIsogram(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := IsIsogram(tc.input); actual != tc.expected {
+				t.Errorf("IsIsogram(%q) = %t; want %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsIsogram benchmarks the IsIsogram function using the test cases.
+func BenchmarkIsIsogram(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsIsogram(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and considers only alphabetic characters.
+// It returns true if there are no repeating alphabetic characters, otherwise false.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+// exercises/practice/isogram/.meta/example_test.go
+package isogram
+
+import "testing"
+
+// testCase defines a single test case for the IsIsogram function.
+// description: A brief description of the test case.
+// input: The input string to test.
+// expected: The expected boolean result indicating whether the string is an isogram.
+type testCase struct {
+	description string
+	input       string
+	expected    bool
+}
+
+// testCases contains a set of test cases for the IsIsogram function.
+var testCases = []testCase{
+	{description: "empty string", input: "", expected: true},
+	{description: "isogram word", input: "isogram", expected: true},
+	{description: "duplicated letters: eleven", input: "eleven", expected: false},
+	{description: "case insensitive duplicate: Alphabet", input: "Alphabet", expected: false},
+	{description: "long isogram with hyphen: thumbscrew-japingly", input: "thumbscrew-japingly", expected: true},
+	{description: "mixed case with spaces: Emily Jung Schwartzkopf", input: "Emily Jung Schwartzkopf", expected: true},
+}
+
+// TestIsIsogram runs tests against the IsIsogram function.
+func TestIsIsogram(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := IsIsogram(tc.input); actual != tc.expected {
+				t.Errorf("IsIsogram(%q) = %t; want %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsIsogram benchmarks the IsIsogram function using the test cases.
+func BenchmarkIsIsogram(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsIsogram(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and considers only alphabetic characters.
+// Returns true if there are no repeating alphabetic characters, otherwise false.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+// exercises/practice/isogram/.meta/example_test.go
+package isogram
+
+import "testing"
+
+// testCase defines a single test case for the IsIsogram function.
+// description: A brief description of the test case.
+// input: The input string to test.
+// expected: The expected boolean result indicating whether the string is an isogram.
+type testCase struct {
+	description string
+	input       string
+	expected    bool
+}
+
+// testCases contains a set of test cases for the IsIsogram function.
+var testCases = []testCase{
+	{description: "empty string", input: "", expected: true},
+	{description: "isogram word", input: "isogram", expected: true},
+	{description: "duplicated letters: eleven", input: "eleven", expected: false},
+	{description: "case insensitive duplicate: Alphabet", input: "Alphabet", expected: false},
+	{description: "long isogram with hyphen: thumbscrew-japingly", input: "thumbscrew-japingly", expected: true},
+	{description: "mixed case with spaces: Emily Jung Schwartzkopf", input: "Emily Jung Schwartzkopf", expected: true},
+}
+
+// TestIsIsogram runs tests against the IsIsogram function.
+func TestIsIsogram(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := IsIsogram(tc.input); actual != tc.expected {
+				t.Errorf("IsIsogram(%q) = %t; want %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsIsogram benchmarks the IsIsogram function using the test cases.
+func BenchmarkIsIsogram(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsIsogram(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and considers only alphabetic characters.
+// It returns true if there are no repeating alphabetic characters, otherwise false.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/isogram/.meta/example.go
+package isogram
+
+import "unicode"
+
+// IsIsogram checks if the provided word is an isogram.
+// It converts the input string to lowercase and considers only alphabetic characters.
+// Returns true if there are no repeating alphabetic characters, otherwise false.
+func IsIsogram(word string) bool {
+	seen := make(map[rune]bool)
+	for _, r := range word {
+		if unicode.IsLetter(r) {
+			lower := unicode.ToLower(r)
+			if seen[lower] {
+				return false
+			}
+			seen[lower] = true
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/isogram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/isogram [exercism/isogram.test]
+./isogram_test.go:6:21: undefined: testCases
+./isogram_test.go:20:21: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

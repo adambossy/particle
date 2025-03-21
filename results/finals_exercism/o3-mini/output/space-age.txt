@@ -1,0 +1,1171 @@
+=== Initial Source Code ===
+Source file: exercises/practice/space-age/.meta/example.py
+def period_converter(period):
+    def inner(self):
+        return round(self.seconds / period, 2)
+
+    return inner
+
+
+class SpaceAge:
+
+    on_mercury = period_converter(7600530.24)
+    on_venus = period_converter(19413907.2)
+    on_earth = period_converter(31558149.76)
+    on_mars = period_converter(59354294.4)
+    on_jupiter = period_converter(374335776.0)
+    on_saturn = period_converter(929596608.0)
+    on_uranus = period_converter(2651370019.3)
+    on_neptune = period_converter(5200418592.0)
+
+    def __init__(self, seconds):
+        self.seconds = seconds
+
+
+=== Source Interface ===
+class SpaceAge:
+    def __init__(self, seconds):
+        pass
+
+
+=== Target Interface ===
+package space
+
+type Planet string
+
+func Age(seconds float64, planet Planet) float64 {
+	panic("Please implement the Age function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/space-age/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from space_age import (
+    SpaceAge,
+)
+
+
+class SpaceAgeTest(unittest.TestCase):
+    def test_age_on_earth(self):
+        self.assertEqual(SpaceAge(1000000000).on_earth(), 31.69)
+
+    def test_age_on_mercury(self):
+        self.assertEqual(SpaceAge(2134835688).on_mercury(), 280.88)
+
+    def test_age_on_venus(self):
+        self.assertEqual(SpaceAge(189839836).on_venus(), 9.78)
+
+    def test_age_on_mars(self):
+        self.assertEqual(SpaceAge(2129871239).on_mars(), 35.88)
+
+    def test_age_on_jupiter(self):
+        self.assertEqual(SpaceAge(901876382).on_jupiter(), 2.41)
+
+    def test_age_on_saturn(self):
+        self.assertEqual(SpaceAge(2000000000).on_saturn(), 2.15)
+
+    def test_age_on_uranus(self):
+        self.assertEqual(SpaceAge(1210123456).on_uranus(), 0.46)
+
+    def test_age_on_neptune(self):
+        self.assertEqual(SpaceAge(1821023456).on_neptune(), 0.35)
+
+
+=== Target Test Code ===
+package space
+
+import (
+	"math"
+	"testing"
+)
+
+func TestAge(t *testing.T) {
+	const precision = 0.01
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Age(tc.seconds, tc.planet)
+			if math.Abs(actual-tc.expected) > precision {
+				t.Fatalf("Age(%f, %v) = %f, want: %f", tc.seconds, tc.planet, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkAge(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Age(tc.seconds, tc.planet)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/space-age/.meta/example.go
+package meta
+
+import "math"
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// SpaceAge represents an age in seconds and provides methods to compute age on various planets.
+// It implements the interface required by the exercise tests.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (space_age.go) and space (space_age_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/space-age
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/space-age/.meta/example.go
+package space
+
+import "math"
+
+// Planet represents a planet.
+type Planet string
+
+// SpaceAge represents an age in seconds and provides methods to compute the age on various planets.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on a given planet for the provided seconds.
+// It uses the SpaceAge methods for computation.
+func Age(seconds float64, planet Planet) float64 {
+	age := SpaceAge{Seconds: seconds}
+	switch planet {
+	case "Mercury":
+		return age.OnMercury()
+	case "Venus":
+		return age.OnVenus()
+	case "Earth":
+		return age.OnEarth()
+	case "Mars":
+		return age.OnMars()
+	case "Jupiter":
+		return age.OnJupiter()
+	case "Saturn":
+		return age.OnSaturn()
+	case "Uranus":
+		return age.OnUranus()
+	case "Neptune":
+		return age.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/space-age [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/space-age [exercism/space-age.test]
+./space_age_test.go:10:21: undefined: testCases
+./space_age_test.go:25:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/space-age/.meta/example.go
+package space
+
+import "math"
+
+// Planet represents a planet for which the age is calculated.
+type Planet string
+
+// SpaceAge represents an age in seconds and provides methods to compute the age on various planets.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on the given planet for the provided seconds.
+// It uses the SpaceAge methods for computation based on the planet.
+func Age(seconds float64, planet Planet) float64 {
+	a := SpaceAge{Seconds: seconds}
+	switch planet {
+	case "Mercury":
+		return a.OnMercury()
+	case "Venus":
+		return a.OnVenus()
+	case "Earth":
+		return a.OnEarth()
+	case "Mars":
+		return a.OnMars()
+	case "Jupiter":
+		return a.OnJupiter()
+	case "Saturn":
+		return a.OnSaturn()
+	case "Uranus":
+		return a.OnUranus()
+	case "Neptune":
+		return a.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/space-age [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/space-age [exercism/space-age.test]
+./space_age_test.go:10:21: undefined: testCases
+./space_age_test.go:25:22: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/space-age/.meta/example.go
+package space
+
+import "math"
+
+// Planet represents a planet for which the age is calculated.
+type Planet string
+
+// SpaceAge represents an age in seconds and provides methods to compute the age on various planets.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on the given planet for the provided seconds.
+// It uses the SpaceAge methods for computation based on the planet.
+func Age(seconds float64, planet Planet) float64 {
+	a := SpaceAge{Seconds: seconds}
+	switch planet {
+	case "Mercury":
+		return a.OnMercury()
+	case "Venus":
+		return a.OnVenus()
+	case "Earth":
+		return a.OnEarth()
+	case "Mars":
+		return a.OnMars()
+	case "Jupiter":
+		return a.OnJupiter()
+	case "Saturn":
+		return a.OnSaturn()
+	case "Uranus":
+		return a.OnUranus()
+	case "Neptune":
+		return a.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/space-age [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/space-age [exercism/space-age.test]
+./space_age_test.go:10:21: undefined: testCases
+./space_age_test.go:25:22: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/space-age/.meta/example.go
+package space
+
+import "math"
+
+// Planet represents a planet for which the age is calculated.
+type Planet string
+
+// SpaceAge represents an age in seconds and provides methods to compute the age on various planets.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on the given planet for the provided seconds.
+// It uses the SpaceAge methods for computation based on the planet.
+func Age(seconds float64, planet Planet) float64 {
+	a := SpaceAge{Seconds: seconds}
+	switch planet {
+	case "Mercury":
+		return a.OnMercury()
+	case "Venus":
+		return a.OnVenus()
+	case "Earth":
+		return a.OnEarth()
+	case "Mars":
+		return a.OnMars()
+	case "Jupiter":
+		return a.OnJupiter()
+	case "Saturn":
+		return a.OnSaturn()
+	case "Uranus":
+		return a.OnUranus()
+	case "Neptune":
+		return a.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/space-age [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/space-age [exercism/space-age.test]
+./space_age_test.go:10:21: undefined: testCases
+./space_age_test.go:25:22: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/space-age/.meta/example.go
+package space
+
+import "math"
+
+// Planet represents a planet for which the age is calculated.
+type Planet string
+
+// SpaceAge represents an age in seconds and provides methods to compute the age on various planets.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on the given planet for the provided seconds.
+// It uses the SpaceAge methods for computation based on the planet.
+func Age(seconds float64, planet Planet) float64 {
+	a := SpaceAge{Seconds: seconds}
+	switch planet {
+	case "Mercury":
+		return a.OnMercury()
+	case "Venus":
+		return a.OnVenus()
+	case "Earth":
+		return a.OnEarth()
+	case "Mars":
+		return a.OnMars()
+	case "Jupiter":
+		return a.OnJupiter()
+	case "Saturn":
+		return a.OnSaturn()
+	case "Uranus":
+		return a.OnUranus()
+	case "Neptune":
+		return a.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/space-age [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/space-age [exercism/space-age.test]
+./space_age_test.go:10:21: undefined: testCases
+./space_age_test.go:25:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/space-age/.meta/example.go
+package meta
+
+import "math"
+
+// Planet represents a planet for which the age is calculated.
+// Although a string, it should be one of the following values: "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", or "Neptune".
+type Planet string
+
+// SpaceAge represents an age in seconds and provides methods to compute the age on various planets.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on the given planet for the provided seconds.
+// It creates a SpaceAge instance and uses its methods based on the planet parameter.
+func Age(seconds float64, planet Planet) float64 {
+	sa := SpaceAge{Seconds: seconds}
+
+	switch planet {
+	case "Mercury":
+		return sa.OnMercury()
+	case "Venus":
+		return sa.OnVenus()
+	case "Earth":
+		return sa.OnEarth()
+	case "Mars":
+		return sa.OnMars()
+	case "Jupiter":
+		return sa.OnJupiter()
+	case "Saturn":
+		return sa.OnSaturn()
+	case "Uranus":
+		return sa.OnUranus()
+	case "Neptune":
+		return sa.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (space_age.go) and space (space_age_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/space-age
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/space-age/.meta/example.go
+package meta
+
+import "math"
+
+// Planet represents a planet for which the age is calculated.
+// Expected values for planet are "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", and "Neptune".
+//
+// The orbital periods (in seconds) for each planet are defined based on an Earth year of 31558149.76 seconds.
+
+type Planet string
+
+// SpaceAge represents an age in seconds and provides methods to compute the age on various planets.
+// Each method returns the age in years rounded to 2 decimal places.
+
+// SpaceAge holds the age in seconds.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on the given planet for the provided seconds.
+// It creates a SpaceAge instance and uses its methods based on the planet parameter.
+func Age(seconds float64, planet Planet) float64 {
+	sa := SpaceAge{Seconds: seconds}
+	
+	switch planet {
+	case "Mercury":
+		return sa.OnMercury()
+	case "Venus":
+		return sa.OnVenus()
+	case "Earth":
+		return sa.OnEarth()
+	case "Mars":
+		return sa.OnMars()
+	case "Jupiter":
+		return sa.OnJupiter()
+	case "Saturn":
+		return sa.OnSaturn()
+	case "Uranus":
+		return sa.OnUranus()
+	case "Neptune":
+		return sa.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (space_age.go) and space (space_age_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/space-age
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/space-age/.meta/example.go
+package meta
+
+import "math"
+
+// Planet represents a planet for which the age is calculated.
+// Valid values are "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", and "Neptune".
+//
+// The orbital periods (in seconds) are based on the Earth year of 31558149.76 seconds.
+
+type Planet string
+
+// SpaceAge holds the age in seconds and provides methods to compute the age on various planets.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on the given planet for the provided seconds.
+// It creates a SpaceAge instance and uses its methods based on the planet parameter.
+func Age(seconds float64, planet Planet) float64 {
+	sa := SpaceAge{Seconds: seconds}
+
+	switch planet {
+	case "Mercury":
+		return sa.OnMercury()
+	case "Venus":
+		return sa.OnVenus()
+	case "Earth":
+		return sa.OnEarth()
+	case "Mars":
+		return sa.OnMars()
+	case "Jupiter":
+		return sa.OnJupiter()
+	case "Saturn":
+		return sa.OnSaturn()
+	case "Uranus":
+		return sa.OnUranus()
+	case "Neptune":
+		return sa.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (space_age.go) and space (space_age_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/space-age
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/space-age/.meta/example.go
+package meta
+
+import "math"
+
+// Planet represents a planet for which the age is calculated.
+// Valid values are "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", and "Neptune".
+// The orbital periods (in seconds) are derived from an Earth year of 31558149.76 seconds.
+
+type Planet string
+
+// SpaceAge holds the age in seconds and provides methods to compute the age on various planets.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on the given planet for the provided seconds.
+// It creates a SpaceAge instance and uses its methods based on the planet parameter.
+func Age(seconds float64, planet Planet) float64 {
+	sa := SpaceAge{Seconds: seconds}
+
+	switch planet {
+	case "Mercury":
+		return sa.OnMercury()
+	case "Venus":
+		return sa.OnVenus()
+	case "Earth":
+		return sa.OnEarth()
+	case "Mars":
+		return sa.OnMars()
+	case "Jupiter":
+		return sa.OnJupiter()
+	case "Saturn":
+		return sa.OnSaturn()
+	case "Uranus":
+		return sa.OnUranus()
+	case "Neptune":
+		return sa.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (space_age.go) and space (space_age_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/space-age
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/space-age/.meta/example.go
+package meta
+
+import "math"
+
+// Planet represents a planet for which the age is calculated.
+// Valid values are "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", and "Neptune".
+// The orbital periods (in seconds) are derived from an Earth year of 31558149.76 seconds.
+
+type Planet string
+
+// SpaceAge holds the age in seconds and provides methods to compute the age on various planets.
+type SpaceAge struct {
+	Seconds float64
+}
+
+// round rounds x to the specified number of decimal places.
+func round(x float64, places int) float64 {
+	factor := math.Pow(10, float64(places))
+	return math.Round(x*factor) / factor
+}
+
+// OnMercury returns the age on Mercury, rounded to 2 decimal places.
+func (sa SpaceAge) OnMercury() float64 {
+	return round(sa.Seconds/7600530.24, 2)
+}
+
+// OnVenus returns the age on Venus, rounded to 2 decimal places.
+func (sa SpaceAge) OnVenus() float64 {
+	return round(sa.Seconds/19413907.2, 2)
+}
+
+// OnEarth returns the age on Earth, rounded to 2 decimal places.
+func (sa SpaceAge) OnEarth() float64 {
+	return round(sa.Seconds/31558149.76, 2)
+}
+
+// OnMars returns the age on Mars, rounded to 2 decimal places.
+func (sa SpaceAge) OnMars() float64 {
+	return round(sa.Seconds/59354294.4, 2)
+}
+
+// OnJupiter returns the age on Jupiter, rounded to 2 decimal places.
+func (sa SpaceAge) OnJupiter() float64 {
+	return round(sa.Seconds/374335776.0, 2)
+}
+
+// OnSaturn returns the age on Saturn, rounded to 2 decimal places.
+func (sa SpaceAge) OnSaturn() float64 {
+	return round(sa.Seconds/929596608.0, 2)
+}
+
+// OnUranus returns the age on Uranus, rounded to 2 decimal places.
+func (sa SpaceAge) OnUranus() float64 {
+	return round(sa.Seconds/2651370019.3, 2)
+}
+
+// OnNeptune returns the age on Neptune, rounded to 2 decimal places.
+func (sa SpaceAge) OnNeptune() float64 {
+	return round(sa.Seconds/5200418592.0, 2)
+}
+
+// Age returns the age (in years) on the given planet for the provided seconds.
+// It creates a SpaceAge instance and uses its methods based on the planet parameter.
+func Age(seconds float64, planet Planet) float64 {
+	sa := SpaceAge{Seconds: seconds}
+
+	switch planet {
+	case "Mercury":
+		return sa.OnMercury()
+	case "Venus":
+		return sa.OnVenus()
+	case "Earth":
+		return sa.OnEarth()
+	case "Mars":
+		return sa.OnMars()
+	case "Jupiter":
+		return sa.OnJupiter()
+	case "Saturn":
+		return sa.OnSaturn()
+	case "Uranus":
+		return sa.OnUranus()
+	case "Neptune":
+		return sa.OnNeptune()
+	default:
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (space_age.go) and space (space_age_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/space-age
+
+
+=== FINAL STATUS: FAILED ===

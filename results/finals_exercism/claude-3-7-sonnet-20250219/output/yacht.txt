@@ -1,0 +1,546 @@
+=== Initial Source Code ===
+Source file: exercises/practice/yacht/.meta/example.py
+from collections import Counter
+from functools import partial
+
+YACHT = 0
+ONES = 1
+TWOS = 2
+THREES = 3
+FOURS = 4
+FIVES = 5
+SIXES = 6
+FULL_HOUSE = 7
+FOUR_OF_A_KIND = 8
+LITTLE_STRAIGHT = 9
+BIG_STRAIGHT = 10
+CHOICE = 11
+
+
+def sum_of_numbers(number, dice):
+    return sum(idx for idx in dice if idx == number)
+
+
+def full_house(dice):
+    counter = Counter(dice)
+    return sum(dice) if set(counter.values()) == {3, 2} else 0
+
+
+def four_of_a_kind(dice):
+    counter = Counter(dice)
+    number, count = counter.most_common()[0]
+    return 4 * number if count >= 4 else 0
+
+
+def little_straight(dice):
+    return 30 if set(dice) == {1, 2, 3, 4, 5} else 0
+
+
+def big_straight(dice):
+    return 30 if set(dice) == {2, 3, 4, 5, 6} else 0
+
+
+def yacht(dice):
+    return 50 if len(set(dice)) == 1 else 0
+
+
+functions = [
+    yacht,
+    partial(sum_of_numbers, 1),
+    partial(sum_of_numbers, 2),
+    partial(sum_of_numbers, 3),
+    partial(sum_of_numbers, 4),
+    partial(sum_of_numbers, 5),
+    partial(sum_of_numbers, 6),
+    full_house,
+    four_of_a_kind,
+    little_straight,
+    big_straight,
+    sum,
+]
+
+
+def score(dice, category):
+    try:
+        return functions[category](dice)
+    except IndexError as error:
+        raise ValueError('No such category.') from error
+
+
+=== Source Interface ===
+# Score categories.
+# Change the values as you see fit.
+YACHT = None
+ONES = None
+TWOS = None
+THREES = None
+FOURS = None
+FIVES = None
+SIXES = None
+FULL_HOUSE = None
+FOUR_OF_A_KIND = None
+LITTLE_STRAIGHT = None
+BIG_STRAIGHT = None
+CHOICE = None
+
+
+def score(dice, category):
+    pass
+
+
+=== Target Interface ===
+package yacht
+
+func Score(dice []int, category string) int {
+	panic("Please implement the Score function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/yacht/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+import yacht
+
+
+class YachtTest(unittest.TestCase):
+    def test_yacht(self):
+        self.assertEqual(yacht.score([5, 5, 5, 5, 5], yacht.YACHT), 50)
+
+    def test_not_yacht(self):
+        self.assertEqual(yacht.score([1, 3, 3, 2, 5], yacht.YACHT), 0)
+
+    def test_ones(self):
+        self.assertEqual(yacht.score([1, 1, 1, 3, 5], yacht.ONES), 3)
+
+    def test_ones_out_of_order(self):
+        self.assertEqual(yacht.score([3, 1, 1, 5, 1], yacht.ONES), 3)
+
+    def test_no_ones(self):
+        self.assertEqual(yacht.score([4, 3, 6, 5, 5], yacht.ONES), 0)
+
+    def test_twos(self):
+        self.assertEqual(yacht.score([2, 3, 4, 5, 6], yacht.TWOS), 2)
+
+    def test_fours(self):
+        self.assertEqual(yacht.score([1, 4, 1, 4, 1], yacht.FOURS), 8)
+
+    def test_yacht_counted_as_threes(self):
+        self.assertEqual(yacht.score([3, 3, 3, 3, 3], yacht.THREES), 15)
+
+    def test_yacht_of_3s_counted_as_fives(self):
+        self.assertEqual(yacht.score([3, 3, 3, 3, 3], yacht.FIVES), 0)
+
+    def test_fives(self):
+        self.assertEqual(yacht.score([1, 5, 3, 5, 3], yacht.FIVES), 10)
+
+    def test_sixes(self):
+        self.assertEqual(yacht.score([2, 3, 4, 5, 6], yacht.SIXES), 6)
+
+    def test_full_house_two_small_three_big(self):
+        self.assertEqual(yacht.score([2, 2, 4, 4, 4], yacht.FULL_HOUSE), 16)
+
+    def test_full_house_three_small_two_big(self):
+        self.assertEqual(yacht.score([5, 3, 3, 5, 3], yacht.FULL_HOUSE), 19)
+
+    def test_two_pair_is_not_a_full_house(self):
+        self.assertEqual(yacht.score([2, 2, 4, 4, 5], yacht.FULL_HOUSE), 0)
+
+    def test_four_of_a_kind_is_not_a_full_house(self):
+        self.assertEqual(yacht.score([1, 4, 4, 4, 4], yacht.FULL_HOUSE), 0)
+
+    def test_yacht_is_not_a_full_house(self):
+        self.assertEqual(yacht.score([2, 2, 2, 2, 2], yacht.FULL_HOUSE), 0)
+
+    def test_four_of_a_kind(self):
+        self.assertEqual(yacht.score([6, 6, 4, 6, 6], yacht.FOUR_OF_A_KIND), 24)
+
+    def test_yacht_can_be_scored_as_four_of_a_kind(self):
+        self.assertEqual(yacht.score([3, 3, 3, 3, 3], yacht.FOUR_OF_A_KIND), 12)
+
+    def test_full_house_is_not_four_of_a_kind(self):
+        self.assertEqual(yacht.score([3, 3, 3, 5, 5], yacht.FOUR_OF_A_KIND), 0)
+
+    def test_little_straight(self):
+        self.assertEqual(yacht.score([3, 5, 4, 1, 2], yacht.LITTLE_STRAIGHT), 30)
+
+    def test_little_straight_as_big_straight(self):
+        self.assertEqual(yacht.score([1, 2, 3, 4, 5], yacht.BIG_STRAIGHT), 0)
+
+    def test_four_in_order_but_not_a_little_straight(self):
+        self.assertEqual(yacht.score([1, 1, 2, 3, 4], yacht.LITTLE_STRAIGHT), 0)
+
+    def test_no_pairs_but_not_a_little_straight(self):
+        self.assertEqual(yacht.score([1, 2, 3, 4, 6], yacht.LITTLE_STRAIGHT), 0)
+
+    def test_minimum_is_1_maximum_is_5_but_not_a_little_straight(self):
+        self.assertEqual(yacht.score([1, 1, 3, 4, 5], yacht.LITTLE_STRAIGHT), 0)
+
+    def test_big_straight(self):
+        self.assertEqual(yacht.score([4, 6, 2, 5, 3], yacht.BIG_STRAIGHT), 30)
+
+    def test_big_straight_as_little_straight(self):
+        self.assertEqual(yacht.score([6, 5, 4, 3, 2], yacht.LITTLE_STRAIGHT), 0)
+
+    def test_no_pairs_but_not_a_big_straight(self):
+        self.assertEqual(yacht.score([6, 5, 4, 3, 1], yacht.BIG_STRAIGHT), 0)
+
+    def test_choice(self):
+        self.assertEqual(yacht.score([3, 3, 5, 6, 6], yacht.CHOICE), 23)
+
+    def test_yacht_as_choice(self):
+        self.assertEqual(yacht.score([2, 2, 2, 2, 2], yacht.CHOICE), 10)
+
+
+=== Target Test Code ===
+package yacht
+
+import (
+	"testing"
+)
+
+func TestScore(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Score(tc.dice, tc.category)
+			if tc.expected != actual {
+				t.Fatalf("Score(%#v,%q) = %d, want:%d", tc.dice, tc.category, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, testCase := range testCases {
+			Score(testCase.dice, testCase.category)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/yacht/.meta/example.go
+package yacht
+
+// Score calculates the score for a yacht game based on a given category
+func Score(dice []int, category string) int {
+	switch category {
+	case "yacht":
+		return yacht(dice)
+	case "ones":
+		return sumOfNumbers(1, dice)
+	case "twos":
+		return sumOfNumbers(2, dice)
+	case "threes":
+		return sumOfNumbers(3, dice)
+	case "fours":
+		return sumOfNumbers(4, dice)
+	case "fives":
+		return sumOfNumbers(5, dice)
+	case "sixes":
+		return sumOfNumbers(6, dice)
+	case "full_house":
+		return fullHouse(dice)
+	case "four_of_a_kind":
+		return fourOfAKind(dice)
+	case "little_straight":
+		return littleStraight(dice)
+	case "big_straight":
+		return bigStraight(dice)
+	case "choice":
+		return sum(dice)
+	default:
+		return 0
+	}
+}
+
+// sumOfNumbers returns the sum of all occurrences of a specific number in the dice
+func sumOfNumbers(number int, dice []int) int {
+	sum := 0
+	for _, d := range dice {
+		if d == number {
+			sum += d
+		}
+	}
+	return sum
+}
+
+// fullHouse returns the sum of all dice if the dice form a full house, 0 otherwise
+func fullHouse(dice []int) int {
+	counts := countDice(dice)
+	hasThree := false
+	hasTwo := false
+	
+	for _, count := range counts {
+		if count == 3 {
+			hasThree = true
+		} else if count == 2 {
+			hasTwo = true
+		}
+	}
+	
+	if hasThree && hasTwo {
+		return sum(dice)
+	}
+	return 0
+}
+
+// fourOfAKind returns 4 times the value of the die that appears at least 4 times, 0 otherwise
+func fourOfAKind(dice []int) int {
+	counts := countDice(dice)
+	
+	for num, count := range counts {
+		if count >= 4 {
+			return 4 * num
+		}
+	}
+	return 0
+}
+
+// littleStraight returns 30 if the dice form a small straight (1-5), 0 otherwise
+func littleStraight(dice []int) int {
+	if hasExactly(dice, 1) && hasExactly(dice, 2) && hasExactly(dice, 3) && 
+	   hasExactly(dice, 4) && hasExactly(dice, 5) && !hasExactly(dice, 6) {
+		return 30
+	}
+	return 0
+}
+
+// bigStraight returns 30 if the dice form a large straight (2-6), 0 otherwise
+func bigStraight(dice []int) int {
+	if !hasExactly(dice, 1) && hasExactly(dice, 2) && hasExactly(dice, 3) && 
+	   hasExactly(dice, 4) && hasExactly(dice, 5) && hasExactly(dice, 6) {
+		return 30
+	}
+	return 0
+}
+
+// yacht returns 50 if all dice show the same value, 0 otherwise
+func yacht(dice []int) int {
+	if len(dice) > 0 {
+		first := dice[0]
+		for _, d := range dice {
+			if d != first {
+				return 0
+			}
+		}
+		return 50
+	}
+	return 0
+}
+
+// sum returns the sum of all dice
+func sum(dice []int) int {
+	total := 0
+	for _, d := range dice {
+		total += d
+	}
+	return total
+}
+
+// countDice counts the occurrences of each die value
+func countDice(dice []int) map[int]int {
+	counts := make(map[int]int)
+	for _, d := range dice {
+		counts[d]++
+	}
+	return counts
+}
+
+// hasExactly checks if a specific number appears exactly once in the dice
+func hasExactly(dice []int, num int) bool {
+	count := 0
+	for _, d := range dice {
+		if d == num {
+			count++
+		}
+	}
+	return count == 1
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestScore (0.00s)
+    --- FAIL: TestScore/Full_house_two_small,_three_big (0.00s)
+        yacht_test.go:12: Score([]int{2, 2, 4, 4, 4},"full house") = 0, want:16
+    --- FAIL: TestScore/Full_house_three_small,_two_big (0.00s)
+        yacht_test.go:12: Score([]int{5, 3, 3, 5, 3},"full house") = 0, want:19
+    --- FAIL: TestScore/Four_of_a_Kind (0.00s)
+        yacht_test.go:12: Score([]int{6, 6, 4, 6, 6},"four of a kind") = 0, want:24
+    --- FAIL: TestScore/Yacht_can_be_scored_as_Four_of_a_Kind (0.00s)
+        yacht_test.go:12: Score([]int{3, 3, 3, 3, 3},"four of a kind") = 0, want:12
+    --- FAIL: TestScore/Little_Straight (0.00s)
+        yacht_test.go:12: Score([]int{3, 5, 4, 1, 2},"little straight") = 0, want:30
+    --- FAIL: TestScore/Big_Straight (0.00s)
+        yacht_test.go:12: Score([]int{4, 6, 2, 5, 3},"big straight") = 0, want:30
+FAIL
+FAIL	exercism/yacht	0.275s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/yacht/.meta/example.go
+package yacht
+
+// Score calculates the score for a yacht game based on a given category
+func Score(dice []int, category string) int {
+	switch category {
+	case "yacht":
+		return yacht(dice)
+	case "ones":
+		return sumOfNumbers(1, dice)
+	case "twos":
+		return sumOfNumbers(2, dice)
+	case "threes":
+		return sumOfNumbers(3, dice)
+	case "fours":
+		return sumOfNumbers(4, dice)
+	case "fives":
+		return sumOfNumbers(5, dice)
+	case "sixes":
+		return sumOfNumbers(6, dice)
+	case "full house":
+		return fullHouse(dice)
+	case "four of a kind":
+		return fourOfAKind(dice)
+	case "little straight":
+		return littleStraight(dice)
+	case "big straight":
+		return bigStraight(dice)
+	case "choice":
+		return sum(dice)
+	default:
+		return 0
+	}
+}
+
+// sumOfNumbers returns the sum of all occurrences of a specific number in the dice
+func sumOfNumbers(number int, dice []int) int {
+	sum := 0
+	for _, d := range dice {
+		if d == number {
+			sum += d
+		}
+	}
+	return sum
+}
+
+// fullHouse returns the sum of all dice if the dice form a full house, 0 otherwise
+func fullHouse(dice []int) int {
+	counts := countDice(dice)
+	hasThree := false
+	hasTwo := false
+	
+	for _, count := range counts {
+		if count == 3 {
+			hasThree = true
+		} else if count == 2 {
+			hasTwo = true
+		}
+	}
+	
+	if hasThree && hasTwo {
+		return sum(dice)
+	}
+	return 0
+}
+
+// fourOfAKind returns 4 times the value of the die that appears at least 4 times, 0 otherwise
+func fourOfAKind(dice []int) int {
+	counts := countDice(dice)
+	
+	for num, count := range counts {
+		if count >= 4 {
+			return 4 * num
+		}
+	}
+	return 0
+}
+
+// littleStraight returns 30 if the dice form a small straight (1-5), 0 otherwise
+func littleStraight(dice []int) int {
+	if containsAll(dice, []int{1, 2, 3, 4, 5}) {
+		return 30
+	}
+	return 0
+}
+
+// bigStraight returns 30 if the dice form a large straight (2-6), 0 otherwise
+func bigStraight(dice []int) int {
+	if containsAll(dice, []int{2, 3, 4, 5, 6}) {
+		return 30
+	}
+	return 0
+}
+
+// yacht returns 50 if all dice show the same value, 0 otherwise
+func yacht(dice []int) int {
+	if len(dice) > 0 {
+		first := dice[0]
+		for _, d := range dice {
+			if d != first {
+				return 0
+			}
+		}
+		return 50
+	}
+	return 0
+}
+
+// sum returns the sum of all dice
+func sum(dice []int) int {
+	total := 0
+	for _, d := range dice {
+		total += d
+	}
+	return total
+}
+
+// countDice counts the occurrences of each die value
+func countDice(dice []int) map[int]int {
+	counts := make(map[int]int)
+	for _, d := range dice {
+		counts[d]++
+	}
+	return counts
+}
+
+// containsAll checks if a slice contains all values in another slice (regardless of order)
+func containsAll(dice []int, values []int) bool {
+	if len(dice) != len(values) {
+		return false
+	}
+	
+	countMap := make(map[int]int)
+	for _, d := range dice {
+		countMap[d]++
+	}
+	
+	for _, v := range values {
+		if countMap[v] == 0 {
+			return false
+		}
+		countMap[v]--
+	}
+	
+	return true
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/yacht	0.287s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

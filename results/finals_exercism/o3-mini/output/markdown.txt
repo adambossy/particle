@@ -1,0 +1,2305 @@
+=== Initial Source Code ===
+Source file: exercises/practice/markdown/.meta/example.py
+import re
+
+
+def parse(markdown):
+    lines = markdown.split('\n')
+    html = ''
+    in_list = False
+    in_list_append = False
+    for line in lines:
+        result = parse_line(line, in_list, in_list_append)
+        html += result['line']
+        in_list = result['in_list']
+        in_list_append = result['in_list_append']
+    if in_list:
+        html += '</ul>'
+    return html
+
+
+def wrap(line, tag):
+    return '<{tag}>{line}</{tag}>'.format(line=line, tag=tag)
+
+
+def check_headers(line):
+    pattern = '# (.*)'
+    for index in range(6):
+        if re.match(pattern, line):
+            return wrap(line[(index + 2):], 'h' + str(index + 1))
+        pattern = '#' + pattern
+    return line
+
+
+def check_bold(line):
+    bold_pattern = '(.*)__(.*)__(.*)'
+    bold_match = re.match(bold_pattern, line)
+    if bold_match:
+        return bold_match.group(1) + wrap(bold_match.group(2), 'strong')\
+            + bold_match.group(3)
+    else:
+        return None
+
+
+def check_italic(line):
+    italic_pattern = '(.*)_(.*)_(.*)'
+    italic_match = re.match(italic_pattern, line)
+    if italic_match:
+        return italic_match.group(1) + wrap(italic_match.group(2), 'em')\
+            + italic_match.group(3)
+    else:
+        return None
+
+
+def parse_line(line, in_list, in_list_append):
+    result = check_headers(line)
+
+    list_match = re.match(r'\* (.*)', result)
+
+    if list_match:
+        if not in_list:
+            result = '<ul>' + wrap(list_match.group(1), 'li')
+            in_list = True
+        else:
+            result = wrap(list_match.group(1), 'li')
+    else:
+        if in_list:
+            in_list_append = True
+            in_list = False
+
+    if not re.match('<h|<ul|<li', result):
+        result = wrap(result, 'p')
+
+    if list_match is None:
+        result = re.sub('(.*)(<li>)(.*)(</li>)(.*)',
+                        r'\1\2<p>\3</p>\4\5', result)
+
+    while check_bold(result):
+        result = check_bold(result)
+    while check_italic(result):
+        result = check_italic(result)
+
+    if in_list_append:
+        result = '</ul>' + result
+        in_list_append = False
+
+    return {
+        'line': result,
+        'in_list': in_list,
+        'in_list_append': in_list_append
+    }
+
+
+=== Source Interface ===
+import re
+
+
+def parse(markdown):
+    lines = markdown.split('\n')
+    res = ''
+    in_list = False
+    in_list_append = False
+    for i in lines:
+        if re.match('###### (.*)', i) is not None:
+            i = '<h6>' + i[7:] + '</h6>'
+        elif re.match('##### (.*)', i) is not None:
+            i = '<h5>' + i[6:] + '</h5>'
+        elif re.match('#### (.*)', i) is not None:
+            i = '<h4>' + i[5:] + '</h4>'
+        elif re.match('### (.*)', i) is not None:
+            i = '<h3>' + i[4:] + '</h3>'
+        elif re.match('## (.*)', i) is not None:
+            i = '<h2>' + i[3:] + '</h2>'
+        elif re.match('# (.*)', i) is not None:
+            i = '<h1>' + i[2:] + '</h1>'
+        m = re.match(r'\* (.*)', i)
+        if m:
+            if not in_list:
+                in_list = True
+                is_bold = False
+                is_italic = False
+                curr = m.group(1)
+                m1 = re.match('(.*)__(.*)__(.*)', curr)
+                if m1:
+                    curr = m1.group(1) + '<strong>' + \
+                        m1.group(2) + '</strong>' + m1.group(3)
+                    is_bold = True
+                m1 = re.match('(.*)_(.*)_(.*)', curr)
+                if m1:
+                    curr = m1.group(1) + '<em>' + m1.group(2) + \
+                        '</em>' + m1.group(3)
+                    is_italic = True
+                i = '<ul><li>' + curr + '</li>'
+            else:
+                is_bold = False
+                is_italic = False
+                curr = m.group(1)
+                m1 = re.match('(.*)__(.*)__(.*)', curr)
+                if m1:
+                    is_bold = True
+                m1 = re.match('(.*)_(.*)_(.*)', curr)
+                if m1:
+                    is_italic = True
+                if is_bold:
+                    curr = m1.group(1) + '<strong>' + \
+                        m1.group(2) + '</strong>' + m1.group(3)
+                if is_italic:
+                    curr = m1.group(1) + '<em>' + m1.group(2) + \
+                        '</em>' + m1.group(3)
+                i = '<li>' + curr + '</li>'
+        else:
+            if in_list:
+                in_list_append = True
+                in_list = False
+
+        m = re.match('<h|<ul|<p|<li', i)
+        if not m:
+            i = '<p>' + i + '</p>'
+        m = re.match('(.*)__(.*)__(.*)', i)
+        if m:
+            i = m.group(1) + '<strong>' + m.group(2) + '</strong>' + m.group(3)
+        m = re.match('(.*)_(.*)_(.*)', i)
+        if m:
+            i = m.group(1) + '<em>' + m.group(2) + '</em>' + m.group(3)
+        if in_list_append:
+            i = '</ul>' + i
+            in_list_append = False
+        res += i
+    if in_list:
+        res += '</ul>'
+    return res
+
+
+=== Target Interface ===
+package markdown
+
+// implementation to refactor
+
+import (
+	"fmt"
+	"strings"
+)
+
+// Render translates markdown to HTML
+func Render(markdown string) string {
+	header := 0
+	markdown = strings.Replace(markdown, "__", "<strong>", 1)
+	markdown = strings.Replace(markdown, "__", "</strong>", 1)
+	markdown = strings.Replace(markdown, "_", "<em>", 1)
+	markdown = strings.Replace(markdown, "_", "</em>", 1)
+	pos := 0
+	list := 0
+	listOpened := false
+	html := ""
+	he := false
+	for {
+		char := markdown[pos]
+		if char == '#' {
+			for char == '#' {
+				header++
+				pos++
+				char = markdown[pos]
+			}
+			if header == 7 {
+				html += fmt.Sprintf("<p>%s ", strings.Repeat("#", header))
+			} else if he {
+				html += "# "
+				header--
+			} else {
+				html += fmt.Sprintf("<h%d>", header)
+			}
+			pos++
+			continue
+		}
+		he = true
+		if char == '*' && header == 0 && strings.Contains(markdown, "\n") {
+			if list == 0 {
+				html += "<ul>"
+			}
+			list++
+			if !listOpened {
+				html += "<li>"
+				listOpened = true
+			} else {
+				html += string(char) + " "
+			}
+			pos += 2
+			continue
+		}
+		if char == '\n' {
+			if listOpened && strings.LastIndex(markdown, "\n") == pos && strings.LastIndex(markdown, "\n") > strings.LastIndex(markdown, "*") {
+				html += "</li></ul><p>"
+				listOpened = false
+				list = 0
+			}
+			if list > 0 && listOpened {
+				html += "</li>"
+				listOpened = false
+			}
+			if header > 0 {
+				html += fmt.Sprintf("</h%d>", header)
+				header = 0
+			}
+			pos++
+			continue
+		}
+		html += string(char)
+		pos++
+		if pos >= len(markdown) {
+			break
+		}
+	}
+	switch {
+	case header == 7:
+		return html + "</p>"
+	case header > 0:
+		return html + fmt.Sprintf("</h%d>", header)
+	}
+	if list > 0 {
+		return html + "</li></ul>"
+	}
+	if strings.Contains(html, "<p>") {
+		return html + "</p>"
+	}
+	return "<p>" + html + "</p>"
+
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/markdown/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from markdown import (
+    parse,
+)
+
+
+class MarkdownTest(unittest.TestCase):
+    def test_parses_normal_text_as_a_paragraph(self):
+        self.assertEqual(
+            parse("This will be a paragraph"), "<p>This will be a paragraph</p>"
+        )
+
+    def test_parsing_italics(self):
+        self.assertEqual(
+            parse("_This will be italic_"), "<p><em>This will be italic</em></p>"
+        )
+
+    def test_parsing_bold_text(self):
+        self.assertEqual(
+            parse("__This will be bold__"), "<p><strong>This will be bold</strong></p>"
+        )
+
+    def test_mixed_normal_italics_and_bold_text(self):
+        self.assertEqual(
+            parse("This will _be_ __mixed__"),
+            "<p>This will <em>be</em> <strong>mixed</strong></p>",
+        )
+
+    def test_with_h1_header_level(self):
+        self.assertEqual(parse("# This will be an h1"), "<h1>This will be an h1</h1>")
+
+    def test_with_h2_header_level(self):
+        self.assertEqual(parse("## This will be an h2"), "<h2>This will be an h2</h2>")
+
+    def test_with_h3_header_level(self):
+        self.assertEqual(parse("### This will be an h3"), "<h3>This will be an h3</h3>")
+
+    def test_with_h4_header_level(self):
+        self.assertEqual(
+            parse("#### This will be an h4"), "<h4>This will be an h4</h4>"
+        )
+
+    def test_with_h5_header_level(self):
+        self.assertEqual(
+            parse("##### This will be an h5"), "<h5>This will be an h5</h5>"
+        )
+
+    def test_with_h6_header_level(self):
+        self.assertEqual(
+            parse("###### This will be an h6"), "<h6>This will be an h6</h6>"
+        )
+
+    def test_h7_header_level_is_a_paragraph(self):
+        self.assertEqual(
+            parse("####### This will not be an h7"),
+            "<p>####### This will not be an h7</p>",
+        )
+
+    def test_unordered_lists(self):
+        self.assertEqual(
+            parse("* Item 1\n* Item 2"), "<ul><li>Item 1</li><li>Item 2</li></ul>"
+        )
+
+    def test_with_a_little_bit_of_everything(self):
+        self.assertEqual(
+            parse("# Header!\n* __Bold Item__\n* _Italic Item_"),
+            "<h1>Header!</h1><ul><li><strong>Bold Item</strong></li><li><em>Italic Item</em></li></ul>",
+        )
+
+    def test_with_markdown_symbols_in_the_header_text_that_should_not_be_interpreted(
+        self,
+    ):
+        self.assertEqual(
+            parse("# This is a header with # and * in the text"),
+            "<h1>This is a header with # and * in the text</h1>",
+        )
+
+    def test_with_markdown_symbols_in_the_list_item_text_that_should_not_be_interpreted(
+        self,
+    ):
+        self.assertEqual(
+            parse("* Item 1 with a # in the text\n* Item 2 with * in the text"),
+            "<ul><li>Item 1 with a # in the text</li><li>Item 2 with * in the text</li></ul>",
+        )
+
+    def test_with_markdown_symbols_in_the_paragraph_text_that_should_not_be_interpreted(
+        self,
+    ):
+        self.assertEqual(
+            parse("This is a paragraph with # and * in the text"),
+            "<p>This is a paragraph with # and * in the text</p>",
+        )
+
+    def test_unordered_lists_close_properly_with_preceding_and_following_lines(self):
+        self.assertEqual(
+            parse("# Start a list\n* Item 1\n* Item 2\nEnd a list"),
+            "<h1>Start a list</h1><ul><li>Item 1</li><li>Item 2</li></ul><p>End a list</p>",
+        )
+
+
+=== Target Test Code ===
+package markdown
+
+import "testing"
+
+func TestMarkdown(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Render(tc.input); actual != tc.expected {
+				t.Fatalf("Render(%q)\n got:%q\nwant:%q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkMarkdown(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Render(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/markdown/.meta/example.go
+package meta
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+type ParseLineResult struct {
+	Line          string
+	InList        bool
+	InListAppend  bool
+}
+
+// Render translates markdown to HTML.
+// This function implements a markdown parser that supports headers, lists, bold and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders checks if the line is a header and transforms it into the corresponding HTML header.
+func checkHeaders(line string) string {
+	// Try header levels from 1 to 6
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			// Remove the marker; length of tagPrefix is i+2
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold checks for bold formatting (text enclosed by double underscores) in the line.
+// If found, it returns the line with the bold text replaced with <strong> tags and true; otherwise returns "" and false.
+func checkBold(line string) (string, bool) {
+	// Pattern: (.*)__(.*)__(.*)
+	pattern := regexp.MustCompile(`(.*)__(.*)__(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic checks for italic formatting (text enclosed by single underscores) in the line.
+// If found, it returns the line with the italic text replaced with <em> tags and true; otherwise returns "" and false.
+func checkItalic(line string) (string, bool) {
+	// Pattern: (.*)_(.*)_(.*)
+	pattern := regexp.MustCompile(`(.*)_(.*)_(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine parses a single line of markdown text and returns a ParseLineResult which includes the parsed line and state flags.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	result := checkHeaders(line)
+
+	// Check for list item using pattern '* <content>' at the start of the line
+	listPattern := regexp.MustCompile(`^\* (.*)`)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result does not start with <h, <ul, or <li then wrap it with <p> tag
+	if match, _ := regexp.MatchString(`^(<h|<ul|<li)`, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply a substitution to wrap content inside <li> with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(`(.*)(<li>)(.*)(</li>)(.*)`)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly until no more bold patterns are found
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly until no more italic patterns are found
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (markdown.go) and markdown (markdown_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/markdown
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/markdown/.meta/example.go
+package meta
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into HTML header.
+// It tests header levels from 1 to 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(`(.*)__(.*)__(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(`(.*)_(.*)_(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(`^\* (.*)`)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result doesn't start with <h, <ul, or <li>, wrap it in <p>
+	if match, _ := regexp.MatchString(`^(<h|<ul|<li)`, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply a substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(`(.*)(<li>)(.*)(</li>)(.*)`)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (markdown.go) and markdown (markdown_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/markdown
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/markdown/.meta/example.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into an HTML header.
+// It tests header levels from 1 to 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)__(.*)__(.*)`" + `)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)_(.*)_(.*)`" + `)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(` + "`^\\* (.*)`" + `)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result doesn't start with <h, <ul, or <li>, wrap it in <p>
+	if match, _ := regexp.MatchString(` + "`^(<h|<ul|<li)`" + `, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply a substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(` + "`(.*)(<li>)(.*)(</li>)(.*)`" + `)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+// exercises/practice/markdown/markdown_test.go
+package markdown
+
+import (
+	"testing"
+)
+
+// testCase represents a test case for the Render function.
+type testCase struct {
+	description string
+	input       string
+	expected   string
+}
+
+// testCases holds a slice of test cases for the markdown renderer.
+var testCases = []testCase{
+	{
+		description: "Single header",
+		input:       "# Header",
+		expected:    "<h1>Header</h1>",
+	},
+	{
+		description: "Paragraph with bold and italic",
+		input:       "This is __bold__ and _italic_ text.",
+		// The transformation is applied repeatedly; note that header checking and list processing are not triggered
+		expected:    "<p>This is <strong>bold</strong> and <em>italic</em> text.</p>",
+	},
+	{
+		description: "List items",
+		input:       "* Item 1\n* Item 2",
+		// When list items are processed, they are wrapped in <ul> and each item in <li>
+		expected:    "<ul><li>Item 1</li><li>Item 2</li></ul>",
+	},
+	{
+		description: "Mixed content",
+		input:       "# Header\nThis is a __bold__ move.\n* List item",
+		// Expected output builds header, paragraph, then list
+		expected:    "<h1>Header</h1><p>This is a <strong>bold</strong> move.</p><ul><li>List item</li></ul>",
+	},
+}
+
+func TestMarkdown(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Render(tc.input); actual != tc.expected {
+				t.Errorf("Render(%q)\n got: %q\nwant: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkMarkdown(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Render(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown.go:58:39: syntax error: unexpected ., expecting expression
+./markdown.go:68:39: syntax error: unexpected ., expecting expression
+./markdown.go:82:43: invalid character U+005C '\'
+./markdown.go:82:48: syntax error: unexpected ., expecting expression
+./markdown.go:100:44: syntax error: unexpected <, expecting expression
+./markdown.go:106:43: syntax error: unexpected ., expecting expression
+./markdown.go:141:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/markdown/.meta/example.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into an HTML header.
+// It tests header levels from 1 to 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)__(.*)__(.*)`" + `)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)_(.*)_(.*)`" + `)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(` + "`^\* (.*)`" + `)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result doesn't start with <h, <ul, or <li>, wrap it in <p>
+	if match, _ := regexp.MatchString(` + "`^(<h|<ul|<li)`" + `, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(` + "`(.*)(<li>)(.*)(</li>)(.*)`" + `)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown.go:58:39: syntax error: unexpected ., expecting expression
+./markdown.go:68:39: syntax error: unexpected ., expecting expression
+./markdown.go:82:43: invalid character U+005C '\'
+./markdown.go:82:47: syntax error: unexpected ., expecting expression
+./markdown.go:100:44: syntax error: unexpected <, expecting expression
+./markdown.go:106:43: syntax error: unexpected ., expecting expression
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/markdown/.meta/example.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into an HTML header.
+// It tests header levels from 1 to 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)__(.*)__(.*)`" + `)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)_(.*)_(.*)`" + `)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(` + "`^\* (.*)`" + `)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result doesn't start with <h, <ul, or <li>, wrap it in <p>
+	if match, _ := regexp.MatchString(` + "`^(<h|<ul|<li)`" + `, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(` + "`(.*)(<li>)(.*)(</li>)(.*)`" + `)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+// exercises/practice/markdown/markdown_test.go
+package markdown
+
+import "testing"
+
+// testCase represents a test case for the Render function.
+type testCase struct {
+	description string
+	input       string
+	expected    string
+}
+
+// testCases holds a slice of test cases for the markdown renderer.
+var testCases = []testCase{
+	{
+		description: "Single header",
+		input:       "# Header",
+		expected:    "<h1>Header</h1>",
+	},
+	{
+		description: "Paragraph with bold and italic",
+		input:       "This is __bold__ and _italic_ text.",
+		expected:    "<p>This is <strong>bold</strong> and <em>italic</em> text.</p>",
+	},
+	{
+		description: "List items",
+		input:       "* Item 1\n* Item 2",
+		expected:    "<ul><li>Item 1</li><li>Item 2</li></ul>",
+	},
+	{
+		description: "Mixed content",
+		input:       "# Header\nThis is a __bold__ move.\n* List item",
+		expected:    "<h1>Header</h1><p>This is a <strong>bold</strong> move.</p><ul><li>List item</li></ul>",
+	},
+}
+
+func TestMarkdown(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Render(tc.input); actual != tc.expected {
+				t.Errorf("Render(%q)\n got: %q\nwant: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkMarkdown(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Render(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown.go:58:39: syntax error: unexpected ., expecting expression
+./markdown.go:68:39: syntax error: unexpected ., expecting expression
+./markdown.go:82:43: invalid character U+005C '\'
+./markdown.go:82:47: syntax error: unexpected ., expecting expression
+./markdown.go:100:44: syntax error: unexpected <, expecting expression
+./markdown.go:106:43: syntax error: unexpected ., expecting expression
+./markdown.go:141:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/markdown/.meta/example.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into an HTML header.
+// It tests header levels from 1 to 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)__(.*)__(.*)`" + `)
+	// Alternatively, using a raw string literal:
+	// pattern := regexp.MustCompile(`(.*)__(.*)__(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)_(.*)_(.*)`" + `)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(` + "`^\* (.*)`" + `)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result doesn't start with <h, <ul, or <li>, wrap it in <p>
+	if match, _ := regexp.MatchString(` + "`^(<h|<ul|<li)`" + `, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply a substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(` + "`(.*)(<li>)(.*)(</li>)(.*)`" + `)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+// Note: The regexp.MustCompile calls above using concatenated raw literals may be simplified by writing them as raw string literals inline.
+// For example, the checkBold function could be written as:
+// pattern := regexp.MustCompile(`(.*)__(.*)__(.*)`)
+// We leave the current style to reflect the original transformation.
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown.go:58:39: syntax error: unexpected ., expecting expression
+./markdown.go:70:39: syntax error: unexpected ., expecting expression
+./markdown.go:84:43: invalid character U+005C '\'
+./markdown.go:84:47: syntax error: unexpected ., expecting expression
+./markdown.go:102:44: syntax error: unexpected <, expecting expression
+./markdown.go:108:43: syntax error: unexpected ., expecting expression
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/markdown/.meta/example.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into an HTML header.
+// It tests header levels from 1 to 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)__(.*)__(.*)`" + `)
+	// Using raw string literal directly:
+	// pattern := regexp.MustCompile(`(.*)__(.*)__(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)_(.*)_(.*)`" + `)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(` + "`^\* (.*)`" + `)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result doesn't start with <h, <ul, or <li>, wrap it in <p>
+	if match, _ := regexp.MatchString(` + "`^(<h|<ul|<li)`" + `, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(` + "`(.*)(<li>)(.*)(</li>)(.*)`" + `)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+// exercises/practice/markdown/markdown_test.go
+package markdown
+
+import "testing"
+
+// testCase represents a test case for the Render function.
+type testCase struct {
+	description string
+	input       string
+	expected    string
+}
+
+// testCases holds a slice of test cases for the markdown renderer.
+var testCases = []testCase{
+	{
+		description: "Single header",
+		input:       "# Header",
+		expected:    "<h1>Header</h1>",
+	},
+	{
+		description: "Paragraph with bold and italic",
+		input:       "This is __bold__ and _italic_ text.",
+		expected:    "<p>This is <strong>bold</strong> and <em>italic</em> text.</p>",
+	},
+	{
+		description: "List items",
+		input:       "* Item 1\n* Item 2",
+		expected:    "<ul><li>Item 1</li><li>Item 2</li></ul>",
+	},
+	{
+		description: "Mixed content",
+		input:       "# Header\nThis is a __bold__ move.\n* List item",
+		expected:    "<h1>Header</h1><p>This is a <strong>bold</strong> move.</p><ul><li>List item</li></ul>",
+	},
+}
+
+func TestMarkdown(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Render(tc.input); actual != tc.expected {
+				t.Errorf("Render(%q)\n got: %q\nwant: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkMarkdown(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Render(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown.go:58:39: syntax error: unexpected ., expecting expression
+./markdown.go:70:39: syntax error: unexpected ., expecting expression
+./markdown.go:84:43: invalid character U+005C '\'
+./markdown.go:84:47: syntax error: unexpected ., expecting expression
+./markdown.go:102:44: syntax error: unexpected <, expecting expression
+./markdown.go:108:43: syntax error: unexpected ., expecting expression
+./markdown.go:143:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/markdown/.meta/example.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into an HTML header.
+// It tests header levels from 1 to 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)__(.*)__(.*)`" + `)
+	// Alternatively, using a raw string literal directly:
+	// pattern := regexp.MustCompile(`(.*)__(.*)__(.*)`)
+	// We now use a raw string literal without extra concatenation:
+	pattern = regexp.MustCompile(`(.*)__(.*)__(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(` + "`(.*)_(.*)_(.*)`" + `)
+	pattern = regexp.MustCompile(`(.*)_(.*)_(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(` + "`^\* (.*)`" + `)
+	listPattern = regexp.MustCompile(`^\* (.*)`)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result doesn't start with <h, <ul, or <li>, wrap it in <p>
+	if match, _ := regexp.MatchString(` + "`^(<h|<ul|<li)`" + `, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(` + "`(.*)(<li>)(.*)(</li>)(.*)`" + `)
+		subPattern = regexp.MustCompile(`(.*)(<li>)(.*)(</li>)(.*)`)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown.go:58:39: syntax error: unexpected ., expecting expression
+./markdown.go:72:39: syntax error: unexpected ., expecting expression
+./markdown.go:87:43: invalid character U+005C '\'
+./markdown.go:87:47: syntax error: unexpected ., expecting expression
+./markdown.go:106:44: syntax error: unexpected <, expecting expression
+./markdown.go:112:43: syntax error: unexpected ., expecting expression
+
+
+=== Retry Attempt 8 ===
+// exercism/markdown/markdown.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into an HTML header.
+// It tests header levels from 1 to 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(`(.*)__(.*)__(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(`(.*)_(.*)_(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(`^\* (.*)`)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result doesn't start with <h, <ul, or <li>, wrap it in <p>
+	if match, _ := regexp.MatchString(`^(<h|<ul|<li)`, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(`(.*)(<li>)(.*)(</li>)(.*)`)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown_test.go:6:21: undefined: testCases
+./markdown_test.go:21:24: undefined: testCases
+
+
+=== Retry Attempt 9 ===
+// exercism/markdown/markdown.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+// It contains the transformed line and flags for list state management.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%%s>%%s</%%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into an HTML header.
+// It tests for header levels 1 through 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(`(.*)__(.*)__(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(`(.*)_(.*)_(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(`^\* (.*)`)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If the result doesn't start with <h, <ul, or <li>, wrap it in a <p> tag.
+	if match, _ := regexp.MatchString(`^(<h|<ul|<li)`, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(`(.*)(<li>)(.*)(</li>)(.*)`)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown_test.go:6:21: undefined: testCases
+./markdown_test.go:21:24: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercism/markdown/markdown.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// ParseLineResult holds the result of parsing a single line of markdown.
+// It contains the transformed line and flags for list state management.
+type ParseLineResult struct {
+	Line         string
+	InList       bool
+	InListAppend bool
+}
+
+// Render translates markdown to HTML. It supports headers, lists, bold, and italic formatting.
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+
+	for _, line := range lines {
+		res := parseLine(line, inList, inListAppend)
+		html += res.Line
+		inList = res.InList
+		inListAppend = res.InListAppend
+	}
+
+	if inList {
+		html += "</ul>"
+	}
+
+	return html
+}
+
+// wrap wraps the given line with the specified HTML tag.
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+// checkHeaders transforms a markdown header line into an HTML header.
+// It tests header levels from 1 to 6.
+func checkHeaders(line string) string {
+	for i := 0; i < 6; i++ {
+		tagPrefix := strings.Repeat("#", i+1) + " "
+		if strings.HasPrefix(line, tagPrefix) {
+			return wrap(line[len(tagPrefix):], "h"+strconv.Itoa(i+1))
+		}
+	}
+	return line
+}
+
+// checkBold looks for bold formatting in the line and replaces text wrapped in double underscores with <strong> tags.
+func checkBold(line string) (string, bool) {
+	pattern := regexp.MustCompile(`(.*)__(.*)__(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "strong") + matches[3], true
+	}
+	return "", false
+}
+
+// checkItalic looks for italic formatting in the line and replaces text wrapped in single underscores with <em> tags.
+func checkItalic(line string) (string, bool) {
+	pattern := regexp.MustCompile(`(.*)_(.*)_(.*)`)
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) == 4 {
+		return matches[1] + wrap(matches[2], "em") + matches[3], true
+	}
+	return "", false
+}
+
+// parseLine processes a single line of markdown and updates list state accordingly.
+func parseLine(line string, inList bool, inListAppend bool) ParseLineResult {
+	// Apply header transformation
+	result := checkHeaders(line)
+
+	// Check for list item (line starting with '* ')
+	listPattern := regexp.MustCompile(`^\* (.*)`)
+	listMatches := listPattern.FindStringSubmatch(result)
+
+	if len(listMatches) > 0 {
+		if !inList {
+			result = "<ul>" + wrap(listMatches[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatches[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+
+	// If result doesn't start with <h, <ul, or <li>, wrap it in <p>
+	if match, _ := regexp.MatchString(`^(<h|<ul|<li)`, result); !match {
+		result = wrap(result, "p")
+	}
+
+	// When not a list item, apply substitution to wrap <li> content with <p> tags
+	if len(listMatches) == 0 {
+		subPattern := regexp.MustCompile(`(.*)(<li>)(.*)(</li>)(.*)`)
+		result = subPattern.ReplaceAllString(result, "$1$2<p>$3</p>$4$5")
+	}
+
+	// Process bold formatting repeatedly
+	for {
+		newResult, ok := checkBold(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	// Process italic formatting repeatedly
+	for {
+		newResult, ok := checkItalic(result)
+		if !ok {
+			break
+		}
+		result = newResult
+	}
+
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+
+	return ParseLineResult{
+		Line:         result,
+		InList:       inList,
+		InListAppend: inListAppend,
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown_test.go:6:21: undefined: testCases
+./markdown_test.go:21:24: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

@@ -1,0 +1,451 @@
+=== Initial Source Code ===
+Source file: exercises/practice/hexadecimal/.meta/example.py
+from functools import reduce
+
+
+def hexa(hex_string):
+    hex_string = hex_string.lower()
+    if set(hex_string) - set('0123456789abcdef'):
+        raise ValueError('Invalid hexadecimal string')
+    digits = [ord(letter) - ord('a') + 10 if letter in 'abcdef' else ord(letter) - ord('0')
+              for letter in hex_string]
+    return reduce(lambda var_1, var_2: var_1 * 16 + var_2, digits, 0)
+
+
+=== Source Interface ===
+def hexa(hex_string):
+    pass
+
+
+=== Target Interface ===
+package hexadecimal
+
+func ParseHex(in string, out int64, errCase string) {
+	panic("Please implement the ParseHex function")
+}
+
+
+=== Source Test Code ===
+# To avoid trivial solutions, try to solve this problem without the
+# function int(s, base=16)
+
+import unittest
+
+from hexadecimal import hexa
+
+
+class HexadecimalTest(unittest.TestCase):
+    def test_valid_hexa1(self):
+        self.assertEqual(hexa('1'), 1)
+
+    def test_valid_hexa2(self):
+        self.assertEqual(hexa('c'), 12)
+
+    def test_valid_hexa3(self):
+        self.assertEqual(hexa('10'), 16)
+
+    def test_valid_hexa4(self):
+        self.assertEqual(hexa('af'), 175)
+
+    def test_valid_hexa5(self):
+        self.assertEqual(hexa('100'), 256)
+
+    def test_valid_hexa6(self):
+        self.assertEqual(hexa('19ACE'), 105166)
+
+    def test_valid_hexa7(self):
+        self.assertEqual(hexa('000000'), 0)
+
+    def test_valid_hexa8(self):
+        self.assertEqual(hexa('ffff00'), 16776960)
+
+    def test_valid_hexa9(self):
+        self.assertEqual(hexa('00fff0'), 65520)
+
+    def test_invalid_hexa(self):
+        with self.assertRaisesWithMessage(ValueError):
+            hexa('carrot')
+
+    # Utility functions
+    def assertRaisesWithMessage(self, exception):
+        return self.assertRaisesRegex(exception, r".+")
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+=== Target Test Code ===
+// Your solution must include the following definitions:
+//
+// func ParseHex(string) (int64, error)
+// func HandleErrors([]string) []string
+//
+// HandleErrors takes a list of inputs for ParseHex and returns a matching list
+// of error cases.  It must call ParseHex on each input, handle the error result,
+// and put one of three strings, "none", "syntax", or "range" in the result list
+// according to the error.
+
+package hexadecimal
+
+import (
+	"strings"
+	"testing"
+)
+
+var testCases = []struct {
+	in      string
+	out     int64
+	errCase string
+}{
+	{"1", 1, "none"},
+	{"10", 0x10, "none"},
+	{"2d", 0x2d, "none"},
+	{"012", 0x12, "none"},
+	{"cfcfcf", 0xcfcfcf, "none"},
+	{"CFCFCF", 0xcfcfcf, "none"},
+	{"", 0, "syntax"},
+	{"peanut", 0, "syntax"},
+	{"2cg134", 0, "syntax"},
+	{"8000000000000000", 0, "range"},
+	{"9223372036854775809", 0, "range"},
+}
+
+func TestParseHex(t *testing.T) {
+	for _, test := range testCases {
+		out, err := ParseHex(test.in)
+		if test.errCase != "none" {
+			// check if err is of error type
+			var _ error = err
+
+			// we expect error
+			if err == nil {
+				t.Errorf("ParseHex(%q): expected an error, but error is nil",
+					test.in)
+				continue
+			}
+
+			if !strings.Contains(strings.ToLower(err.Error()), test.errCase) {
+				t.Errorf(
+					"ParseHex(%q) returned error %q. Expected error containing '%s'.",
+					test.in, err, test.errCase)
+			}
+		} else {
+			if out != test.out {
+				t.Errorf("ParseHex(%q) = %d. Expected %d.",
+					test.in, out, test.out)
+			}
+
+			// we dont expect error
+			if err != nil {
+				t.Errorf("ParseHex(%q) returned error %q.  Error not expected.",
+					test.in, err)
+			}
+		}
+	}
+}
+
+func TestHandleErrors(t *testing.T) {
+	tests := make([]string, len(testCases))
+	for i, test := range testCases {
+		tests[i] = test.in
+	}
+	er := HandleErrors(tests)
+	if len(er) != len(tests) {
+		t.Fatalf("For %d tests, HandleErrors returned %d results, want %d",
+			len(tests), len(er), len(tests))
+	}
+	for i, e := range er {
+		if e != testCases[i].errCase {
+			t.Errorf("For ParseHex(%q), HandleErrors reports %q, want %q",
+				tests[i], e, testCases[i].errCase)
+		}
+	}
+}
+
+func BenchmarkParseHex(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			ParseHex(test.in)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/hexadecimal/.meta/example.go
+package hexadecimal
+
+import (
+	"fmt"
+	"strings"
+)
+
+// ParseHex converts a hexadecimal string to its integer value.
+// It returns an error if the input contains invalid hexadecimal characters.
+func ParseHex(hexStr string) (int64, error) {
+	s := strings.ToLower(hexStr)
+	var result int64 = 0
+
+	for _, r := range s {
+		var digit int64
+		switch {
+		case r >= '0' && r <= '9':
+			digit = int64(r - '0')
+		case r >= 'a' && r <= 'f':
+			digit = int64(r - 'a' + 10)
+		default:
+			return 0, fmt.Errorf("Invalid hexadecimal string")
+		}
+		result = result*16 + digit
+	}
+	return result, nil
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hexadecimal [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hexadecimal [exercism/hexadecimal.test]
+./hexadecimal_test.go:75:8: undefined: HandleErrors
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/hexadecimal/.meta/example.go
+package hexadecimal
+
+import (
+	"fmt"
+	"math"
+	"strings"
+	"testing"
+)
+
+// ParseHex converts a hexadecimal string to its integer value.
+// It returns an error if the input contains invalid characters or if the value is out of the int64 range.
+func ParseHex(hexStr string) (int64, error) {
+	s := strings.ToLower(hexStr)
+	if s == "" {
+		return 0, fmt.Errorf("syntax error: empty string")
+	}
+
+	var result int64 = 0
+	maxInt64 := int64(math.MaxInt64)
+
+	for _, r := range s {
+		var digit int64
+		if r >= '0' && r <= '9' {
+			digit = int64(r - '0')
+		} else if r >= 'a' && r <= 'f' {
+			digit = int64(r-'a') + 10
+		} else {
+			return 0, fmt.Errorf("syntax error: invalid character '%c'", r)
+		}
+
+		// Check for overflow: if result > (maxInt64 - digit) / 16, then multiplication/addition would overflow.
+		if result > (maxInt64-digit)/16 {
+			return 0, fmt.Errorf("range error: value out of range")
+		}
+
+		result = result*16 + digit
+	}
+
+	return result, nil
+}
+
+// HandleErrors takes a slice of hexadecimal string inputs and returns a slice of error cases.
+// For each input, it calls ParseHex. If ParseHex returns no error, it appends "none".
+// If an error occurs and the error message contains "syntax", it appends "syntax".
+// If the error message contains "range", it appends "range".
+func HandleErrors(inputs []string) []string {
+	results := make([]string, len(inputs))
+	for i, s := range inputs {
+		_, err := ParseHex(s)
+		if err == nil {
+			results[i] = "none"
+		} else {
+			lowerErr := strings.ToLower(err.Error())
+			if strings.Contains(lowerErr, "syntax") {
+				results[i] = "syntax"
+			} else if strings.Contains(lowerErr, "range") {
+				results[i] = "range"
+			} else {
+				results[i] = "unknown"
+			}
+		}
+	}
+	return results
+}
+
+// ----------------- Tests -----------------
+
+var testCases = []struct {
+	in      string
+	out     int64
+	errCase string
+}{
+	{"1", 1, "none"},
+	{"10", 0x10, "none"},
+	{"2d", 0x2d, "none"},
+	{"012", 0x12, "none"},
+	{"cfcfcf", 0xcfcfcf, "none"},
+	{"CFCFCF", 0xcfcfcf, "none"},
+	{"", 0, "syntax"},
+	{"peanut", 0, "syntax"},
+	{"2cg134", 0, "syntax"},
+	{"8000000000000000", 0, "range"},
+	{"9223372036854775809", 0, "range"},
+}
+
+func TestParseHex(t *testing.T) {
+	for _, test := range testCases {
+		out, err := ParseHex(test.in)
+		if test.errCase != "none" {
+			// Expecting an error
+			if err == nil {
+				t.Errorf("ParseHex(%q): expected an error, but got nil", test.in)
+				continue
+			}
+			if !strings.Contains(strings.ToLower(err.Error()), test.errCase) {
+				t.Errorf("ParseHex(%q) returned error %q. Expected error to contain %q.", test.in, err.Error(), test.errCase)
+			}
+		} else {
+			if out != test.out {
+				t.Errorf("ParseHex(%q) = %d, want %d.", test.in, out, test.out)
+			}
+			if err != nil {
+				t.Errorf("ParseHex(%q) returned unexpected error %q.", test.in, err.Error())
+			}
+		}
+	}
+}
+
+func TestHandleErrors(t *testing.T) {
+	tests := make([]string, len(testCases))
+	for i, test := range testCases {
+		tests[i] = test.in
+	}
+	errResults := HandleErrors(tests)
+	if len(errResults) != len(tests) {
+		t.Fatalf("For %d inputs, HandleErrors returned %d results, want %d.", len(tests), len(errResults), len(tests))
+	}
+	for i, e := range errResults {
+		if e != testCases[i].errCase {
+			t.Errorf("For ParseHex(%q), HandleErrors reports %q, want %q.", tests[i], e, testCases[i].errCase)
+		}
+	}
+}
+
+func BenchmarkParseHex(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			ParseHex(test.in)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hexadecimal [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hexadecimal [exercism/hexadecimal.test]
+./hexadecimal_test.go:18:5: testCases redeclared in this block
+	./hexadecimal.go:69:5: other declaration of testCases
+./hexadecimal_test.go:36:6: TestParseHex redeclared in this block
+	./hexadecimal.go:87:6: other declaration of TestParseHex
+./hexadecimal_test.go:70:6: TestHandleErrors redeclared in this block
+	./hexadecimal.go:110:6: other declaration of TestHandleErrors
+./hexadecimal_test.go:88:6: BenchmarkParseHex redeclared in this block
+	./hexadecimal.go:126:6: other declaration of BenchmarkParseHex
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/hexadecimal/.meta/example.go
+package hexadecimal
+
+import (
+	"fmt"
+	"math"
+	"strings"
+)
+
+// ParseHex converts a hexadecimal string to its integer value.
+// It returns an error if the input is syntactically invalid or if the value exceeds the int64 range.
+func ParseHex(hexStr string) (int64, error) {
+	s := strings.ToLower(hexStr)
+
+	if s == "" {
+		return 0, fmt.Errorf("syntax error: empty string")
+	}
+
+	var result int64 = 0
+	maxInt64 := int64(math.MaxInt64)
+
+	for _, r := range s {
+		var digit int64
+		if r >= '0' && r <= '9' {
+			digit = int64(r - '0')
+		} else if r >= 'a' && r <= 'f' {
+			digit = int64(r-'a') + 10
+		} else {
+			return 0, fmt.Errorf("syntax error: invalid character '%c'", r)
+		}
+
+		// Check for overflow: if result > (maxInt64 - digit) / 16, then multiplication/addition would overflow
+		if result > (maxInt64-digit)/16 {
+			return 0, fmt.Errorf("range error: value out of range")
+		}
+
+		result = result*16 + digit
+	}
+
+	return result, nil
+}
+
+// HandleErrors takes a slice of hexadecimal string inputs and returns a slice of error case strings.
+// For each input, it calls ParseHex. If ParseHex returns no error, it appends "none".
+// Otherwise, if the error message contains "syntax", it appends "syntax"; if it contains "range", it appends "range".
+func HandleErrors(inputs []string) []string {
+	results := make([]string, len(inputs))
+	for i, s := range inputs {
+		_, err := ParseHex(s)
+		if err == nil {
+			results[i] = "none"
+		} else {
+			errMsg := strings.ToLower(err.Error())
+			if strings.Contains(errMsg, "syntax") {
+				results[i] = "syntax"
+			} else if strings.Contains(errMsg, "range") {
+				results[i] = "range"
+			} else {
+				results[i] = "unknown"
+			}
+		}
+	}
+	return results
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/hexadecimal	0.280s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

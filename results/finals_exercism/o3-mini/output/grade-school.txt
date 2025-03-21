@@ -1,0 +1,553 @@
+=== Initial Source Code ===
+Source file: exercises/practice/grade-school/.meta/example.py
+from collections import defaultdict
+
+
+class School:
+    def __init__(self):
+        self.db = {}
+        self.add = []
+
+    def added(self):
+        result = self.add[:]
+        self.add = []
+        return result
+
+    def add_student(self, name, grade):
+
+        if not self.db.get(name, 0):
+            self.db[name] = grade
+            self.add.append(True)
+        else:
+            self.add.append(False)
+
+
+    def roster(self, grade=0):
+        grades_roster = defaultdict(list)
+
+        for key, value in self.db.items():
+            grades_roster[value].append(key)
+
+        if grade:
+            return sorted(grades_roster[grade])
+        else:
+            working_list = (sorted(grades_roster[key]) for key in sorted(grades_roster.keys()))
+            return [element for item in working_list for element in item]
+
+    def grade(self, grade_number):
+        return sorted(self.roster(grade_number))
+
+
+=== Source Interface ===
+class School:
+    def __init__(self):
+        pass
+
+    def add_student(self, name, grade):
+        pass
+
+    def roster(self):
+        pass
+
+    def grade(self, grade_number):
+        pass
+
+    def added(self):
+        pass
+
+
+=== Target Interface ===
+package school
+
+// Define the Grade and School types here.
+
+func New() *School {
+	panic("Please implement the New function")
+}
+
+func (s *School) Add(student string, grade int) {
+	panic("Please implement the Add function")
+}
+
+func (s *School) Grade(level int) []string {
+	panic("Please implement the Grade function")
+}
+
+func (s *School) Enrollment() []Grade {
+	panic("Please implement the Enrollment function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/grade-school/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from grade_school import (
+    School,
+)
+
+
+class GradeSchoolTest(unittest.TestCase):
+    def test_roster_is_empty_when_no_student_is_added(self):
+        school = School()
+        expected = []
+
+        self.assertEqual(school.roster(), expected)
+
+    def test_add_a_student(self):
+        school = School()
+        school.add_student(name="Aimee", grade=2)
+        expected = [True]
+        self.assertEqual(school.added(), expected)
+
+    def test_student_is_added_to_the_roster(self):
+        school = School()
+        school.add_student(name="Aimee", grade=2)
+        expected = ["Aimee"]
+
+        self.assertEqual(school.roster(), expected)
+
+    def test_adding_multiple_students_in_the_same_grade_in_the_roster(self):
+        school = School()
+        school.add_student(name="Blair", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="Paul", grade=2)
+        expected = [True, True, True]
+        self.assertEqual(school.added(), expected)
+
+    def test_multiple_students_in_the_same_grade_are_added_to_the_roster(self):
+        school = School()
+        school.add_student(name="Blair", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="Paul", grade=2)
+        expected = ["Blair", "James", "Paul"]
+
+        self.assertEqual(school.roster(), expected)
+
+    def test_cannot_add_student_to_same_grade_in_the_roster_more_than_once(self):
+        school = School()
+        school.add_student(name="Blair", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="Paul", grade=2)
+        expected = [True, True, False, True]
+        self.assertEqual(school.added(), expected)
+
+    def test_student_not_added_to_same_grade_in_the_roster_more_than_once(self):
+        school = School()
+        school.add_student(name="Blair", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="Paul", grade=2)
+        expected = ["Blair", "James", "Paul"]
+
+        self.assertEqual(school.roster(), expected)
+
+    def test_adding_students_in_multiple_grades(self):
+        school = School()
+        school.add_student(name="Chelsea", grade=3)
+        school.add_student(name="Logan", grade=7)
+        expected = [True, True]
+        self.assertEqual(school.added(), expected)
+
+    def test_students_in_multiple_grades_are_added_to_the_roster(self):
+        school = School()
+        school.add_student(name="Chelsea", grade=3)
+        school.add_student(name="Logan", grade=7)
+        expected = ["Chelsea", "Logan"]
+
+        self.assertEqual(school.roster(), expected)
+
+    def test_cannot_add_same_student_to_multiple_grades_in_the_roster(self):
+        school = School()
+        school.add_student(name="Blair", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="James", grade=3)
+        school.add_student(name="Paul", grade=3)
+        expected = [True, True, False, True]
+        self.assertEqual(school.added(), expected)
+
+    def test_student_not_added_to_multiple_grades_in_the_roster(self):
+        school = School()
+        school.add_student(name="Blair", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="James", grade=3)
+        school.add_student(name="Paul", grade=3)
+        expected = ["Blair", "James", "Paul"]
+
+        self.assertEqual(school.roster(), expected)
+
+    def test_students_are_sorted_by_grades_in_the_roster(self):
+        school = School()
+        school.add_student(name="Jim", grade=3)
+        school.add_student(name="Peter", grade=2)
+        school.add_student(name="Anna", grade=1)
+        expected = ["Anna", "Peter", "Jim"]
+
+        self.assertEqual(school.roster(), expected)
+
+    def test_students_are_sorted_by_name_in_the_roster(self):
+        school = School()
+        school.add_student(name="Peter", grade=2)
+        school.add_student(name="Zoe", grade=2)
+        school.add_student(name="Alex", grade=2)
+        expected = ["Alex", "Peter", "Zoe"]
+
+        self.assertEqual(school.roster(), expected)
+
+    def test_students_are_sorted_by_grades_and_then_by_name_in_the_roster(self):
+        school = School()
+        school.add_student(name="Peter", grade=2)
+        school.add_student(name="Anna", grade=1)
+        school.add_student(name="Barb", grade=1)
+        school.add_student(name="Zoe", grade=2)
+        school.add_student(name="Alex", grade=2)
+        school.add_student(name="Jim", grade=3)
+        school.add_student(name="Charlie", grade=1)
+        expected = ["Anna", "Barb", "Charlie", "Alex", "Peter", "Zoe", "Jim"]
+
+        self.assertEqual(school.roster(), expected)
+
+    def test_grade_is_empty_if_no_students_in_the_roster(self):
+        school = School()
+        expected = []
+        self.assertEqual(school.grade(1), expected)
+
+    def test_grade_is_empty_if_no_students_in_that_grade(self):
+        school = School()
+        school.add_student(name="Peter", grade=2)
+        school.add_student(name="Zoe", grade=2)
+        school.add_student(name="Alex", grade=2)
+        school.add_student(name="Jim", grade=3)
+        expected = []
+        self.assertEqual(school.grade(1), expected)
+
+    def test_student_not_added_to_same_grade_more_than_once(self):
+        school = School()
+        school.add_student(name="Blair", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="Paul", grade=2)
+        expected = ["Blair", "James", "Paul"]
+        self.assertEqual(school.grade(2), expected)
+
+    def test_student_not_added_to_multiple_grades(self):
+        school = School()
+        school.add_student(name="Blair", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="James", grade=3)
+        school.add_student(name="Paul", grade=3)
+        expected = ["Blair", "James"]
+        self.assertEqual(school.grade(2), expected)
+
+    def test_student_not_added_to_other_grade_for_multiple_grades(self):
+        school = School()
+        school.add_student(name="Blair", grade=2)
+        school.add_student(name="James", grade=2)
+        school.add_student(name="James", grade=3)
+        school.add_student(name="Paul", grade=3)
+        expected = ["Paul"]
+        self.assertEqual(school.grade(3), expected)
+
+    def test_students_are_sorted_by_name_in_a_grade(self):
+        school = School()
+        school.add_student(name="Franklin", grade=5)
+        school.add_student(name="Bradley", grade=5)
+        school.add_student(name="Jeff", grade=1)
+        expected = ["Bradley", "Franklin"]
+        self.assertEqual(school.grade(5), expected)
+
+
+=== Target Test Code ===
+//nolint:gosec // In the context of this exercise, it is fine to use math.Rand instead of crypto.Rand.
+package school
+
+import (
+	"fmt"
+	"math/rand"
+	"strconv"
+	"testing"
+)
+
+func TestNewSchoolIsEmpty(t *testing.T) {
+	if len(New().Enrollment()) != 0 {
+		t.Error("New school not empty")
+	}
+}
+
+func list(e []Grade) (s string) {
+	for _, l := range e {
+		s += fmt.Sprintln(l)
+	}
+	return s
+}
+
+func TestAddStudent(t *testing.T) {
+	exp := list([]Grade{{2, []string{"Aimee"}}})
+	s := New()
+	s.Add("Aimee", 2)
+	got := list(s.Enrollment())
+	if got != exp {
+		t.Errorf(`Add Aimee level 2, got
+%sexpected:
+%s`, got, exp)
+	}
+}
+
+func TestAddMoreSameGrade(t *testing.T) {
+	exp := list([]Grade{{2, []string{"Blair James Paul"}}})
+	s := New()
+	s.Add("Blair", 2)
+	s.Add("James", 2)
+	s.Add("Paul", 2)
+	got := list(s.Enrollment())
+	if got != exp {
+		t.Errorf(`Add more same grade, got
+%sexpected:
+%s`, got, exp)
+	}
+}
+
+func TestAddDifferentGrades(t *testing.T) {
+	exp := list([]Grade{
+		{3, []string{"Chelsea"}},
+		{7, []string{"Logan"}},
+	})
+	s := New()
+	s.Add("Chelsea", 3)
+	s.Add("Logan", 7)
+	got := list(s.Enrollment())
+	if got != exp {
+		t.Errorf(`Add different grades, got
+%sexpected:
+%s`, got, exp)
+	}
+}
+
+func TestGetGrade(t *testing.T) {
+	exp := []string{"Bradley", "Franklin"}
+	s := New()
+	s.Add("Bradley", 5)
+	s.Add("Franklin", 5)
+	s.Add("Jeff", 1)
+	got := s.Grade(5)
+	if len(got) == len(exp) {
+		if got[0] == exp[0] && got[1] == exp[1] ||
+			got[0] == exp[1] && got[1] == exp[0] { // accept out of order
+			return
+		}
+	}
+	t.Errorf(`Get grade, got
+%q
+expected
+%q`, got, exp)
+}
+
+func TestNonExistantGrade(t *testing.T) {
+	s := New()
+	got := s.Grade(1)
+	if len(got) != 0 {
+		t.Errorf(`Get non-existent grade, got
+%q
+expected
+[]`, got)
+	}
+}
+
+func TestSortedEnrollment(t *testing.T) {
+	exp := list([]Grade{
+		{3, []string{"Kyle"}},
+		{4, []string{"Christopher Jennifer"}},
+		{6, []string{"Kareem"}},
+	})
+	s := New()
+	s.Add("Jennifer", 4)
+	s.Add("Kareem", 6)
+	s.Add("Christopher", 4)
+	s.Add("Kyle", 3)
+	got := list(s.Enrollment())
+	if got != exp {
+		t.Errorf(`Sorted enrollment, got
+%sexpected:
+%s`, got, exp)
+	}
+}
+
+const (
+	minLevel   = 1
+	maxLevel   = 9
+	enrollment = 400
+)
+
+func BenchmarkAddStudents(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	const pool = 1e6 // pool of students
+	names := make([]string, pool)
+	levels := make([]int, pool)
+	for i := range names {
+		names[i] = strconv.Itoa(rand.Intn(1e5))
+		levels[i] = minLevel + rand.Intn(maxLevel-minLevel+1)
+	}
+	p := 0
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// bench combined time to create a school and add
+		// a number of students, drawn from a pool of students
+		s := New()
+		for t := 0; t < enrollment; t++ {
+			s.Add(names[p], levels[p])
+			p = (p + 1) % pool
+		}
+	}
+}
+
+func BenchmarkEnrollment(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	const pool = 1000 // pool of schools
+	ss := make([]*School, pool)
+	for i := range ss {
+		s := New()
+		for t := 0; t < enrollment; t++ {
+			s.Add(
+				strconv.Itoa(rand.Intn(1e5)),
+				minLevel+rand.Intn(maxLevel-minLevel+1))
+		}
+		ss[i] = s
+	}
+	p := 0
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// bench time to get enrollment of a full school,
+		// averaged over a pool of schools.
+		ss[p].Enrollment()
+		p = (p + 1) % pool
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/grade-school/.meta/example.go
+package school
+
+import (
+	"fmt"
+	"sort"
+)
+
+// Grade represents a school grade with the corresponding list of students.
+// It is used in the Enrollment output.
+//
+// Grade and School types are defined to satisfy the grade school interface.
+
+type Grade struct {
+	Grade    int
+	Students []string
+}
+
+// School represents a school database that tracks student additions and enrollments.
+// It implements the required methods: New, Add, Grade, Enrollment, and Added.
+
+type School struct {
+	db           map[string]int // maps student name to grade
+	addedRecords []bool         // records whether addition was successful
+}
+
+// New creates and returns a new School.
+func New() *School {
+	return &School{
+		db:           make(map[string]int),
+		addedRecords: make([]bool, 0),
+	}
+}
+
+// Add adds a student to the school with the given grade.
+// If the student is not already enrolled, they are added and the addition is recorded as successful (true).
+// If the student already exists, the addition is recorded as unsuccessful (false).
+func (s *School) Add(student string, grade int) {
+	if _, exists := s.db[student]; !exists {
+		s.db[student] = grade
+		s.addedRecords = append(s.addedRecords, true)
+	} else {
+		s.addedRecords = append(s.addedRecords, false)
+	}
+}
+
+// Grade returns a sorted slice of student names for the given grade level.
+func (s *School) Grade(level int) []string {
+	students := make([]string, 0)
+	for name, grd := range s.db {
+		if grd == level {
+			students = append(students, name)
+		}
+	}
+	sort.Strings(students)
+	return students
+}
+
+// Enrollment returns the full school enrollment as a slice of Grade.
+// Each Grade in the slice contains the grade number and a sorted slice of student names.
+// The returned slice is sorted by grade in ascending order.
+func (s *School) Enrollment() []Grade {
+	gradesMap := make(map[int][]string)
+	for name, grd := range s.db {
+		gradesMap[grd] = append(gradesMap[grd], name)
+	}
+
+	for _, names := range gradesMap {
+		sort.Strings(names)
+	}
+
+	// collect grade keys and sort them
+	keys := make([]int, 0, len(gradesMap))
+	for k := range gradesMap {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+
+	result := make([]Grade, 0, len(keys))
+	for _, k := range keys {
+		result = append(result, Grade{Grade: k, Students: gradesMap[k]})
+	}
+	return result
+}
+
+// Added returns a copy of the current addedRecords slice and resets it to empty.
+// This function tracks the history of addition attempts since the last call to Added.
+func (s *School) Added() []bool {
+	// make a copy of addedRecords
+	result := make([]bool, len(s.addedRecords))
+	copy(result, s.addedRecords)
+	// reset the addedRecords slice
+	s.addedRecords = make([]bool, 0)
+	return result
+}
+
+// The following main function is just for demonstration purposes.
+// It will print a basic usage example if executed.
+func main() {
+	s := New()
+	s.Add("Alice", 2)
+	s.Add("Bob", 2)
+	s.Add("Charlie", 3)
+	fmt.Println("Grade 2:", s.Grade(2))
+	fmt.Println("Enrollment:", s.Enrollment())
+	fmt.Println("Added history:", s.Added())
+}
+
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/grade-school	0.311s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

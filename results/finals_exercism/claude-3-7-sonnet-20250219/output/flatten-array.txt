@@ -1,0 +1,213 @@
+=== Initial Source Code ===
+Source file: exercises/practice/flatten-array/.meta/example.py
+def is_iterable(thing):
+    try:
+        iter(thing)
+    except TypeError:
+        return False
+    else:
+        return True
+
+
+def flatten(iterable):
+    """Flatten a list of lists."""
+    flattened = []
+    for item in iterable:
+        if is_iterable(item) and not isinstance(item, (str, bytes)):
+            flattened += flatten(item)
+        elif item is not None:
+            flattened.append(item)
+    return flattened
+
+
+=== Source Interface ===
+def flatten(iterable):
+    pass
+
+
+=== Target Interface ===
+package flatten
+
+func Flatten(nested interface{}) []interface{} {
+	panic("Please implement the Flatten function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/flatten-array/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from flatten_array import (
+    flatten,
+)
+
+
+class FlattenArrayTest(unittest.TestCase):
+    def test_empty(self):
+        inputs = []
+        expected = []
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_no_nesting(self):
+        inputs = [0, 1, 2]
+        expected = [0, 1, 2]
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_flattens_a_nested_array(self):
+        inputs = [[[]]]
+        expected = []
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_flattens_array_with_just_integers_present(self):
+        inputs = [1, [2, 3, 4, 5, 6, 7], 8]
+        expected = [1, 2, 3, 4, 5, 6, 7, 8]
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_5_level_nesting(self):
+        inputs = [0, 2, [[2, 3], 8, 100, 4, [[[50]]]], -2]
+        expected = [0, 2, 2, 3, 8, 100, 4, 50, -2]
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_6_level_nesting(self):
+        inputs = [1, [2, [[3]], [4, [[5]]], 6, 7], 8]
+        expected = [1, 2, 3, 4, 5, 6, 7, 8]
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_null_values_are_omitted_from_the_final_result(self):
+        inputs = [1, 2, None]
+        expected = [1, 2]
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_consecutive_null_values_at_the_front_of_the_list_are_omitted_from_the_final_result(
+        self,
+    ):
+        inputs = [None, None, 3]
+        expected = [3]
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_consecutive_null_values_in_the_middle_of_the_list_are_omitted_from_the_final_result(
+        self,
+    ):
+        inputs = [1, None, None, 4]
+        expected = [1, 4]
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_6_level_nest_list_with_null_values(self):
+        inputs = [0, 2, [[2, 3], 8, [[100]], None, [[None]]], -2]
+        expected = [0, 2, 2, 3, 8, 100, -2]
+        self.assertEqual(flatten(inputs), expected)
+
+    def test_all_values_in_nested_list_are_null(self):
+        inputs = [None, [[[None]]], None, None, [[None, None], None], None]
+        expected = []
+        self.assertEqual(flatten(inputs), expected)
+
+
+=== Target Test Code ===
+package flatten
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestFlatten(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Flatten(tc.input)
+
+			// Clarify failures where an empty slice is expected, but a nil slice is given.
+			if actual == nil && tc.expected != nil && len(tc.expected) == 0 {
+				t.Fatalf("Flatten(%v) = %v (nil slice), want: %v (empty slice)", tc.input, actual, tc.expected)
+			}
+
+			if !reflect.DeepEqual(actual, tc.expected) {
+				t.Fatalf("Flatten(%v) = %v, want: %v", tc.input, &actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkFlatten(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Flatten(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/flatten-array/.meta/example.go
+package flatten
+
+import "reflect"
+
+// Flatten flattens a nested array structure into a single flat slice.
+// It removes nil values and handles nested slices, arrays, and other
+// nested structures.
+func Flatten(nested interface{}) []interface{} {
+	flattened := []interface{}{}
+	
+	// Handle nil input
+	if nested == nil {
+		return flattened
+	}
+	
+	val := reflect.ValueOf(nested)
+	kind := val.Kind()
+	
+	// Handle non-iterable types directly
+	if kind != reflect.Slice && kind != reflect.Array {
+		return []interface{}{nested}
+	}
+	
+	// Iterate through the elements
+	for i := 0; i < val.Len(); i++ {
+		item := val.Index(i).Interface()
+		
+		// Skip nil values
+		if item == nil {
+			continue
+		}
+		
+		itemVal := reflect.ValueOf(item)
+		itemKind := itemVal.Kind()
+		
+		// Handle nested slices and arrays
+		if (itemKind == reflect.Slice || itemKind == reflect.Array) && 
+		   !isStringOrBytes(item) {
+			flattened = append(flattened, Flatten(item)...)
+		} else {
+			flattened = append(flattened, item)
+		}
+	}
+	
+	return flattened
+}
+
+// isStringOrBytes checks if an interface{} is a string or []byte
+func isStringOrBytes(v interface{}) bool {
+	switch v.(type) {
+	case string, []byte:
+		return true
+	default:
+		return false
+	}
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/flatten-array	0.278s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

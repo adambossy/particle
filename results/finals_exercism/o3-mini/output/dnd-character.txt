@@ -1,0 +1,1233 @@
+=== Initial Source Code ===
+Source file: exercises/practice/dnd-character/.meta/example.py
+import random
+import math
+
+
+class Character:
+    def __init__(self):
+        self.strength = self.ability()
+        self.dexterity = self.ability()
+        self.constitution = self.ability()
+        self.intelligence = self.ability()
+        self.wisdom = self.ability()
+        self.charisma = self.ability()
+        self.hitpoints = 10 + modifier(self.constitution)
+
+    def ability(self):
+        dice_rolls = sorted(random.randint(1, 6) for _ in range(4))
+        return sum(dice_rolls[1:])
+
+
+def modifier(value):
+    return math.floor((value-10)/2)
+
+
+=== Source Interface ===
+class Character:
+    def __init__(self):
+        pass
+
+def modifier(value):
+    pass
+
+
+=== Target Interface ===
+package dndcharacter
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// Modifier calculates the ability modifier for a given ability score
+func Modifier(score int) int {
+	panic("Please implement the Modifier() function")
+}
+
+// Ability uses randomness to generate the score for an ability
+func Ability() int {
+	panic("Please implement the Ability() function")
+}
+
+// GenerateCharacter creates a new Character with random scores for abilities
+func GenerateCharacter() Character {
+	panic("Please implement the GenerateCharacter() function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/dnd-character/canonical-data.json
+# File last updated on 2023-12-27
+
+import unittest
+
+from dnd_character import (
+    Character,
+    modifier,
+)
+
+
+class DndCharacterTest(unittest.TestCase):
+    def test_ability_modifier_for_score_3_is_n4(self):
+        self.assertEqual(modifier(3), -4)
+
+    def test_ability_modifier_for_score_4_is_n3(self):
+        self.assertEqual(modifier(4), -3)
+
+    def test_ability_modifier_for_score_5_is_n3(self):
+        self.assertEqual(modifier(5), -3)
+
+    def test_ability_modifier_for_score_6_is_n2(self):
+        self.assertEqual(modifier(6), -2)
+
+    def test_ability_modifier_for_score_7_is_n2(self):
+        self.assertEqual(modifier(7), -2)
+
+    def test_ability_modifier_for_score_8_is_n1(self):
+        self.assertEqual(modifier(8), -1)
+
+    def test_ability_modifier_for_score_9_is_n1(self):
+        self.assertEqual(modifier(9), -1)
+
+    def test_ability_modifier_for_score_10_is_0(self):
+        self.assertEqual(modifier(10), 0)
+
+    def test_ability_modifier_for_score_11_is_0(self):
+        self.assertEqual(modifier(11), 0)
+
+    def test_ability_modifier_for_score_12_is_1(self):
+        self.assertEqual(modifier(12), 1)
+
+    def test_ability_modifier_for_score_13_is_1(self):
+        self.assertEqual(modifier(13), 1)
+
+    def test_ability_modifier_for_score_14_is_2(self):
+        self.assertEqual(modifier(14), 2)
+
+    def test_ability_modifier_for_score_15_is_2(self):
+        self.assertEqual(modifier(15), 2)
+
+    def test_ability_modifier_for_score_16_is_3(self):
+        self.assertEqual(modifier(16), 3)
+
+    def test_ability_modifier_for_score_17_is_3(self):
+        self.assertEqual(modifier(17), 3)
+
+    def test_ability_modifier_for_score_18_is_4(self):
+        self.assertEqual(modifier(18), 4)
+
+    def test_random_ability_is_within_range(self):
+        score = Character().ability()
+        self.assertIs(score >= 3 and score <= 18, True)
+
+    def test_random_character_is_valid(self):
+        Char = Character()
+        self.assertIs(Char.strength >= 3 and Char.strength <= 18, True)
+        self.assertIs(Char.dexterity >= 3 and Char.dexterity <= 18, True)
+        self.assertIs(Char.constitution >= 3 and Char.constitution <= 18, True)
+        self.assertIs(Char.intelligence >= 3 and Char.intelligence <= 18, True)
+        self.assertIs(Char.wisdom >= 3 and Char.wisdom <= 18, True)
+        self.assertIs(Char.charisma >= 3 and Char.charisma <= 18, True)
+        self.assertIs(Char.hitpoints == 10 + modifier(Char.constitution), True)
+
+    def test_each_ability_is_only_calculated_once(self):
+        Char = Character()
+        self.assertIs(Char.strength == Char.strength, True)
+        self.assertIs(Char.dexterity == Char.dexterity, True)
+        self.assertIs(Char.constitution == Char.constitution, True)
+        self.assertIs(Char.intelligence == Char.intelligence, True)
+        self.assertIs(Char.wisdom == Char.wisdom, True)
+        self.assertIs(Char.charisma == Char.charisma, True)
+
+
+=== Target Test Code ===
+package dndcharacter
+
+import "testing"
+
+func TestModifier(t *testing.T) {
+	for _, tc := range modifierTests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Modifier(tc.input.Score)
+			if actual != tc.expected {
+				t.Fatalf("Modifier(%d) = %d, want %d", tc.input.Score, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestAbility(t *testing.T) {
+	t.Run("should generate ability score within accepted range", func(t *testing.T) {
+		for i := 0; i < 1000; i++ {
+			got := Ability()
+			if !inAcceptedRange(got) {
+				t.Fatalf("Ability() returned a score for an ability outside the accepted range. Got %d, expected a value between 3 and 18 inclusive.", got)
+			}
+		}
+	})
+}
+
+func TestGenerateCharacter(t *testing.T) {
+	t.Run("should generate a character with random ability scores", func(t *testing.T) {
+		for i := 0; i < 1000; i++ {
+			character := GenerateCharacter()
+
+			assertCharacterAbilityScoreInRange(t, "Charisma", character.Charisma)
+			assertCharacterAbilityScoreInRange(t, "Strength", character.Strength)
+			assertCharacterAbilityScoreInRange(t, "Dexterity", character.Dexterity)
+			assertCharacterAbilityScoreInRange(t, "Wisdom", character.Wisdom)
+			assertCharacterAbilityScoreInRange(t, "Intelligence", character.Intelligence)
+			assertCharacterAbilityScoreInRange(t, "Constitution", character.Constitution)
+
+			expectedHitpoints := 10 + Modifier(character.Constitution)
+			if character.Hitpoints != expectedHitpoints {
+				t.Fatalf("Got %d hitpoints for a character with %d constitution, expected %d hitpoints", character.Hitpoints, character.Constitution, expectedHitpoints)
+			}
+		}
+	})
+}
+
+func inAcceptedRange(score int) bool {
+	return score >= 3 && score <= 18
+}
+
+func assertCharacterAbilityScoreInRange(t *testing.T, ability string, score int) {
+	t.Helper()
+
+	if !inAcceptedRange(score) {
+		t.Fatalf("GenerateCharacter() created a character with a %s score of %d, but the score for an ability is expected to be between 3 and 18 inclusive", ability, score)
+	}
+}
+
+func BenchmarkModifier(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Modifier(i)
+	}
+}
+
+func BenchmarkAbility(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Ability()
+	}
+}
+
+func BenchmarkCharacter(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		GenerateCharacter()
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/dnd-character/.meta/example.go
+package meta
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// It is similar to the Python Character class in the example.
+// The hitpoints are set to 10 + modifier(constitution).
+// Note: This constructor function seeds the ability scores by calling the ability() function.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// NewCharacter creates a new Character with random ability scores and calculates hitpoints accordingly.
+func NewCharacter() Character {
+	// Seed the random number generator. In real applications,
+	// you would call this once in your application's init.
+	rand.Seed(time.Now().UnixNano())
+
+	c := Character{
+		Strength:     ability(),
+		Dexterity:    ability(),
+		Constitution: ability(),
+		Intelligence: ability(),
+		Wisdom:       ability(),
+		Charisma:     ability(),
+	}
+	c.Hitpoints = 10 + modifier(c.Constitution)
+	return c
+}
+
+// ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, dropping the lowest die,
+// and summing the remaining three.
+func ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+	// Sum the highest three dice rolls (i.e., drop the first (lowest) roll).
+	sum := 0
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// modifier calculates the ability modifier for a given ability score.
+// It uses the formula floor((value - 10) / 2).
+func modifier(value int) int {
+	return int(math.Floor(float64(value-10) / 2.0))
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (dnd_character.go) and dndcharacter (dnd_character_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/dnd-character
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution).
+// All ability scores are generated randomly using the Ability() function.
+//
+// This struct is the Go implementation corresponding to the Python Character class.
+//
+// Note: The random seed is initialized in the init() function so that ability scores vary.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, drops the lowest roll, and sums the remaining three.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+	// Sum the highest three dice (drop the lowest roll at index 0)
+	sum := 0
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and computes hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+// exercises/practice/dnd-character/dnd_character_test.go
+package dndcharacter
+
+import (
+	"testing"
+	"reflect"
+)
+
+// TestModifier tests the Modifier function for various ability scores.
+func TestModifier(t *testing.T) {
+	type testCase struct {
+		description string
+		input       struct{ Score int }
+		expected    int
+	}
+
+	modifierTests := []testCase{
+		{description: "score 10 should yield modifier 0", input: struct{ Score int }{10}, expected: 0},
+		{description: "score 12 should yield modifier 1", input: struct{ Score int }{12}, expected: 1},
+		{description: "score 8 should yield modifier -1", input: struct{ Score int }{8}, expected: -1},
+		{description: "score 15 should yield modifier 2", input: struct{ Score int }{15}, expected: 2},
+		{description: "score 3 should yield modifier -4", input: struct{ Score int }{3}, expected: -4},
+	}
+
+	for _, tc := range modifierTests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Modifier(tc.input.Score)
+			if actual != tc.expected {
+				t.Fatalf("Modifier(%d) = %d, want %d", tc.input.Score, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// TestAbility ensures that the randomly generated ability score is within the accepted range [3, 18].
+func TestAbility(t *testing.T) {
+	t.Run("should generate ability score within accepted range", func(t *testing.T) {
+		for i := 0; i < 1000; i++ {
+			got := Ability()
+			if !inAcceptedRange(got) {
+				t.Fatalf("Ability() returned a score outside the accepted range. Got %d, expected a value between 3 and 18 inclusive.", got)
+			}
+		}
+	})
+}
+
+// TestGenerateCharacter checks that a generated character has ability scores in range and hitpoints calculated correctly.
+func TestGenerateCharacter(t *testing.T) {
+	t.Run("should generate a character with random ability scores", func(t *testing.T) {
+		for i := 0; i < 1000; i++ {
+			character := GenerateCharacter()
+
+			assertCharacterAbilityScoreInRange(t, "Charisma", character.Charisma)
+			assertCharacterAbilityScoreInRange(t, "Strength", character.Strength)
+			assertCharacterAbilityScoreInRange(t, "Dexterity", character.Dexterity)
+			assertCharacterAbilityScoreInRange(t, "Wisdom", character.Wisdom)
+			assertCharacterAbilityScoreInRange(t, "Intelligence", character.Intelligence)
+			assertCharacterAbilityScoreInRange(t, "Constitution", character.Constitution)
+
+			expectedHitpoints := 10 + Modifier(character.Constitution)
+			if character.Hitpoints != expectedHitpoints {
+				t.Fatalf("Hitpoints = %d for Constitution %d, expected %d", character.Hitpoints, character.Constitution, expectedHitpoints)
+			}
+		}
+	})
+}
+
+// inAcceptedRange checks if a given ability score is between 3 and 18 inclusive.
+func inAcceptedRange(score int) bool {
+	return score >= 3 && score <= 18
+}
+
+// assertCharacterAbilityScoreInRange verifies that an ability score is within the allowed range.
+func assertCharacterAbilityScoreInRange(t *testing.T, ability string, score int) {
+	t.Helper()
+
+	if !inAcceptedRange(score) {
+		t.Fatalf("GenerateCharacter() created a character with a %s score of %d, but the score for an ability must be between 3 and 18 inclusive", ability, score)
+	}
+}
+
+// BenchmarkModifier benchmarks the Modifier function.
+func BenchmarkModifier(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Modifier(i)
+	}
+}
+
+// BenchmarkAbility benchmarks the Ability function.
+func BenchmarkAbility(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Ability()
+	}
+}
+
+// BenchmarkGenerateCharacter benchmarks the GenerateCharacter function.
+func BenchmarkGenerateCharacter(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		GenerateCharacter()
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character.go:72:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution), and all ability scores
+// are generated randomly using the Ability() function.
+// This Go implementation corresponds to the Python Character class.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, dropping the lowest roll,
+// and summing the remaining three dice.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+
+	sum := 0
+	// Sum the highest three dice (drop the lowest, which is at index 0 after sorting)
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and calculates hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character_test.go:6:21: undefined: modifierTests
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution), and all ability scores
+// are generated randomly using the Ability() function.
+// This Go implementation corresponds to the Python Character class.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, drops the lowest roll,
+// and sums the remaining three dice.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+
+	sum := 0
+	// Sum the highest three dice (drop the lowest, which is at index 0 after sorting)
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and calculates hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character_test.go:6:21: undefined: modifierTests
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution), and all ability scores
+// are generated randomly using the Ability() function.
+// This Go implementation corresponds to the Python Character class.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, drops the lowest roll,
+// and sums the remaining three dice.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+
+	sum := 0
+	// Sum the highest three dice (drop the lowest, which is at index 0 after sorting)
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and calculates hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character_test.go:6:21: undefined: modifierTests
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution), and all ability scores
+// are generated randomly using the Ability() function.
+// This Go implementation corresponds to the Python Character class.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, drops the lowest roll,
+// and sums the remaining three dice.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+
+	sum := 0
+	// Sum the highest three dice (drop the lowest, which is at index 0 after sorting)
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and calculates hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character_test.go:6:21: undefined: modifierTests
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution), and all ability scores
+// are generated randomly using the Ability() function.
+// This Go implementation corresponds to the Python Character class.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, drops the lowest roll,
+// and sums the remaining three dice.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+
+	sum := 0
+	// Sum the highest three dice (drop the lowest, which is at index 0 after sorting)
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and calculates hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character_test.go:6:21: undefined: modifierTests
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution), and all ability scores
+// are generated randomly using the Ability() function.
+// This Go implementation corresponds to the Python Character class.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, drops the lowest roll,
+// and sums the remaining three dice.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+
+	sum := 0
+	// Sum the highest three dice (drop the lowest, which is at index 0 after sorting)
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and calculates hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character_test.go:6:21: undefined: modifierTests
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution), and all ability scores
+// are generated randomly using the Ability() function.
+// This Go implementation corresponds to the Python Character class.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int((score - 10) / 2)
+	// Alternatively, to mimic floor division for negative values:
+	// return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, drops the lowest roll,
+// and sums the remaining three dice.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+
+	sum := 0
+	// Sum the highest three dice (drop the lowest, which is at index 0 after sorting)
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and calculates hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character_test.go:6:21: undefined: modifierTests
+./dnd_character.go:5:2: imported and not used: "math"
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution), and all ability scores
+// are generated randomly using the Ability() function.
+// This Go implementation corresponds to the Python Character class.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, drops the lowest roll,
+// and sums the remaining three dice.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+
+	sum := 0
+	// Sum the highest three dice (drop the lowest, which is at index 0 after sorting)
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and calculates hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character_test.go:6:21: undefined: modifierTests
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/dnd-character/dnd_character.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+	"time"
+)
+
+// Character represents a D&D character with various ability scores and hitpoints.
+// Hitpoints are calculated as 10 + Modifier(Constitution), and all ability scores
+// are generated randomly using the Ability() function.
+// This Go implementation corresponds to the Python Character class.
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// init seeds the random number generator once when the package is initialized.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// Modifier calculates the ability modifier for a given ability score.
+// It uses the formula: floor((score - 10) / 2).
+func Modifier(score int) int {
+	return int((float64(score)-10) / 2.0) // using float division and conversion truncates towards zero
+	// Alternatively, to mimic floor division for negative values:
+	// return int(math.Floor(float64(score-10) / 2.0))
+}
+
+// Ability generates a random ability score for a character.
+// It simulates rolling four 6-sided dice, drops the lowest roll,
+// and sums the remaining three dice.
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // random integer between 1 and 6
+	}
+	sort.Ints(diceRolls)
+
+	sum := 0
+	// Sum the highest three dice (drop the lowest, which is at index 0 after sorting)
+	for i := 1; i < 4; i++ {
+		sum += diceRolls[i]
+	}
+	return sum
+}
+
+// GenerateCharacter creates a new Character with random ability scores and calculates hitpoints.
+// Hitpoints are set to 10 + Modifier(Constitution).
+func GenerateCharacter() Character {
+	c := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	c.Hitpoints = 10 + Modifier(c.Constitution)
+	return c
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character_test.go:6:21: undefined: modifierTests
+./dnd_character.go:5:2: imported and not used: "math"
+
+
+=== FINAL STATUS: FAILED ===

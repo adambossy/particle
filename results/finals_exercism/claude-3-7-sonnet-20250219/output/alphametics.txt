@@ -1,0 +1,1194 @@
+=== Initial Source Code ===
+Source file: exercises/practice/alphametics/.meta/example.py
+"""
+This solution will first parse the alphametic expression
+grouping and counting letters buy digit ranks
+then trace recursively all possible permutations starting from
+the lowest rank and genrating additional permutations for new digits
+at higer ranks as necessary.
+This will allow to avoid unnecessarily large permutations to scan.
+Also leading letters in words will be treated as non-zero digits only
+to reduce the number of permutations
+"""
+
+from itertools import permutations, chain, product
+
+
+def dig_perms(digit_set, non_zero_chars, ok_zero_chars):
+    """This function creates permutations given the set of digits,
+       letters not alllowed to be 0, and letters allowed to be 0
+    """
+    non_zero_count = len(non_zero_chars)  # How many letters are non-0
+    ok_zero_count = len(ok_zero_chars)  # How many letters are allowed 0
+    total_count = non_zero_count + ok_zero_count  # Total number of letters
+    if total_count < 1:  # if total numbers of letters is 0
+        return [()]  # return a singe empty permutation
+    non_zero_digit_set = digit_set - set((0,))  # generate a non-zero digit set
+    available_zero_digit_count = len(non_zero_digit_set)  # how many non-zero digits are available
+    ok_zero_digit_count = len(digit_set)  # how many ok zero digits are available
+    # if either fewer digits than letters at all or fewer non-0 digits
+    # than letters that need to be non-zero
+    if ok_zero_digit_count < total_count or available_zero_digit_count < non_zero_count:
+        return []  # Return no permutations possible
+    # Simple case when zeros are allowed everwhere
+    # or no zero is containted within the given digits
+    elif non_zero_count == 0 or ok_zero_digit_count == available_zero_digit_count:
+        return permutations(digit_set, total_count)
+    # Another simple case all letters are non-0
+    elif ok_zero_count == 0:
+        return permutations(non_zero_digit_set, total_count)
+    else:
+        # General case
+        # Generate a list of possible 0 positions
+        positions_list = list(range(non_zero_count, total_count))
+        # Chain two iterators
+        # first iterator with all non-0 permutations
+        # second iterator with all permulations without 1 letter
+        # insert 0 in all possible positions of that permutation
+        return chain(permutations(non_zero_digit_set, total_count),
+                     map(lambda iters: iters[0][:iters[1]] + (0,) + iters[0][iters[1]:],
+                         product(permutations(non_zero_digit_set, total_count - 1),
+                                 positions_list)))
+
+
+def check_rec(eqparams, trace_combo=({}, 0, set(range(10))), power=0):
+    """This function recursively traces a parsed expression from lowest
+       digits to highest, generating additional digits when necessary
+       checking the digit sum is divisible by 10, carrying the multiple of 10
+       up to the next level
+    """
+    # Basic parameters of the equation,
+    # maximal digit rank
+    # characters with multipliers by rank
+    # unique non-zero characters by rank
+    # unique zero-allowed characters by rank
+    # all unique characters by rank
+    max_digit_rank, multipliers_chars, non_zero_chars, zero_chars, unique_chars = eqparams
+    # recursion cumulative parameters
+    # established characters with digits
+    # carry-over from the previous level
+    # remaining unassigned digits
+    prev_digits, carry_over, remaining_digits = trace_combo
+    # the maximal 10-power (beyond the maximal rank)
+    # is reached
+    if power == max_digit_rank:
+        # Carry-over is zero, meaning solution is found
+        if carry_over == 0:
+            return prev_digits
+        else:
+            # Otherwise the solution in this branch is not found
+            # return empty
+            return {}
+    digit_letters = unique_chars[power]  # all new unique letters from the current level
+    part_sum = carry_over  # Carry over from lower level
+    remaining_exp = []  # TBD letters
+    # Break down the current level letter into what can be
+    # calculated in the partial sum and remaining TBD letter-digits
+    for caesar, van_gogh in multipliers_chars[power]:
+        if caesar in prev_digits:
+            part_sum += van_gogh * prev_digits[caesar]
+        else:
+            remaining_exp.append((caesar, van_gogh))
+    # Generate permutations for the remaining digits and currecnt level
+    # non-zero letters and zero-allowed letters
+    for newdigs in dig_perms(remaining_digits, non_zero_chars[power], zero_chars[power]):
+        # build the dictionary for the new letters and this level
+        new_dict = dict(zip(digit_letters, newdigs))
+        # complete the partial sum into test sum using the current permutation
+        testsum = part_sum + sum([new_dict[caesar] * van_gogh
+                                 for caesar, van_gogh in remaining_exp])
+        # check if the sum is divisible by 10
+        dali, rembrandt = divmod(testsum, 10)
+        if rembrandt == 0:
+            # if divisible, update the dictionary to all established
+            new_dict.update(prev_digits)
+            # proceed to the next level of recursion with
+            # the same eqparams, but updated digit dictionary,
+            # new carry over and remaining digits to assign
+            recurring_test = check_rec(eqparams,
+                                (new_dict, dali, remaining_digits - set(newdigs)),
+                                power + 1)
+            # if the recursive call returned a non-empty dictionary
+            # this means the recursion has found a solution
+            # otherwise, proceed to the new permutation
+            if recurring_test and len(recurring_test) > 0:
+                return recurring_test
+    # if no permutations are avaialble or no
+    # permutation gave the result return None
+    return None
+
+
+def solve(puzzle):
+    """A function to solve the alphametics problem
+    """
+    # First, split the expresion into left and right parts by ==
+    # split each part into words by +
+    # strip spaces fro, each word, reverse each work to
+    # enumerate the digit rank from lower to higer
+    full_exp = [list(map(lambda idx: list(reversed(idx.strip())), sigmund.split('+')))
+               for sigmund in puzzle.strip().upper().split('==')]
+    # Find the maximal lenght of the work, maximal possive digit rank or
+    # the power of 10, should the < maxp
+    max_digit_rank = max([len(warhol) for sigmund in full_exp for warhol in sigmund])
+    # Extract the leading letters for each (reversed) word
+    # those cannot be zeros as the number cannot start with 0
+    nzchars = {warhol[-1] for sigmund in full_exp for warhol in sigmund}
+    # initialize the lists for digit ranks
+    non_zero_chars = []  # non-zero letters unique at level
+    zero_chars = []  # zero-allowed letters unique at level
+    unique_chars = []  # all letters unique at level
+    multipliers_chars = []  # all letter with multipliers per level
+    for _ in range(max_digit_rank):
+        multipliers_chars.append({})
+        non_zero_chars.append(set())
+        zero_chars.append(set())
+    # Now lets scan the expression and accumulate the letter counts
+    for idx, sigmund in enumerate(full_exp):
+        bob = 1 - (idx << 1)  # left side (0) is +1, right right (1) is -1
+        for warhol in sigmund:  # for each word in the side (already reversed)
+            for picasso, escher in enumerate(warhol):  # enumerate with ranks
+                if escher not in multipliers_chars[picasso]:  # check if the letter was alread there
+                    multipliers_chars[picasso][escher] = 0
+                multipliers_chars[picasso][escher] += bob  # append to the rank dictionary
+
+    total_chars = set()  # Keep track of letters already seen at lower ranks
+    # go through the accumulated rank dictionaries
+    for picasso, chardict in enumerate(multipliers_chars):
+        for caesar, cnt in tuple(chardict.items()):
+            if cnt == 0:  # if the cumulative is 0
+                del chardict[caesar]  # remove the letter from check dictionry
+                # it does not impact the sum with 0-multiplier
+            # if the letter contributes to the sum
+            # and was not yet seen at lower ranks
+            elif caesar not in total_chars:
+                # add the letter to either non-zero set
+                # or allowed-zero set
+                if caesar in nzchars:
+                    non_zero_chars[picasso].add(caesar)
+                else:
+                    zero_chars[picasso].add(caesar)
+                # add to the list as seen letter to ignore at the next
+                # ranks
+                total_chars.add(caesar)
+        # pre-build the combo list of letters for the rank
+        # non-zero first, followed by zero-allowed
+        unique_chars.append(tuple(non_zero_chars[picasso]) + tuple(zero_chars[picasso]))
+        # pre-convert check dictionaries to tuples
+        multipliers_chars[picasso] = tuple(chardict.items())
+    # go for the recursion
+    return check_rec([max_digit_rank, multipliers_chars, non_zero_chars, zero_chars, unique_chars])
+
+
+=== Source Interface ===
+def solve(puzzle):
+    pass
+
+
+=== Target Interface ===
+package alphametics
+
+func Solve(puzzle string) (map[string]int, error) {
+	panic("Please implement the Solve function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/alphametics/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from alphametics import (
+    solve,
+)
+
+
+class AlphameticsTest(unittest.TestCase):
+    def test_puzzle_with_three_letters(self):
+        self.assertEqual(solve("I + BB == ILL"), {"I": 1, "B": 9, "L": 0})
+
+    def test_solution_must_have_unique_value_for_each_letter(self):
+        self.assertEqual(solve("A == B"), None)
+
+    def test_leading_zero_solution_is_invalid(self):
+        self.assertEqual(solve("ACA + DD == BD"), None)
+
+    def test_puzzle_with_two_digits_final_carry(self):
+        self.assertEqual(
+            solve("A + A + A + A + A + A + A + A + A + A + A + B == BCC"),
+            {"A": 9, "B": 1, "C": 0},
+        )
+
+    def test_puzzle_with_four_letters(self):
+        self.assertEqual(solve("AS + A == MOM"), {"A": 9, "S": 2, "M": 1, "O": 0})
+
+    def test_puzzle_with_six_letters(self):
+        self.assertEqual(
+            solve("NO + NO + TOO == LATE"),
+            {"N": 7, "O": 4, "T": 9, "L": 1, "A": 0, "E": 2},
+        )
+
+    def test_puzzle_with_seven_letters(self):
+        self.assertEqual(
+            solve("HE + SEES + THE == LIGHT"),
+            {"E": 4, "G": 2, "H": 5, "I": 0, "L": 1, "S": 9, "T": 7},
+        )
+
+    def test_puzzle_with_eight_letters(self):
+        self.assertEqual(
+            solve("SEND + MORE == MONEY"),
+            {"S": 9, "E": 5, "N": 6, "D": 7, "M": 1, "O": 0, "R": 8, "Y": 2},
+        )
+
+    def test_puzzle_with_ten_letters(self):
+        self.assertEqual(
+            solve("AND + A + STRONG + OFFENSE + AS + A + GOOD == DEFENSE"),
+            {
+                "A": 5,
+                "D": 3,
+                "E": 4,
+                "F": 7,
+                "G": 8,
+                "N": 0,
+                "O": 2,
+                "R": 1,
+                "S": 6,
+                "T": 9,
+            },
+        )
+
+    # See https://github.com/exercism/python/pull/1358
+    @unittest.skip("extra-credit")
+    def test_puzzle_with_ten_letters_and_199_addends(self):
+        """This test may take a long time to run. Please be patient when running it."""
+        puzzle = (
+            "THIS + A + FIRE + THEREFORE + FOR + ALL + HISTORIES + I + TELL"
+            "+ A + TALE + THAT + FALSIFIES + ITS + TITLE + TIS + A + LIE +"
+            "THE + TALE + OF + THE + LAST + FIRE + HORSES + LATE + AFTER +"
+            "THE + FIRST + FATHERS + FORESEE + THE + HORRORS + THE + LAST +"
+            "FREE + TROLL + TERRIFIES + THE + HORSES + OF + FIRE + THE +"
+            "TROLL + RESTS + AT + THE + HOLE + OF + LOSSES + IT + IS +"
+            "THERE + THAT + SHE + STORES + ROLES + OF + LEATHERS + AFTER +"
+            "SHE + SATISFIES + HER + HATE + OFF + THOSE + FEARS + A + TASTE"
+            "+ RISES + AS + SHE + HEARS + THE + LEAST + FAR + HORSE + THOSE"
+            "+ FAST + HORSES + THAT + FIRST + HEAR + THE + TROLL + FLEE +"
+            "OFF + TO + THE + FOREST + THE + HORSES + THAT + ALERTS + RAISE"
+            "+ THE + STARES + OF + THE + OTHERS + AS + THE + TROLL +"
+            "ASSAILS + AT + THE + TOTAL + SHIFT + HER + TEETH + TEAR + HOOF"
+            "+ OFF + TORSO + AS + THE + LAST + HORSE + FORFEITS + ITS +"
+            "LIFE + THE + FIRST + FATHERS + HEAR + OF + THE + HORRORS +"
+            "THEIR + FEARS + THAT + THE + FIRES + FOR + THEIR + FEASTS +"
+            "ARREST + AS + THE + FIRST + FATHERS + RESETTLE + THE + LAST +"
+            "OF + THE + FIRE + HORSES + THE + LAST + TROLL + HARASSES + THE"
+            "+ FOREST + HEART + FREE + AT + LAST + OF + THE + LAST + TROLL"
+            "+ ALL + OFFER + THEIR + FIRE + HEAT + TO + THE + ASSISTERS +"
+            "FAR + OFF + THE + TROLL + FASTS + ITS + LIFE + SHORTER + AS +"
+            "STARS + RISE + THE + HORSES + REST + SAFE + AFTER + ALL +"
+            "SHARE + HOT + FISH + AS + THEIR + AFFILIATES + TAILOR + A +"
+            "ROOFS + FOR + THEIR + SAFE == FORTRESSES"
+        )
+        self.assertEqual(
+            solve(puzzle),
+            {
+                "A": 1,
+                "E": 0,
+                "F": 5,
+                "H": 8,
+                "I": 7,
+                "L": 2,
+                "O": 6,
+                "R": 3,
+                "S": 4,
+                "T": 9,
+            },
+        )
+
+
+=== Target Test Code ===
+package alphametics
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestSolve(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			s, err := Solve(tc.input)
+			switch {
+			case tc.errorExpected:
+				if err == nil {
+					t.Fatalf("Solve(%q) expected error, got: %#v", tc.input, s)
+				}
+			case err != nil:
+				t.Fatalf("Solve(%q)\nexpected: %#v\ngot error: %q", tc.input, tc.expected, err)
+			case !reflect.DeepEqual(s, tc.expected):
+				t.Fatalf("Solve(%q)\ngot: %#v\nwant:%#v", tc.input, s, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSolve(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Solve(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/alphametics/.meta/example.go
+package alphametics
+
+import (
+	"strings"
+	"unicode"
+)
+
+/*
+This solution will first parse the alphametic expression
+grouping and counting letters by digit ranks,
+then trace recursively all possible permutations starting from
+the lowest rank and generating additional permutations for new digits
+at higher ranks as necessary.
+This will allow to avoid unnecessarily large permutations to scan.
+Also leading letters in words will be treated as non-zero digits only
+to reduce the number of permutations
+*/
+
+// generateDigitPermutations creates permutations given the set of digits,
+// letters not allowed to be 0, and letters allowed to be 0
+func generateDigitPermutations(digitSet map[int]bool, nonZeroChars, okZeroChars []rune) [][]int {
+	nonZeroCount := len(nonZeroChars)  // How many letters are non-0
+	okZeroCount := len(okZeroChars)    // How many letters are allowed 0
+	totalCount := nonZeroCount + okZeroCount  // Total number of letters
+	
+	if totalCount < 1 {  // if total numbers of letters is 0
+		return [][]int{{}}  // return a single empty permutation
+	}
+	
+	// Generate a non-zero digit set
+	nonZeroDigitSet := make(map[int]bool)
+	for digit := range digitSet {
+		if digit != 0 {
+			nonZeroDigitSet[digit] = true
+		}
+	}
+	
+	availableNonZeroDigitCount := len(nonZeroDigitSet)  // how many non-zero digits are available
+	okZeroDigitCount := len(digitSet)  // how many ok zero digits are available
+	
+	// If either fewer digits than letters at all or fewer non-0 digits
+	// than letters that need to be non-zero
+	if okZeroDigitCount < totalCount || availableNonZeroDigitCount < nonZeroCount {
+		return [][]int{}  // Return no permutations possible
+	}
+	
+	// Convert the digit sets to slices for permutation generation
+	digits := make([]int, 0, len(digitSet))
+	for d := range digitSet {
+		digits = append(digits, d)
+	}
+	
+	nonZeroDigits := make([]int, 0, len(nonZeroDigitSet))
+	for d := range nonZeroDigitSet {
+		nonZeroDigits = append(nonZeroDigits, d)
+	}
+	
+	var result [][]int
+	
+	// Simple case when zeros are allowed everywhere
+	// or no zero is contained within the given digits
+	if nonZeroCount == 0 || okZeroDigitCount == availableNonZeroDigitCount {
+		result = generatePermutations(digits, totalCount)
+	} else if okZeroCount == 0 {  // Another simple case all letters are non-0
+		result = generatePermutations(nonZeroDigits, totalCount)
+	} else {
+		// General case
+		// Generate permutations without zeros
+		withoutZeros := generatePermutations(nonZeroDigits, totalCount)
+		result = append(result, withoutZeros...)
+		
+		// Generate permutations with zeros in allowed positions
+		// (only for characters that can be zero)
+		if okZeroCount > 0 {
+			nonZeroPerms := generatePermutations(nonZeroDigits, totalCount-1)
+			
+			for _, perm := range nonZeroPerms {
+				// Insert 0 in all possible positions after nonZeroCount
+				for pos := nonZeroCount; pos < totalCount; pos++ {
+					newPerm := make([]int, totalCount)
+					copy(newPerm[:pos], perm[:pos])
+					newPerm[pos] = 0
+					copy(newPerm[pos+1:], perm[pos:])
+					result = append(result, newPerm)
+				}
+			}
+		}
+	}
+	
+	return result
+}
+
+// Helper function to generate all permutations of k elements from a set
+func generatePermutations(elements []int, k int) [][]int {
+	if k == 0 {
+		return [][]int{{}}
+	}
+	
+	if len(elements) < k {
+		return [][]int{}
+	}
+	
+	var result [][]int
+	
+	// Generate permutations recursively
+	for i, elem := range elements {
+		// Create a new slice without the current element
+		remaining := make([]int, 0, len(elements)-1)
+		remaining = append(remaining, elements[:i]...)
+		remaining = append(remaining, elements[i+1:]...)
+		
+		// Generate permutations of the remaining elements
+		subPerms := generatePermutations(remaining, k-1)
+		
+		// Add the current element to each sub-permutation
+		for _, subPerm := range subPerms {
+			newPerm := make([]int, k)
+			newPerm[0] = elem
+			copy(newPerm[1:], subPerm)
+			result = append(result, newPerm)
+		}
+	}
+	
+	return result
+}
+
+// checkRecursively recursively traces a parsed expression from lowest
+// digits to highest, generating additional digits when necessary
+// checking the digit sum is divisible by 10, carrying the multiple of 10
+// up to the next level
+func checkRecursively(
+	maxDigitRank int,
+	multipliersChars [][][2]interface{},
+	nonZeroChars [][]rune,
+	zeroChars [][]rune,
+	uniqueChars [][]rune,
+	prevDigits map[rune]int,
+	carryOver int,
+	remainingDigits map[int]bool,
+	power int,
+) map[rune]int {
+	// The maximal 10-power (beyond the maximal rank) is reached
+	if power == maxDigitRank {
+		// Carry-over is zero, meaning solution is found
+		if carryOver == 0 {
+			return prevDigits
+		} else {
+			// Otherwise the solution in this branch is not found
+			// return empty
+			return nil
+		}
+	}
+	
+	digitLetters := uniqueChars[power]  // all new unique letters from the current level
+	partSum := carryOver  // Carry over from lower level
+	var remainingExp [][2]interface{}  // TBD letters
+	
+	// Break down the current level letter into what can be
+	// calculated in the partial sum and remaining TBD letter-digits
+	for _, pair := range multipliersChars[power] {
+		char := pair[0].(rune)
+		multiplier := pair[1].(int)
+		
+		if digit, exists := prevDigits[char]; exists {
+			partSum += multiplier * digit
+		} else {
+			remainingExp = append(remainingExp, [2]interface{}{char, multiplier})
+		}
+	}
+	
+	// Generate permutations for the remaining digits and current level
+	// non-zero letters and zero-allowed letters
+	perms := generateDigitPermutations(remainingDigits, nonZeroChars[power], zeroChars[power])
+	
+	for _, newDigits := range perms {
+		// Build the dictionary for the new letters and this level
+		newDict := make(map[rune]int)
+		for i, char := range digitLetters {
+			if i < len(newDigits) {
+				newDict[char] = newDigits[i]
+			}
+		}
+		
+		// Complete the partial sum into test sum using the current permutation
+		testSum := partSum
+		for _, pair := range remainingExp {
+			char := pair[0].(rune)
+			multiplier := pair[1].(int)
+			testSum += newDict[char] * multiplier
+		}
+		
+		// Check if the sum is divisible by 10
+		div, rem := testSum/10, testSum%10
+		if rem == 0 {
+			// If divisible, update the dictionary to all established
+			updatedDict := make(map[rune]int)
+			for k, v := range prevDigits {
+				updatedDict[k] = v
+			}
+			for k, v := range newDict {
+				updatedDict[k] = v
+			}
+			
+			// Update remaining digits
+			updatedRemaining := make(map[int]bool)
+			for d := range remainingDigits {
+				updatedRemaining[d] = true
+			}
+			for _, d := range newDigits {
+				delete(updatedRemaining, d)
+			}
+			
+			// Proceed to the next level of recursion
+			recurringTest := checkRecursively(
+				maxDigitRank,
+				multipliersChars,
+				nonZeroChars,
+				zeroChars,
+				uniqueChars,
+				updatedDict,
+				div,
+				updatedRemaining,
+				power+1,
+			)
+			
+			// If the recursive call returned a non-empty dictionary
+			// this means the recursion has found a solution
+			if recurringTest != nil {
+				return recurringTest
+			}
+		}
+	}
+	
+	// If no permutations are available or no
+	// permutation gave the result return nil
+	return nil
+}
+
+// Solve solves an alphametics puzzle
+func Solve(puzzle string) (map[string]int, error) {
+	// First, split the expression into left and right parts by ==
+	// split each part into words by +
+	// strip spaces from each word, reverse each work to
+	// enumerate the digit rank from lower to higher
+	puzzle = strings.ToUpper(strings.TrimSpace(puzzle))
+	parts := strings.Split(puzzle, "==")
+	
+	if len(parts) != 2 {
+		return nil, nil
+	}
+	
+	var fullExp [][][]rune
+	for _, part := range parts {
+		var terms [][]rune
+		for _, term := range strings.Split(part, "+") {
+			term = strings.TrimSpace(term)
+			// Reverse the string to make digit rank processing easier
+			reversed := make([]rune, len(term))
+			for i, ch := range term {
+				reversed[len(term)-1-i] = ch
+			}
+			terms = append(terms, reversed)
+		}
+		fullExp = append(fullExp, terms)
+	}
+	
+	// Find the maximal length of the word, maximal possible digit rank or
+	// the power of 10
+	maxDigitRank := 0
+	for _, terms := range fullExp {
+		for _, term := range terms {
+			if len(term) > maxDigitRank {
+				maxDigitRank = len(term)
+			}
+		}
+	}
+	
+	// Extract the leading letters for each (reversed) word
+	// those cannot be zeros as the number cannot start with 0
+	nzChars := make(map[rune]bool)
+	for _, terms := range fullExp {
+		for _, term := range terms {
+			if len(term) > 0 {
+				nzChars[term[len(term)-1]] = true
+			}
+		}
+	}
+	
+	// Initialize the lists for digit ranks
+	nonZeroChars := make([][]rune, maxDigitRank)    // non-zero letters unique at level
+	zeroChars := make([][]rune, maxDigitRank)       // zero-allowed letters unique at level
+	uniqueChars := make([][]rune, maxDigitRank)     // all letters unique at level
+	multipliersChars := make([][][][2]interface{}, maxDigitRank)  // all letter with multipliers per level
+	
+	for i := 0; i < maxDigitRank; i++ {
+		multipliersChars[i] = make([][2]interface{}, 0)
+		nonZeroChars[i] = make([]rune, 0)
+		zeroChars[i] = make([]rune, 0)
+	}
+	
+	// Now let's scan the expression and accumulate the letter counts
+	for idx, terms := range fullExp {
+		// Left side (0) is +1, right side (1) is -1
+		sign := 1
+		if idx == 1 {
+			sign = -1
+		}
+		
+		for _, term := range terms {
+			for picasso, letter := range term {
+				if !unicode.IsLetter(letter) {
+					continue
+				}
+				
+				// Check if this letter was already seen at this rank
+				found := false
+				for i, pair := range multipliersChars[picasso] {
+					if pair[0].(rune) == letter {
+						// Update the multiplier
+						multipliersChars[picasso][i][1] = pair[1].(int) + sign
+						found = true
+						break
+					}
+				}
+				
+				if !found {
+					// Add new letter with multiplier
+					multipliersChars[picasso] = append(multipliersChars[picasso], [2]interface{}{letter, sign})
+				}
+			}
+		}
+	}
+	
+	// Clean up the multipliers and prepare the unique characters sets
+	totalChars := make(map[rune]bool)  // Keep track of letters already seen at lower ranks
+	
+	for picasso, charList := range multipliersChars {
+		// Filter out entries with zero multiplier
+		filteredList := make([][2]interface{}, 0)
+		for _, pair := range charList {
+			char := pair[0].(rune)
+			multiplier := pair[1].(int)
+			
+			if multiplier != 0 {
+				filteredList = append(filteredList, pair)
+				
+				// If the letter contributes to the sum and was not yet seen at lower ranks
+				if !totalChars[char] {
+					// Add the letter to either non-zero set or allowed-zero set
+					if nzChars[char] {
+						nonZeroChars[picasso] = append(nonZeroChars[picasso], char)
+					} else {
+						zeroChars[picasso] = append(zeroChars[picasso], char)
+					}
+					
+					// Add to the list as seen letter to ignore at the next ranks
+					totalChars[char] = true
+				}
+			}
+		}
+		
+		multipliersChars[picasso] = filteredList
+		
+		// Pre-build the combo list of letters for the rank (non-zero first, followed by zero-allowed)
+		uniqueChars[picasso] = append(append([]rune{}, nonZeroChars[picasso]...), zeroChars[picasso]...)
+	}
+	
+	// Initialize the set of digits 0-9
+	remainingDigits := make(map[int]bool)
+	for i := 0; i <= 9; i++ {
+		remainingDigits[i] = true
+	}
+	
+	// Solve recursively
+	result := checkRecursively(
+		maxDigitRank,
+		multipliersChars,
+		nonZeroChars,
+		zeroChars,
+		uniqueChars,
+		make(map[rune]int),
+		0,
+		remainingDigits,
+		0,
+	)
+	
+	if result == nil {
+		return nil, nil
+	}
+	
+	// Convert rune map to string map for the result
+	stringResult := make(map[string]int)
+	for k, v := range result {
+		stringResult[string(k)] = v
+	}
+	
+	return stringResult, nil
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/alphametics [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/alphametics [exercism/alphametics.test]
+./alphametics.go:297:25: cannot use make([][2]interface{}, 0) (value of type [][2]interface{}) as type [][][2]interface{} in assignment
+./alphametics.go:319:9: invalid operation: pair[0] (variable of type [2]interface{}) is not an interface
+./alphametics.go:321:41: invalid operation: pair[1] (variable of type [2]interface{}) is not an interface
+./alphametics.go:329:68: cannot use [2]interface{}{…} (value of type [2]interface{}) as type [][2]interface{} in argument to append
+./alphametics.go:342:12: invalid operation: pair[0] (variable of type [2]interface{}) is not an interface
+./alphametics.go:343:18: invalid operation: pair[1] (variable of type [2]interface{}) is not an interface
+./alphametics.go:346:41: cannot use pair (variable of type [][2]interface{}) as type [2]interface{} in argument to append
+./alphametics.go:363:31: cannot use filteredList (variable of type [][2]interface{}) as type [][][2]interface{} in assignment
+./alphametics.go:378:3: cannot use multipliersChars (variable of type [][][][2]interface{}) as type [][][2]interface{} in argument to checkRecursively
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/alphametics/.meta/example.go
+package alphametics
+
+import (
+	"strings"
+	"unicode"
+)
+
+/*
+This solution will first parse the alphametic expression
+grouping and counting letters by digit ranks,
+then trace recursively all possible permutations starting from
+the lowest rank and generating additional permutations for new digits
+at higher ranks as necessary.
+This will allow to avoid unnecessarily large permutations to scan.
+Also leading letters in words will be treated as non-zero digits only
+to reduce the number of permutations
+*/
+
+// CharMultiplier holds a character and its coefficient
+type CharMultiplier struct {
+	Char      rune
+	Multiplier int
+}
+
+// generateDigitPermutations creates permutations given the set of digits,
+// letters not allowed to be 0, and letters allowed to be 0
+func generateDigitPermutations(digitSet map[int]bool, nonZeroChars, okZeroChars []rune) [][]int {
+	nonZeroCount := len(nonZeroChars)  // How many letters are non-0
+	okZeroCount := len(okZeroChars)    // How many letters are allowed 0
+	totalCount := nonZeroCount + okZeroCount  // Total number of letters
+	
+	if totalCount < 1 {  // if total numbers of letters is 0
+		return [][]int{{}}  // return a single empty permutation
+	}
+	
+	// Generate a non-zero digit set
+	nonZeroDigitSet := make(map[int]bool)
+	for digit := range digitSet {
+		if digit != 0 {
+			nonZeroDigitSet[digit] = true
+		}
+	}
+	
+	availableNonZeroDigitCount := len(nonZeroDigitSet)  // how many non-zero digits are available
+	okZeroDigitCount := len(digitSet)  // how many ok zero digits are available
+	
+	// If either fewer digits than letters at all or fewer non-0 digits
+	// than letters that need to be non-zero
+	if okZeroDigitCount < totalCount || availableNonZeroDigitCount < nonZeroCount {
+		return [][]int{}  // Return no permutations possible
+	}
+	
+	// Convert the digit sets to slices for permutation generation
+	digits := make([]int, 0, len(digitSet))
+	for d := range digitSet {
+		digits = append(digits, d)
+	}
+	
+	nonZeroDigits := make([]int, 0, len(nonZeroDigitSet))
+	for d := range nonZeroDigitSet {
+		nonZeroDigits = append(nonZeroDigits, d)
+	}
+	
+	var result [][]int
+	
+	// Simple case when zeros are allowed everywhere
+	// or no zero is contained within the given digits
+	if nonZeroCount == 0 || okZeroDigitCount == availableNonZeroDigitCount {
+		result = generatePermutations(digits, totalCount)
+	} else if okZeroCount == 0 {  // Another simple case all letters are non-0
+		result = generatePermutations(nonZeroDigits, totalCount)
+	} else {
+		// General case
+		// Generate permutations without zeros
+		withoutZeros := generatePermutations(nonZeroDigits, totalCount)
+		result = append(result, withoutZeros...)
+		
+		// Generate permutations with zeros in allowed positions
+		// (only for characters that can be zero)
+		if okZeroCount > 0 {
+			nonZeroPerms := generatePermutations(nonZeroDigits, totalCount-1)
+			
+			for _, perm := range nonZeroPerms {
+				// Insert 0 in all possible positions after nonZeroCount
+				for pos := nonZeroCount; pos < totalCount; pos++ {
+					newPerm := make([]int, totalCount)
+					copy(newPerm[:pos], perm[:pos])
+					newPerm[pos] = 0
+					copy(newPerm[pos+1:], perm[pos:])
+					result = append(result, newPerm)
+				}
+			}
+		}
+	}
+	
+	return result
+}
+
+// Helper function to generate all permutations of k elements from a set
+func generatePermutations(elements []int, k int) [][]int {
+	if k == 0 {
+		return [][]int{{}}
+	}
+	
+	if len(elements) < k {
+		return [][]int{}
+	}
+	
+	var result [][]int
+	
+	// Generate permutations recursively
+	for i, elem := range elements {
+		// Create a new slice without the current element
+		remaining := make([]int, 0, len(elements)-1)
+		remaining = append(remaining, elements[:i]...)
+		remaining = append(remaining, elements[i+1:]...)
+		
+		// Generate permutations of the remaining elements
+		subPerms := generatePermutations(remaining, k-1)
+		
+		// Add the current element to each sub-permutation
+		for _, subPerm := range subPerms {
+			newPerm := make([]int, k)
+			newPerm[0] = elem
+			copy(newPerm[1:], subPerm)
+			result = append(result, newPerm)
+		}
+	}
+	
+	return result
+}
+
+// checkRecursively recursively traces a parsed expression from lowest
+// digits to highest, generating additional digits when necessary
+// checking the digit sum is divisible by 10, carrying the multiple of 10
+// up to the next level
+func checkRecursively(
+	maxDigitRank int,
+	multipliersChars [][]CharMultiplier,
+	nonZeroChars [][]rune,
+	zeroChars [][]rune,
+	uniqueChars [][]rune,
+	prevDigits map[rune]int,
+	carryOver int,
+	remainingDigits map[int]bool,
+	power int,
+) map[rune]int {
+	// The maximal 10-power (beyond the maximal rank) is reached
+	if power == maxDigitRank {
+		// Carry-over is zero, meaning solution is found
+		if carryOver == 0 {
+			return prevDigits
+		} else {
+			// Otherwise the solution in this branch is not found
+			// return empty
+			return nil
+		}
+	}
+	
+	digitLetters := uniqueChars[power]  // all new unique letters from the current level
+	partSum := carryOver  // Carry over from lower level
+	var remainingExp []CharMultiplier  // TBD letters
+	
+	// Break down the current level letter into what can be
+	// calculated in the partial sum and remaining TBD letter-digits
+	for _, pair := range multipliersChars[power] {
+		char := pair.Char
+		multiplier := pair.Multiplier
+		
+		if digit, exists := prevDigits[char]; exists {
+			partSum += multiplier * digit
+		} else {
+			remainingExp = append(remainingExp, pair)
+		}
+	}
+	
+	// Generate permutations for the remaining digits and current level
+	// non-zero letters and zero-allowed letters
+	perms := generateDigitPermutations(remainingDigits, nonZeroChars[power], zeroChars[power])
+	
+	for _, newDigits := range perms {
+		// Build the dictionary for the new letters and this level
+		newDict := make(map[rune]int)
+		for i, char := range digitLetters {
+			if i < len(newDigits) {
+				newDict[char] = newDigits[i]
+			}
+		}
+		
+		// Complete the partial sum into test sum using the current permutation
+		testSum := partSum
+		for _, pair := range remainingExp {
+			char := pair.Char
+			multiplier := pair.Multiplier
+			testSum += newDict[char] * multiplier
+		}
+		
+		// Check if the sum is divisible by 10
+		div, rem := testSum/10, testSum%10
+		if rem == 0 {
+			// If divisible, update the dictionary to all established
+			updatedDict := make(map[rune]int)
+			for k, v := range prevDigits {
+				updatedDict[k] = v
+			}
+			for k, v := range newDict {
+				updatedDict[k] = v
+			}
+			
+			// Update remaining digits
+			updatedRemaining := make(map[int]bool)
+			for d := range remainingDigits {
+				updatedRemaining[d] = true
+			}
+			for _, d := range newDigits {
+				delete(updatedRemaining, d)
+			}
+			
+			// Proceed to the next level of recursion
+			recurringTest := checkRecursively(
+				maxDigitRank,
+				multipliersChars,
+				nonZeroChars,
+				zeroChars,
+				uniqueChars,
+				updatedDict,
+				div,
+				updatedRemaining,
+				power+1,
+			)
+			
+			// If the recursive call returned a non-empty dictionary
+			// this means the recursion has found a solution
+			if recurringTest != nil {
+				return recurringTest
+			}
+		}
+	}
+	
+	// If no permutations are available or no
+	// permutation gave the result return nil
+	return nil
+}
+
+// Solve solves an alphametics puzzle
+func Solve(puzzle string) (map[string]int, error) {
+	// First, split the expression into left and right parts by ==
+	// split each part into words by +
+	// strip spaces from each word, reverse each work to
+	// enumerate the digit rank from lower to higher
+	puzzle = strings.ToUpper(strings.TrimSpace(puzzle))
+	parts := strings.Split(puzzle, "==")
+	
+	if len(parts) != 2 {
+		return nil, nil
+	}
+	
+	var fullExp [][][]rune
+	for _, part := range parts {
+		var terms [][]rune
+		for _, term := range strings.Split(part, "+") {
+			term = strings.TrimSpace(term)
+			// Reverse the string to make digit rank processing easier
+			reversed := make([]rune, len(term))
+			for i, ch := range term {
+				reversed[len(term)-1-i] = ch
+			}
+			terms = append(terms, reversed)
+		}
+		fullExp = append(fullExp, terms)
+	}
+	
+	// Find the maximal length of the word, maximal possible digit rank or
+	// the power of 10
+	maxDigitRank := 0
+	for _, terms := range fullExp {
+		for _, term := range terms {
+			if len(term) > maxDigitRank {
+				maxDigitRank = len(term)
+			}
+		}
+	}
+	
+	// Extract the leading letters for each (reversed) word
+	// those cannot be zeros as the number cannot start with 0
+	nzChars := make(map[rune]bool)
+	for _, terms := range fullExp {
+		for _, term := range terms {
+			if len(term) > 0 {
+				nzChars[term[len(term)-1]] = true
+			}
+		}
+	}
+	
+	// Initialize the lists for digit ranks
+	nonZeroChars := make([][]rune, maxDigitRank)     // non-zero letters unique at level
+	zeroChars := make([][]rune, maxDigitRank)        // zero-allowed letters unique at level
+	uniqueChars := make([][]rune, maxDigitRank)      // all letters unique at level
+	multipliersChars := make([][]CharMultiplier, maxDigitRank)  // all letter with multipliers per level
+	
+	for i := 0; i < maxDigitRank; i++ {
+		multipliersChars[i] = make([]CharMultiplier, 0)
+		nonZeroChars[i] = make([]rune, 0)
+		zeroChars[i] = make([]rune, 0)
+	}
+	
+	// Now let's scan the expression and accumulate the letter counts
+	for idx, terms := range fullExp {
+		// Left side (0) is +1, right side (1) is -1
+		sign := 1
+		if idx == 1 {
+			sign = -1
+		}
+		
+		for _, term := range terms {
+			for picasso, letter := range term {
+				if !unicode.IsLetter(letter) {
+					continue
+				}
+				
+				// Check if this letter was already seen at this rank
+				found := false
+				for i, pair := range multipliersChars[picasso] {
+					if pair.Char == letter {
+						// Update the multiplier
+						multipliersChars[picasso][i].Multiplier += sign
+						found = true
+						break
+					}
+				}
+				
+				if !found {
+					// Add new letter with multiplier
+					multipliersChars[picasso] = append(multipliersChars[picasso], CharMultiplier{
+						Char:      letter,
+						Multiplier: sign,
+					})
+				}
+			}
+		}
+	}
+	
+	// Clean up the multipliers and prepare the unique characters sets
+	totalChars := make(map[rune]bool)  // Keep track of letters already seen at lower ranks
+	
+	for picasso, charList := range multipliersChars {
+		// Filter out entries with zero multiplier
+		filteredList := make([]CharMultiplier, 0)
+		for _, pair := range charList {
+			char := pair.Char
+			multiplier := pair.Multiplier
+			
+			if multiplier != 0 {
+				filteredList = append(filteredList, pair)
+				
+				// If the letter contributes to the sum and was not yet seen at lower ranks
+				if !totalChars[char] {
+					// Add the letter to either non-zero set or allowed-zero set
+					if nzChars[char] {
+						nonZeroChars[picasso] = append(nonZeroChars[picasso], char)
+					} else {
+						zeroChars[picasso] = append(zeroChars[picasso], char)
+					}
+					
+					// Add to the list as seen letter to ignore at the next ranks
+					totalChars[char] = true
+				}
+			}
+		}
+		
+		multipliersChars[picasso] = filteredList
+		
+		// Pre-build the combo list of letters for the rank (non-zero first, followed by zero-allowed)
+		uniqueChars[picasso] = append(append([]rune{}, nonZeroChars[picasso]...), zeroChars[picasso]...)
+	}
+	
+	// Initialize the set of digits 0-9
+	remainingDigits := make(map[int]bool)
+	for i := 0; i <= 9; i++ {
+		remainingDigits[i] = true
+	}
+	
+	// Solve recursively
+	result := checkRecursively(
+		maxDigitRank,
+		multipliersChars,
+		nonZeroChars,
+		zeroChars,
+		uniqueChars,
+		make(map[rune]int),
+		0,
+		remainingDigits,
+		0,
+	)
+	
+	if result == nil {
+		return nil, nil
+	}
+	
+	// Convert rune map to string map for the result
+	stringResult := make(map[string]int)
+	for k, v := range result {
+		stringResult[string(k)] = v
+	}
+	
+	return stringResult, nil
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestSolve (0.35s)
+    --- FAIL: TestSolve/solution_must_have_unique_value_for_each_letter (0.00s)
+        alphametics_test.go:15: Solve("A == B") expected error, got: map[string]int(nil)
+    --- FAIL: TestSolve/leading_zero_solution_is_invalid (0.00s)
+        alphametics_test.go:15: Solve("ACA + DD == BD") expected error, got: map[string]int(nil)
+FAIL
+FAIL	exercism/alphametics	0.631s
+FAIL
+
+=== STDERR ===
+
+
+=== ERROR ===
+Error processing sample (returncode=1): 'translated_code'
+
+=== FINAL STATUS: ERROR ===

@@ -1,0 +1,346 @@
+=== Initial Source Code ===
+Source file: exercises/practice/say/.meta/example.py
+def say(number):
+    small = dict(enumerate((
+            'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+            'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
+            'sixteen', 'seventeen', 'eighteen', 'nineteen')))
+
+    tens = {20: 'twenty', 30: 'thirty', 40: 'forty', 50: 'fifty',
+            60: 'sixty', 70: 'seventy', 80: 'eighty', 90: 'ninety'}
+
+    kilo = 1e3
+    mega = 1e6
+    giga = 1e9
+    tera = 1e12
+
+    if number < 0:
+        raise ValueError('input out of range')
+    if number >= tera:
+        raise ValueError('input out of range')
+
+    if number < 20:
+        return small[number]
+
+    if number < 100:
+        if number % 10 == 0:
+            return tens[number]
+        return tens[number // 10 * 10] + '-' + small[number % 10]
+
+    if number < kilo:
+        if number % 100 == 0:
+            return small[number // 100] + ' hundred'
+        return small[number // 100] + ' hundred ' + say(number % 100)
+
+    if number < mega:
+        if number % kilo == 0:
+            return say(number // kilo) + ' thousand'
+        return say(number // kilo) + ' thousand ' + say(number % kilo)
+
+    if number < giga:
+        if number % mega == 0:
+            return say(number // mega) + ' million'
+        return say(number // mega) + ' million ' + say(number % mega)
+
+    if number % giga == 0:
+        return say(number // giga) + ' billion'
+    return say(number // giga) + ' billion ' + say(number % giga)
+
+=== Source Interface ===
+def say(number):
+    pass
+
+
+=== Target Interface ===
+package say
+
+func Say(n int64) (string, bool) {
+	panic("Please implement the Say function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/say/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from say import (
+    say,
+)
+
+
+class SayTest(unittest.TestCase):
+    def test_zero(self):
+        self.assertEqual(say(0), "zero")
+
+    def test_one(self):
+        self.assertEqual(say(1), "one")
+
+    def test_fourteen(self):
+        self.assertEqual(say(14), "fourteen")
+
+    def test_twenty(self):
+        self.assertEqual(say(20), "twenty")
+
+    def test_twenty_two(self):
+        self.assertEqual(say(22), "twenty-two")
+
+    def test_thirty(self):
+        self.assertEqual(say(30), "thirty")
+
+    def test_ninety_nine(self):
+        self.assertEqual(say(99), "ninety-nine")
+
+    def test_one_hundred(self):
+        self.assertEqual(say(100), "one hundred")
+
+    def test_one_hundred_twenty_three(self):
+        self.assertEqual(say(123), "one hundred twenty-three")
+
+    def test_two_hundred(self):
+        self.assertEqual(say(200), "two hundred")
+
+    def test_nine_hundred_ninety_nine(self):
+        self.assertEqual(say(999), "nine hundred ninety-nine")
+
+    def test_one_thousand(self):
+        self.assertEqual(say(1000), "one thousand")
+
+    def test_one_thousand_two_hundred_thirty_four(self):
+        self.assertEqual(say(1234), "one thousand two hundred thirty-four")
+
+    def test_one_million(self):
+        self.assertEqual(say(1000000), "one million")
+
+    def test_one_million_two_thousand_three_hundred_forty_five(self):
+        self.assertEqual(
+            say(1002345), "one million two thousand three hundred forty-five"
+        )
+
+    def test_one_billion(self):
+        self.assertEqual(say(1000000000), "one billion")
+
+    def test_a_big_number(self):
+        self.assertEqual(
+            say(987654321123),
+            "nine hundred eighty-seven billion six hundred fifty-four million three hundred twenty-one thousand one hundred twenty-three",
+        )
+
+    def test_numbers_below_zero_are_out_of_range(self):
+        with self.assertRaises(ValueError) as err:
+            say(-1)
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "input out of range")
+
+    def test_numbers_above_999_999_999_999_are_out_of_range(self):
+        with self.assertRaises(ValueError) as err:
+            say(1000000000000)
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "input out of range")
+
+    # Additional tests for this track
+    def test_one_hundred_seventy(self):
+        self.assertEqual(say(170), "one hundred seventy")
+
+
+=== Target Test Code ===
+package say
+
+import (
+	"testing"
+)
+
+func TestSay(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Say(tc.input)
+			switch {
+			case tc.expectError:
+				if ok {
+					t.Fatalf("Say(%d) expected error, got: %q", tc.input, actual)
+				}
+			case !ok:
+				t.Fatalf("Say(%d) got ok:%t, want: %q", tc.input, ok, tc.expected)
+			case actual != tc.expected:
+				t.Fatalf("Say(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSay(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Say(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import (
+	"fmt"
+	"strings"
+)
+
+func Say(number int64) (string, bool) {
+	if number < 0 || number >= 1e12 {
+		return "", false
+	}
+	
+	return say(number), true
+}
+
+func say(number int64) string {
+	small := map[int64]string{
+		0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+		6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+		11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen",
+		16: "sixteen", 17: "seventeen", 18: "eighteen", 19: "nineteen",
+	}
+
+	tens := map[int64]string{
+		20: "twenty", 30: "thirty", 40: "forty", 50: "fifty",
+		60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety",
+	}
+
+	kilo := int64(1e3)
+	mega := int64(1e6)
+	giga := int64(1e9)
+
+	if number < 20 {
+		return small[number]
+	}
+
+	if number < 100 {
+		if number%10 == 0 {
+			return tens[number]
+		}
+		return tens[number/10*10] + "-" + small[number%10]
+	}
+
+	if number < kilo {
+		if number%100 == 0 {
+			return small[number/100] + " hundred"
+		}
+		return small[number/100] + " hundred " + say(number%100)
+	}
+
+	if number < mega {
+		if number%kilo == 0 {
+			return say(number/kilo) + " thousand"
+		}
+		return say(number/kilo) + " thousand " + say(number%kilo)
+	}
+
+	if number < giga {
+		if number%mega == 0 {
+			return say(number/mega) + " million"
+		}
+		return say(number/mega) + " million " + say(number%mega)
+	}
+
+	if number%giga == 0 {
+		return say(number/giga) + " billion"
+	}
+	return say(number/giga) + " billion " + say(number%giga)
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say.go:5:2: imported and not used: "fmt"
+./say.go:6:2: imported and not used: "strings"
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+func Say(number int64) (string, bool) {
+	if number < 0 || number >= 1e12 {
+		return "", false
+	}
+	
+	return say(number), true
+}
+
+func say(number int64) string {
+	small := map[int64]string{
+		0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+		6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+		11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen",
+		16: "sixteen", 17: "seventeen", 18: "eighteen", 19: "nineteen",
+	}
+
+	tens := map[int64]string{
+		20: "twenty", 30: "thirty", 40: "forty", 50: "fifty",
+		60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety",
+	}
+
+	kilo := int64(1e3)
+	mega := int64(1e6)
+	giga := int64(1e9)
+
+	if number < 20 {
+		return small[number]
+	}
+
+	if number < 100 {
+		if number%10 == 0 {
+			return tens[number]
+		}
+		return tens[number/10*10] + "-" + small[number%10]
+	}
+
+	if number < kilo {
+		if number%100 == 0 {
+			return small[number/100] + " hundred"
+		}
+		return small[number/100] + " hundred " + say(number%100)
+	}
+
+	if number < mega {
+		if number%kilo == 0 {
+			return say(number/kilo) + " thousand"
+		}
+		return say(number/kilo) + " thousand " + say(number%kilo)
+	}
+
+	if number < giga {
+		if number%mega == 0 {
+			return say(number/mega) + " million"
+		}
+		return say(number/mega) + " million " + say(number%mega)
+	}
+
+	if number%giga == 0 {
+		return say(number/giga) + " billion"
+	}
+	return say(number/giga) + " billion " + say(number%giga)
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/say	0.266s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

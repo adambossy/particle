@@ -1,0 +1,110 @@
+=== Initial Source Code ===
+Source file: exercises/practice/rna-transcription/.meta/example.py
+DNA_TO_RNA = str.maketrans("AGCT", "UCGA")
+
+def to_rna(dna_strand):
+    return dna_strand.translate(DNA_TO_RNA)
+
+
+=== Source Interface ===
+def to_rna(dna_strand):
+    pass
+
+
+=== Target Interface ===
+package strand
+
+func ToRNA(dna string) string {
+	panic("Please implement the ToRNA function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/rna-transcription/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from rna_transcription import (
+    to_rna,
+)
+
+
+class RnaTranscriptionTest(unittest.TestCase):
+    def test_empty_rna_sequence(self):
+        self.assertEqual(to_rna(""), "")
+
+    def test_rna_complement_of_cytosine_is_guanine(self):
+        self.assertEqual(to_rna("C"), "G")
+
+    def test_rna_complement_of_guanine_is_cytosine(self):
+        self.assertEqual(to_rna("G"), "C")
+
+    def test_rna_complement_of_thymine_is_adenine(self):
+        self.assertEqual(to_rna("T"), "A")
+
+    def test_rna_complement_of_adenine_is_uracil(self):
+        self.assertEqual(to_rna("A"), "U")
+
+    def test_rna_complement(self):
+        self.assertEqual(to_rna("ACGTGGTCTTAA"), "UGCACCAGAAUU")
+
+
+=== Target Test Code ===
+package strand
+
+import "testing"
+
+func TestRNATranscription(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := ToRNA(tc.input); actual != tc.expected {
+				t.Fatalf("ToRNA(%q) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRNATranscription(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			ToRNA(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/rna-transcription/.meta/example.go
+package strand
+
+// ToRNA converts a DNA strand to its RNA complement
+func ToRNA(dna string) string {
+	transcription := map[rune]rune{
+		'G': 'C',
+		'C': 'G',
+		'T': 'A',
+		'A': 'U',
+	}
+
+	result := []rune{}
+	for _, nucleotide := range dna {
+		result = append(result, transcription[nucleotide])
+	}
+
+	return string(result)
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/rna-transcription	0.276s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

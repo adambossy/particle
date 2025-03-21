@@ -1,0 +1,996 @@
+=== Initial Source Code ===
+Source file: exercises/practice/grep/.meta/example.py
+def matches(line, pattern, flags):
+    if '-i' in flags:  # case-insensitive
+        line = line.lower()
+        pattern = pattern.lower()
+
+    if '-x' in flags:  # match entire lines
+        if len(pattern) != len(line.rstrip()):
+            return '-v' in flags
+
+    if '-v' in flags:  # invert matching
+        return pattern not in line
+
+    return pattern in line
+
+
+def format_files(matched_lines):
+    result = ''
+
+    for file_name, _, _ in matched_lines:
+        if file_name not in result:
+            result += file_name + '\n'
+
+    return result
+
+
+def format_lines(matched_lines, flags, files):
+    result = []
+
+    for file_name, line_number, line in matched_lines:
+        line_result = ''
+
+        if len(files) > 1:
+            line_result += file_name + ':'
+
+        if '-n' in flags:
+            line_result += str(line_number) + ':'
+
+        line_result += line
+
+        result.append(line_result)
+
+    return ''.join(result)
+
+
+def grep(pattern, flags, files):
+    matched_lines = []
+
+    for file_name in files:
+        with open(file_name, encoding='utf-8') as f:
+            for line_number, line in enumerate(f.readlines(), start=1):
+                if matches(line, pattern, flags):
+                    matched_lines.append((file_name, line_number, line))
+
+    if '-l' in flags:
+        return format_files(matched_lines)
+
+    return format_lines(matched_lines, flags, files)
+
+
+=== Source Interface ===
+def grep(pattern, flags, files):
+    pass
+
+
+=== Target Interface ===
+package grep
+
+func Search(pattern string, flags, files []string) []string {
+	panic("Please implement the Search function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/grep/canonical-data.json
+# File last updated on 2023-07-19
+
+import io
+import unittest
+
+from grep import (
+    grep,
+)
+from unittest import mock
+
+FILE_TEXT = {
+    "iliad.txt": """Achilles sing, O Goddess! Peleus' son;
+His wrath pernicious, who ten thousand woes
+Caused to Achaia's host, sent many a soul
+Illustrious into Ades premature,
+And Heroes gave (so stood the will of Jove)
+To dogs and to all ravening fowls a prey,
+When fierce dispute had separated once
+The noble Chief Achilles from the son
+Of Atreus, Agamemnon, King of men.\n""",
+    "midsummer-night.txt": """I do entreat your grace to pardon me.
+I know not by what power I am made bold,
+Nor how it may concern my modesty,
+In such a presence here to plead my thoughts;
+But I beseech your grace that I may know
+The worst that may befall me in this case,
+If I refuse to wed Demetrius.\n""",
+    "paradise-lost.txt": """Of Mans First Disobedience, and the Fruit
+Of that Forbidden Tree, whose mortal tast
+Brought Death into the World, and all our woe,
+With loss of Eden, till one greater Man
+Restore us, and regain the blissful Seat,
+Sing Heav'nly Muse, that on the secret top
+Of Oreb, or of Sinai, didst inspire
+That Shepherd, who first taught the chosen Seed\n""",
+}
+
+
+def open_mock(fname, *args, **kwargs):
+    try:
+        return io.StringIO(FILE_TEXT[fname])
+    except KeyError:
+        raise RuntimeError(
+            "Expected one of {0!r}: got {1!r}".format(list(FILE_TEXT.keys()), fname)
+        )
+
+
+@mock.patch("grep.open", name="open", side_effect=open_mock, create=True)
+@mock.patch("io.StringIO", name="StringIO", wraps=io.StringIO)
+class GrepTest(unittest.TestCase):
+    # Test grepping a single file
+    def test_one_file_one_match_no_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("Agamemnon", "", ["iliad.txt"]), "Of Atreus, Agamemnon, King of men.\n"
+        )
+
+    def test_one_file_one_match_print_line_numbers_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("Forbidden", "-n", ["paradise-lost.txt"]),
+            "2:Of that Forbidden Tree, whose mortal tast\n",
+        )
+
+    def test_one_file_one_match_case_insensitive_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("FORBIDDEN", "-i", ["paradise-lost.txt"]),
+            "Of that Forbidden Tree, whose mortal tast\n",
+        )
+
+    def test_one_file_one_match_print_file_names_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("Forbidden", "-l", ["paradise-lost.txt"]), "paradise-lost.txt\n"
+        )
+
+    def test_one_file_one_match_match_entire_lines_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "With loss of Eden, till one greater Man", "-x", ["paradise-lost.txt"]
+            ),
+            "With loss of Eden, till one greater Man\n",
+        )
+
+    def test_one_file_one_match_multiple_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("OF ATREUS, Agamemnon, KIng of MEN.", "-n -i -x", ["iliad.txt"]),
+            "9:Of Atreus, Agamemnon, King of men.\n",
+        )
+
+    def test_one_file_several_matches_no_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("may", "", ["midsummer-night.txt"]),
+            "Nor how it may concern my modesty,\n"
+            "But I beseech your grace that I may know\n"
+            "The worst that may befall me in this case,\n",
+        )
+
+    def test_one_file_several_matches_print_line_numbers_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep("may", "-n", ["midsummer-night.txt"]),
+            "3:Nor how it may concern my modesty,\n"
+            "5:But I beseech your grace that I may know\n"
+            "6:The worst that may befall me in this case,\n",
+        )
+
+    def test_one_file_several_matches_match_entire_lines_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(grep("may", "-x", ["midsummer-night.txt"]), "")
+
+    def test_one_file_several_matches_case_insensitive_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("ACHILLES", "-i", ["iliad.txt"]),
+            "Achilles sing, O Goddess! Peleus' son;\n"
+            "The noble Chief Achilles from the son\n",
+        )
+
+    def test_one_file_several_matches_inverted_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("Of", "-v", ["paradise-lost.txt"]),
+            "Brought Death into the World, and all our woe,\n"
+            "With loss of Eden, till one greater Man\n"
+            "Restore us, and regain the blissful Seat,\n"
+            "Sing Heav'nly Muse, that on the secret top\n"
+            "That Shepherd, who first taught the chosen Seed\n",
+        )
+
+    def test_one_file_no_matches_various_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(grep("Gandalf", "-n -l -x -i", ["iliad.txt"]), "")
+
+    def test_one_file_one_match_file_flag_takes_precedence_over_line_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(grep("ten", "-n -l", ["iliad.txt"]), "iliad.txt\n")
+
+    def test_one_file_several_matches_inverted_and_match_entire_lines_flags(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep("Illustrious into Ades premature,", "-x -v", ["iliad.txt"]),
+            "Achilles sing, O Goddess! Peleus' son;\n"
+            "His wrath pernicious, who ten thousand woes\n"
+            "Caused to Achaia's host, sent many a soul\n"
+            "And Heroes gave (so stood the will of Jove)\n"
+            "To dogs and to all ravening fowls a prey,\n"
+            "When fierce dispute had separated once\n"
+            "The noble Chief Achilles from the son\n"
+            "Of Atreus, Agamemnon, King of men.\n",
+        )
+
+    # Test grepping multiples files at once
+    def test_multiple_files_one_match_no_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "Agamemnon",
+                "",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "iliad.txt:Of Atreus, Agamemnon, King of men.\n",
+        )
+
+    def test_multiple_files_several_matches_no_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("may", "", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]),
+            "midsummer-night.txt:Nor how it may concern my modesty,\n"
+            "midsummer-night.txt:But I beseech your grace that I may know\n"
+            "midsummer-night.txt:The worst that may befall me in this case,\n",
+        )
+
+    def test_multiple_files_several_matches_print_line_numbers_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep(
+                "that", "-n", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]
+            ),
+            "midsummer-night.txt:5:But I beseech your grace that I may know\n"
+            "midsummer-night.txt:6:The worst that may befall me in this case,\n"
+            "paradise-lost.txt:2:Of that Forbidden Tree, whose mortal tast\n"
+            "paradise-lost.txt:6:Sing Heav'nly Muse, that on the secret top\n",
+        )
+
+    def test_multiple_files_one_match_print_file_names_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "who", "-l", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]
+            ),
+            "iliad.txt\n" "paradise-lost.txt\n",
+        )
+
+    def test_multiple_files_several_matches_case_insensitive_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep("TO", "-i", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]),
+            "iliad.txt:Caused to Achaia's host, sent many a soul\n"
+            "iliad.txt:Illustrious into Ades premature,\n"
+            "iliad.txt:And Heroes gave (so stood the will of Jove)\n"
+            "iliad.txt:To dogs and to all ravening fowls a prey,\n"
+            "midsummer-night.txt:I do entreat your grace to pardon me.\n"
+            "midsummer-night.txt:In such a presence here to plead my thoughts;\n"
+            "midsummer-night.txt:If I refuse to wed Demetrius.\n"
+            "paradise-lost.txt:Brought Death into the World, and all our woe,\n"
+            "paradise-lost.txt:Restore us, and regain the blissful Seat,\n"
+            "paradise-lost.txt:Sing Heav'nly Muse, that on the secret top\n",
+        )
+
+    def test_multiple_files_several_matches_inverted_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("a", "-v", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]),
+            "iliad.txt:Achilles sing, O Goddess! Peleus' son;\n"
+            "iliad.txt:The noble Chief Achilles from the son\n"
+            "midsummer-night.txt:If I refuse to wed Demetrius.\n",
+        )
+
+    def test_multiple_files_one_match_match_entire_lines_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep(
+                "But I beseech your grace that I may know",
+                "-x",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "midsummer-night.txt:But I beseech your grace that I may know\n",
+        )
+
+    def test_multiple_files_one_match_multiple_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "WITH LOSS OF EDEN, TILL ONE GREATER MAN",
+                "-n -i -x",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "paradise-lost.txt:4:With loss of Eden, till one greater Man\n",
+        )
+
+    def test_multiple_files_no_matches_various_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "Frodo",
+                "-n -l -x -i",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "",
+        )
+
+    def test_multiple_files_several_matches_file_flag_takes_precedence_over_line_number_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep(
+                "who",
+                "-n -l",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "iliad.txt\n" "paradise-lost.txt\n",
+        )
+
+    def test_multiple_files_several_matches_inverted_and_match_entire_lines_flags(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep(
+                "Illustrious into Ades premature,",
+                "-x -v",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "iliad.txt:Achilles sing, O Goddess! Peleus' son;\n"
+            "iliad.txt:His wrath pernicious, who ten thousand woes\n"
+            "iliad.txt:Caused to Achaia's host, sent many a soul\n"
+            "iliad.txt:And Heroes gave (so stood the will of Jove)\n"
+            "iliad.txt:To dogs and to all ravening fowls a prey,\n"
+            "iliad.txt:When fierce dispute had separated once\n"
+            "iliad.txt:The noble Chief Achilles from the son\n"
+            "iliad.txt:Of Atreus, Agamemnon, King of men.\n"
+            "midsummer-night.txt:I do entreat your grace to pardon me.\n"
+            "midsummer-night.txt:I know not by what power I am made bold,\n"
+            "midsummer-night.txt:Nor how it may concern my modesty,\n"
+            "midsummer-night.txt:In such a presence here to plead my thoughts;\n"
+            "midsummer-night.txt:But I beseech your grace that I may know\n"
+            "midsummer-night.txt:The worst that may befall me in this case,\n"
+            "midsummer-night.txt:If I refuse to wed Demetrius.\n"
+            "paradise-lost.txt:Of Mans First Disobedience, and the Fruit\n"
+            "paradise-lost.txt:Of that Forbidden Tree, whose mortal tast\n"
+            "paradise-lost.txt:Brought Death into the World, and all our woe,\n"
+            "paradise-lost.txt:With loss of Eden, till one greater Man\n"
+            "paradise-lost.txt:Restore us, and regain the blissful Seat,\n"
+            "paradise-lost.txt:Sing Heav'nly Muse, that on the secret top\n"
+            "paradise-lost.txt:Of Oreb, or of Sinai, didst inspire\n"
+            "paradise-lost.txt:That Shepherd, who first taught the chosen Seed\n",
+        )
+
+
+=== Target Test Code ===
+package grep
+
+import (
+	"os"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+func createFiles(content []string) (filenames []string) {
+	// Parse fileContentData, making the list of filenames
+	// with their content.
+	var filename string
+	var f *os.File
+	for _, d := range content {
+		t := strings.TrimSpace(d)
+		if t == "" {
+			if filename == "" {
+				continue
+			}
+			// Close file
+			f.Close()
+			filenames = append(filenames, filename)
+			filename = ""
+			f = nil
+			continue
+		}
+		if strings.Contains(t, ".txt") {
+			filename = t
+			// Open file
+			var err error
+			f, err = os.Create(filename)
+			if err != nil {
+				panic(err)
+			}
+			continue
+		}
+		fields := strings.Split(t, "|")
+		if len(fields) == 3 {
+			// Write string into file with newline.
+			_, err := f.WriteString(strings.TrimRight(fields[1], " ") + "\n")
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	if f != nil {
+		f.Close()
+		filenames = append(filenames, filename)
+	}
+	return
+}
+
+func deleteFiles(filenames []string) {
+	for _, file := range filenames {
+		os.Remove(file)
+	}
+}
+
+func TestSearch(t *testing.T) {
+	files := createFiles(fileContentData)
+	defer deleteFiles(files)
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Search(tc.pattern, tc.flags, tc.files)
+
+			// We do not care whether the result is nil or an empty slice.
+			if len(tc.expected) == 0 && len(actual) == 0 {
+				return
+			}
+
+			if !reflect.DeepEqual(actual, tc.expected) {
+				t.Errorf("Search(%q,%v,%v)\ngot: %v\nwant: %v", tc.pattern, tc.flags, tc.files, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSearch(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	files := createFiles(fileContentData)
+	defer deleteFiles(files)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Search(tc.pattern, tc.flags, tc.files)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"os"
+	"strings"
+)
+
+func matches(line, pattern string, flags []string) bool {
+	if contains(flags, "-i") { // case-insensitive
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	if contains(flags, "-x") { // match entire lines
+		if len(pattern) != len(strings.TrimRight(line, "\n\r")) {
+			return contains(flags, "-v")
+		}
+	}
+
+	if contains(flags, "-v") { // invert matching
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+func formatFiles(matchedLines [][]string) string {
+	result := ""
+	filesSeen := make(map[string]bool)
+
+	for _, match := range matchedLines {
+		fileName := match[0]
+		if !filesSeen[fileName] {
+			result += fileName + "\n"
+			filesSeen[fileName] = true
+		}
+	}
+
+	return result
+}
+
+func formatLines(matchedLines [][]string, flags, files []string) string {
+	var result []string
+
+	for _, match := range matchedLines {
+		fileName := match[0]
+		lineNumber := match[1]
+		line := match[2]
+
+		lineResult := ""
+
+		if len(files) > 1 {
+			lineResult += fileName + ":"
+		}
+
+		if contains(flags, "-n") {
+			lineResult += lineNumber + ":"
+		}
+
+		lineResult += line
+		result = append(result, lineResult)
+	}
+
+	return strings.Join(result, "")
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+func Search(pattern string, flags, files []string) string {
+	var matchedLines [][]string
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			continue
+		}
+		
+		scanner := bufio.NewScanner(file)
+		lineNumber := 1
+		
+		for scanner.Scan() {
+			line := scanner.Text() + "\n"
+			
+			if matches(line, pattern, flags) {
+				matchedLines = append(matchedLines, []string{fileName, strings.Itoa(lineNumber), line})
+			}
+			
+			lineNumber++
+		}
+		
+		file.Close()
+	}
+
+	if contains(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep.go:94:68: undefined: strings.Itoa
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"os"
+	"strconv"
+	"strings"
+)
+
+func matches(line, pattern string, flags []string) bool {
+	if contains(flags, "-i") { // case-insensitive
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	if contains(flags, "-x") { // match entire lines
+		if len(pattern) != len(strings.TrimRight(line, "\n\r")) {
+			return contains(flags, "-v")
+		}
+	}
+
+	if contains(flags, "-v") { // invert matching
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+func formatFiles(matchedLines [][]string) string {
+	result := ""
+	filesSeen := make(map[string]bool)
+
+	for _, match := range matchedLines {
+		fileName := match[0]
+		if !filesSeen[fileName] {
+			result += fileName + "\n"
+			filesSeen[fileName] = true
+		}
+	}
+
+	return result
+}
+
+func formatLines(matchedLines [][]string, flags, files []string) string {
+	var result []string
+
+	for _, match := range matchedLines {
+		fileName := match[0]
+		lineNumber := match[1]
+		line := match[2]
+
+		lineResult := ""
+
+		if len(files) > 1 {
+			lineResult += fileName + ":"
+		}
+
+		if contains(flags, "-n") {
+			lineResult += lineNumber + ":"
+		}
+
+		lineResult += line
+		result = append(result, lineResult)
+	}
+
+	return strings.Join(result, "")
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+func Search(pattern string, flags, files []string) string {
+	var matchedLines [][]string
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			continue
+		}
+		
+		scanner := bufio.NewScanner(file)
+		lineNumber := 1
+		
+		for scanner.Scan() {
+			line := scanner.Text() + "\n"
+			
+			if matches(line, pattern, flags) {
+				matchedLines = append(matchedLines, []string{fileName, strconv.Itoa(lineNumber), line})
+			}
+			
+			lineNumber++
+		}
+		
+		file.Close()
+	}
+
+	if contains(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestSearch (0.00s)
+    --- FAIL: TestSearch/One_file,_one_match,_no_flags (0.00s)
+        grep_test.go:74: Search("Agamemnon",[],[iliad.txt])
+            got: Of Atreus, Agamemnon, King of men.
+            
+            want: [Of Atreus, Agamemnon, King of men.]
+    --- FAIL: TestSearch/One_file,_one_match,_print_line_numbers_flag (0.00s)
+        grep_test.go:74: Search("Forbidden",[-n],[paradise-lost.txt])
+            got: 2:Of that Forbidden Tree, whose mortal tast
+            
+            want: [2:Of that Forbidden Tree, whose mortal tast]
+    --- FAIL: TestSearch/One_file,_one_match,_case-insensitive_flag (0.00s)
+        grep_test.go:74: Search("FORBIDDEN",[-i],[paradise-lost.txt])
+            got: Of that Forbidden Tree, whose mortal tast
+            
+            want: [Of that Forbidden Tree, whose mortal tast]
+    --- FAIL: TestSearch/One_file,_one_match,_print_file_names_flag (0.00s)
+        grep_test.go:74: Search("Forbidden",[-l],[paradise-lost.txt])
+            got: paradise-lost.txt
+            
+            want: [paradise-lost.txt]
+    --- FAIL: TestSearch/One_file,_one_match,_match_entire_lines_flag (0.00s)
+        grep_test.go:74: Search("With loss of Eden, till one greater Man",[-x],[paradise-lost.txt])
+            got: With loss of Eden, till one greater Man
+            
+            want: [With loss of Eden, till one greater Man]
+    --- FAIL: TestSearch/One_file,_one_match,_multiple_flags (0.00s)
+        grep_test.go:74: Search("OF ATREUS, Agamemnon, KIng of MEN.",[-n -i -x],[iliad.txt])
+            got: 9:Of Atreus, Agamemnon, King of men.
+            
+            want: [9:Of Atreus, Agamemnon, King of men.]
+    --- FAIL: TestSearch/One_file,_several_matches,_no_flags (0.00s)
+        grep_test.go:74: Search("may",[],[midsummer-night.txt])
+            got: Nor how it may concern my modesty,
+            But I beseech your grace that I may know
+            The worst that may befall me in this case,
+            
+            want: [Nor how it may concern my modesty, But I beseech your grace that I may know The worst that may befall me in this case,]
+    --- FAIL: TestSearch/One_file,_several_matches,_print_line_numbers_flag (0.00s)
+        grep_test.go:74: Search("may",[-n],[midsummer-night.txt])
+            got: 3:Nor how it may concern my modesty,
+            5:But I beseech your grace that I may know
+            6:The worst that may befall me in this case,
+            
+            want: [3:Nor how it may concern my modesty, 5:But I beseech your grace that I may know 6:The worst that may befall me in this case,]
+    --- FAIL: TestSearch/One_file,_several_matches,_case-insensitive_flag (0.00s)
+        grep_test.go:74: Search("ACHILLES",[-i],[iliad.txt])
+            got: Achilles sing, O Goddess! Peleus' son;
+            The noble Chief Achilles from the son
+            
+            want: [Achilles sing, O Goddess! Peleus' son; The noble Chief Achilles from the son]
+    --- FAIL: TestSearch/One_file,_several_matches,_inverted_flag (0.00s)
+        grep_test.go:74: Search("Of",[-v],[paradise-lost.txt])
+            got: Brought Death into the World, and all our woe,
+            With loss of Eden, till one greater Man
+            Restore us, and regain the blissful Seat,
+            Sing Heav'nly Muse, that on the secret top
+            That Shepherd, who first taught the chosen Seed
+            
+            want: [Brought Death into the World, and all our woe, With loss of Eden, till one greater Man Restore us, and regain the blissful Seat, Sing Heav'nly Muse, that on the secret top That Shepherd, who first taught the chosen Seed]
+    --- FAIL: TestSearch/One_file,_one_match,_file_flag_takes_precedence_over_line_flag (0.00s)
+        grep_test.go:74: Search("ten",[-n -l],[iliad.txt])
+            got: iliad.txt
+            
+            want: [iliad.txt]
+    --- FAIL: TestSearch/One_file,_several_matches,_inverted_and_match_entire_lines_flags (0.00s)
+        grep_test.go:74: Search("Illustrious into Ades premature,",[-x -v],[iliad.txt])
+            got: Achilles sing, O Goddess! Peleus' son;
+            His wrath pernicious, who ten thousand woes
+            Caused to Achaia's host, sent many a soul
+            And Heroes gave (so stood the will of Jove)
+            To dogs and to all ravening fowls a prey,
+            When fierce dispute had separated once
+            The noble Chief Achilles from the son
+            Of Atreus, Agamemnon, King of men.
+            
+            want: [Achilles sing, O Goddess! Peleus' son; His wrath pernicious, who ten thousand woes Caused to Achaia's host, sent many a soul And Heroes gave (so stood the will of Jove) To dogs and to all ravening fowls a prey, When fierce dispute had separated once The noble Chief Achilles from the son Of Atreus, Agamemnon, King of men.]
+    --- FAIL: TestSearch/Multiple_files,_one_match,_no_flags (0.00s)
+        grep_test.go:74: Search("Agamemnon",[],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: iliad.txt:Of Atreus, Agamemnon, King of men.
+            
+            want: [iliad.txt:Of Atreus, Agamemnon, King of men.]
+    --- FAIL: TestSearch/Multiple_files,_several_matches,_no_flags (0.00s)
+        grep_test.go:74: Search("may",[],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: midsummer-night.txt:Nor how it may concern my modesty,
+            midsummer-night.txt:But I beseech your grace that I may know
+            midsummer-night.txt:The worst that may befall me in this case,
+            
+            want: [midsummer-night.txt:Nor how it may concern my modesty, midsummer-night.txt:But I beseech your grace that I may know midsummer-night.txt:The worst that may befall me in this case,]
+    --- FAIL: TestSearch/Multiple_files,_several_matches,_print_line_numbers_flag (0.00s)
+        grep_test.go:74: Search("that",[-n],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: midsummer-night.txt:5:But I beseech your grace that I may know
+            midsummer-night.txt:6:The worst that may befall me in this case,
+            paradise-lost.txt:2:Of that Forbidden Tree, whose mortal tast
+            paradise-lost.txt:6:Sing Heav'nly Muse, that on the secret top
+            
+            want: [midsummer-night.txt:5:But I beseech your grace that I may know midsummer-night.txt:6:The worst that may befall me in this case, paradise-lost.txt:2:Of that Forbidden Tree, whose mortal tast paradise-lost.txt:6:Sing Heav'nly Muse, that on the secret top]
+    --- FAIL: TestSearch/Multiple_files,_one_match,_print_file_names_flag (0.00s)
+        grep_test.go:74: Search("who",[-l],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: iliad.txt
+            paradise-lost.txt
+            
+            want: [iliad.txt paradise-lost.txt]
+    --- FAIL: TestSearch/Multiple_files,_several_matches,_case-insensitive_flag (0.00s)
+        grep_test.go:74: Search("TO",[-i],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: iliad.txt:Caused to Achaia's host, sent many a soul
+            iliad.txt:Illustrious into Ades premature,
+            iliad.txt:And Heroes gave (so stood the will of Jove)
+            iliad.txt:To dogs and to all ravening fowls a prey,
+            midsummer-night.txt:I do entreat your grace to pardon me.
+            midsummer-night.txt:In such a presence here to plead my thoughts;
+            midsummer-night.txt:If I refuse to wed Demetrius.
+            paradise-lost.txt:Brought Death into the World, and all our woe,
+            paradise-lost.txt:Restore us, and regain the blissful Seat,
+            paradise-lost.txt:Sing Heav'nly Muse, that on the secret top
+            
+            want: [iliad.txt:Caused to Achaia's host, sent many a soul iliad.txt:Illustrious into Ades premature, iliad.txt:And Heroes gave (so stood the will of Jove) iliad.txt:To dogs and to all ravening fowls a prey, midsummer-night.txt:I do entreat your grace to pardon me. midsummer-night.txt:In such a presence here to plead my thoughts; midsummer-night.txt:If I refuse to wed Demetrius. paradise-lost.txt:Brought Death into the World, and all our woe, paradise-lost.txt:Restore us, and regain the blissful Seat, paradise-lost.txt:Sing Heav'nly Muse, that on the secret top]
+    --- FAIL: TestSearch/Multiple_files,_several_matches,_inverted_flag (0.00s)
+        grep_test.go:74: Search("a",[-v],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: iliad.txt:Achilles sing, O Goddess! Peleus' son;
+            iliad.txt:The noble Chief Achilles from the son
+            midsummer-night.txt:If I refuse to wed Demetrius.
+            
+            want: [iliad.txt:Achilles sing, O Goddess! Peleus' son; iliad.txt:The noble Chief Achilles from the son midsummer-night.txt:If I refuse to wed Demetrius.]
+    --- FAIL: TestSearch/Multiple_files,_one_match,_match_entire_lines_flag (0.00s)
+        grep_test.go:74: Search("But I beseech your grace that I may know",[-x],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: midsummer-night.txt:But I beseech your grace that I may know
+            
+            want: [midsummer-night.txt:But I beseech your grace that I may know]
+    --- FAIL: TestSearch/Multiple_files,_one_match,_multiple_flags (0.00s)
+        grep_test.go:74: Search("WITH LOSS OF EDEN, TILL ONE GREATER MAN",[-n -i -x],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: paradise-lost.txt:4:With loss of Eden, till one greater Man
+            
+            want: [paradise-lost.txt:4:With loss of Eden, till one greater Man]
+    --- FAIL: TestSearch/Multiple_files,_several_matches,_file_flag_takes_precedence_over_line_number_flag (0.00s)
+        grep_test.go:74: Search("who",[-n -l],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: iliad.txt
+            paradise-lost.txt
+            
+            want: [iliad.txt paradise-lost.txt]
+    --- FAIL: TestSearch/Multiple_files,_several_matches,_inverted_and_match_entire_lines_flags (0.00s)
+        grep_test.go:74: Search("Illustrious into Ades premature,",[-x -v],[iliad.txt midsummer-night.txt paradise-lost.txt])
+            got: iliad.txt:Achilles sing, O Goddess! Peleus' son;
+            iliad.txt:His wrath pernicious, who ten thousand woes
+            iliad.txt:Caused to Achaia's host, sent many a soul
+            iliad.txt:And Heroes gave (so stood the will of Jove)
+            iliad.txt:To dogs and to all ravening fowls a prey,
+            iliad.txt:When fierce dispute had separated once
+            iliad.txt:The noble Chief Achilles from the son
+            iliad.txt:Of Atreus, Agamemnon, King of men.
+            midsummer-night.txt:I do entreat your grace to pardon me.
+            midsummer-night.txt:I know not by what power I am made bold,
+            midsummer-night.txt:Nor how it may concern my modesty,
+            midsummer-night.txt:In such a presence here to plead my thoughts;
+            midsummer-night.txt:But I beseech your grace that I may know
+            midsummer-night.txt:The worst that may befall me in this case,
+            midsummer-night.txt:If I refuse to wed Demetrius.
+            paradise-lost.txt:Of Mans First Disobedience, and the Fruit
+            paradise-lost.txt:Of that Forbidden Tree, whose mortal tast
+            paradise-lost.txt:Brought Death into the World, and all our woe,
+            paradise-lost.txt:With loss of Eden, till one greater Man
+            paradise-lost.txt:Restore us, and regain the blissful Seat,
+            paradise-lost.txt:Sing Heav'nly Muse, that on the secret top
+            paradise-lost.txt:Of Oreb, or of Sinai, didst inspire
+            paradise-lost.txt:That Shepherd, who first taught the chosen Seed
+            
+            want: [iliad.txt:Achilles sing, O Goddess! Peleus' son; iliad.txt:His wrath pernicious, who ten thousand woes iliad.txt:Caused to Achaia's host, sent many a soul iliad.txt:And Heroes gave (so stood the will of Jove) iliad.txt:To dogs and to all ravening fowls a prey, iliad.txt:When fierce dispute had separated once iliad.txt:The noble Chief Achilles from the son iliad.txt:Of Atreus, Agamemnon, King of men. midsummer-night.txt:I do entreat your grace to pardon me. midsummer-night.txt:I know not by what power I am made bold, midsummer-night.txt:Nor how it may concern my modesty, midsummer-night.txt:In such a presence here to plead my thoughts; midsummer-night.txt:But I beseech your grace that I may know midsummer-night.txt:The worst that may befall me in this case, midsummer-night.txt:If I refuse to wed Demetrius. paradise-lost.txt:Of Mans First Disobedience, and the Fruit paradise-lost.txt:Of that Forbidden Tree, whose mortal tast paradise-lost.txt:Brought Death into the World, and all our woe, paradise-lost.txt:With loss of Eden, till one greater Man paradise-lost.txt:Restore us, and regain the blissful Seat, paradise-lost.txt:Sing Heav'nly Muse, that on the secret top paradise-lost.txt:Of Oreb, or of Sinai, didst inspire paradise-lost.txt:That Shepherd, who first taught the chosen Seed]
+FAIL
+FAIL	exercism/grep	0.285s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"os"
+	"strconv"
+	"strings"
+)
+
+func matches(line, pattern string, flags []string) bool {
+	if contains(flags, "-i") { // case-insensitive
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	if contains(flags, "-x") { // match entire lines
+		if len(pattern) != len(strings.TrimRight(line, "\n\r")) {
+			return contains(flags, "-v")
+		}
+	}
+
+	if contains(flags, "-v") { // invert matching
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+func formatFiles(matchedLines [][]string) []string {
+	result := []string{}
+	filesSeen := make(map[string]bool)
+
+	for _, match := range matchedLines {
+		fileName := match[0]
+		if !filesSeen[fileName] {
+			result = append(result, fileName)
+			filesSeen[fileName] = true
+		}
+	}
+
+	return result
+}
+
+func formatLines(matchedLines [][]string, flags, files []string) []string {
+	var result []string
+
+	for _, match := range matchedLines {
+		fileName := match[0]
+		lineNumber := match[1]
+		line := match[2]
+
+		lineResult := ""
+
+		if len(files) > 1 {
+			lineResult += fileName + ":"
+		}
+
+		if contains(flags, "-n") {
+			lineResult += lineNumber + ":"
+		}
+
+		lineResult += strings.TrimSuffix(line, "\n")
+		result = append(result, lineResult)
+	}
+
+	return result
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines [][]string
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			continue
+		}
+		
+		scanner := bufio.NewScanner(file)
+		lineNumber := 1
+		
+		for scanner.Scan() {
+			line := scanner.Text() + "\n"
+			
+			if matches(line, pattern, flags) {
+				matchedLines = append(matchedLines, []string{fileName, strconv.Itoa(lineNumber), line})
+			}
+			
+			lineNumber++
+		}
+		
+		file.Close()
+	}
+
+	if contains(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/grep	0.285s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,207 @@
+=== Initial Source Code ===
+Source file: exercises/practice/space-age/.meta/example.py
+def period_converter(period):
+    def inner(self):
+        return round(self.seconds / period, 2)
+
+    return inner
+
+
+class SpaceAge:
+
+    on_mercury = period_converter(7600530.24)
+    on_venus = period_converter(19413907.2)
+    on_earth = period_converter(31558149.76)
+    on_mars = period_converter(59354294.4)
+    on_jupiter = period_converter(374335776.0)
+    on_saturn = period_converter(929596608.0)
+    on_uranus = period_converter(2651370019.3)
+    on_neptune = period_converter(5200418592.0)
+
+    def __init__(self, seconds):
+        self.seconds = seconds
+
+
+=== Source Interface ===
+class SpaceAge:
+    def __init__(self, seconds):
+        pass
+
+
+=== Target Interface ===
+package space
+
+type Planet string
+
+func Age(seconds float64, planet Planet) float64 {
+	panic("Please implement the Age function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/space-age/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from space_age import (
+    SpaceAge,
+)
+
+
+class SpaceAgeTest(unittest.TestCase):
+    def test_age_on_earth(self):
+        self.assertEqual(SpaceAge(1000000000).on_earth(), 31.69)
+
+    def test_age_on_mercury(self):
+        self.assertEqual(SpaceAge(2134835688).on_mercury(), 280.88)
+
+    def test_age_on_venus(self):
+        self.assertEqual(SpaceAge(189839836).on_venus(), 9.78)
+
+    def test_age_on_mars(self):
+        self.assertEqual(SpaceAge(2129871239).on_mars(), 35.88)
+
+    def test_age_on_jupiter(self):
+        self.assertEqual(SpaceAge(901876382).on_jupiter(), 2.41)
+
+    def test_age_on_saturn(self):
+        self.assertEqual(SpaceAge(2000000000).on_saturn(), 2.15)
+
+    def test_age_on_uranus(self):
+        self.assertEqual(SpaceAge(1210123456).on_uranus(), 0.46)
+
+    def test_age_on_neptune(self):
+        self.assertEqual(SpaceAge(1821023456).on_neptune(), 0.35)
+
+
+=== Target Test Code ===
+package space
+
+import (
+	"math"
+	"testing"
+)
+
+func TestAge(t *testing.T) {
+	const precision = 0.01
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Age(tc.seconds, tc.planet)
+			if math.Abs(actual-tc.expected) > precision {
+				t.Fatalf("Age(%f, %v) = %f, want: %f", tc.seconds, tc.planet, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkAge(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Age(tc.seconds, tc.planet)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/space-age/.meta/example.go
+package space
+
+// Planet represents a planet in our solar system
+type Planet string
+
+// Age calculates how old someone would be on a given planet based on seconds
+func Age(seconds float64, planet Planet) float64 {
+	earthSeconds := 31558149.76
+
+	planetToOrbitalPeriod := map[Planet]float64{
+		"Mercury": earthSeconds / 0.2408467,
+		"Venus":   earthSeconds / 0.61519726,
+		"Earth":   earthSeconds,
+		"Mars":    earthSeconds / 0.1880842,
+		"Jupiter": earthSeconds / 0.03440347,
+		"Saturn":  earthSeconds / 0.01395189,
+		"Uranus":  earthSeconds / 0.00488534,
+		"Neptune": earthSeconds / 0.00251684,
+	}
+
+	if period, exists := planetToOrbitalPeriod[planet]; exists {
+		return seconds / period
+	}
+
+	return 0
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestAge (0.00s)
+    --- FAIL: TestAge/age_on_Mercury (0.00s)
+        space_age_test.go:14: Age(2134835688.000000, Mercury) = 16.292721, want: 280.880000
+    --- FAIL: TestAge/age_on_Venus (0.00s)
+        space_age_test.go:14: Age(189839836.000000, Venus) = 3.700754, want: 9.780000
+    --- FAIL: TestAge/age_on_Mars (0.00s)
+        space_age_test.go:14: Age(2129871239.000000, Mars) = 12.693872, want: 35.880000
+    --- FAIL: TestAge/age_on_Jupiter (0.00s)
+        space_age_test.go:14: Age(901876382.000000, Jupiter) = 0.983191, want: 2.410000
+    --- FAIL: TestAge/age_on_Saturn (0.00s)
+        space_age_test.go:14: Age(2000000000.000000, Saturn) = 0.884202, want: 2.150000
+    --- FAIL: TestAge/age_on_Uranus (0.00s)
+        space_age_test.go:14: Age(1210123456.000000, Uranus) = 0.187332, want: 0.460000
+    --- FAIL: TestAge/age_on_Neptune (0.00s)
+        space_age_test.go:14: Age(1821023456.000000, Neptune) = 0.145231, want: 0.350000
+    --- FAIL: TestAge/invalid_planet_causes_error (0.00s)
+        space_age_test.go:14: Age(680804807.000000, Sun) = 0.000000, want: -1.000000
+FAIL
+FAIL	exercism/space-age	0.527s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/space-age/.meta/example.go
+package space
+
+// Planet represents a planet in our solar system
+type Planet string
+
+// Age calculates how old someone would be on a given planet based on seconds
+func Age(seconds float64, planet Planet) float64 {
+	// Earth orbital period in seconds
+	earthSeconds := 31558149.76
+
+	// Orbital periods relative to Earth's
+	periods := map[Planet]float64{
+		"Mercury": 0.2408467,
+		"Venus":   0.61519726,
+		"Earth":   1.0,
+		"Mars":    1.8808158,
+		"Jupiter": 11.862615,
+		"Saturn":  29.447498,
+		"Uranus":  84.016846,
+		"Neptune": 164.79132,
+	}
+
+	if period, exists := periods[planet]; exists {
+		return seconds / (earthSeconds * period)
+	}
+
+	// Return -1 for invalid planets
+	return -1.0
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/space-age	0.267s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

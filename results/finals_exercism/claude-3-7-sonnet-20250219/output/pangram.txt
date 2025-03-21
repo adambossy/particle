@@ -1,0 +1,145 @@
+=== Initial Source Code ===
+Source file: exercises/practice/pangram/.meta/example.py
+from string import ascii_lowercase
+
+
+def is_pangram(sentence):
+    return all(char in sentence.lower() for char in ascii_lowercase)
+
+
+=== Source Interface ===
+def is_pangram(sentence):
+    pass
+
+
+=== Target Interface ===
+package pangram
+
+func IsPangram(input string) bool {
+	panic("Please implement the IsPangram function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/pangram/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from pangram import (
+    is_pangram,
+)
+
+
+class PangramTest(unittest.TestCase):
+    def test_empty_sentence(self):
+        self.assertIs(is_pangram(""), False)
+
+    def test_perfect_lower_case(self):
+        self.assertIs(is_pangram("abcdefghijklmnopqrstuvwxyz"), True)
+
+    def test_only_lower_case(self):
+        self.assertIs(is_pangram("the quick brown fox jumps over the lazy dog"), True)
+
+    def test_missing_the_letter_x(self):
+        self.assertIs(
+            is_pangram("a quick movement of the enemy will jeopardize five gunboats"),
+            False,
+        )
+
+    def test_missing_the_letter_h(self):
+        self.assertIs(is_pangram("five boxing wizards jump quickly at it"), False)
+
+    def test_with_underscores(self):
+        self.assertIs(is_pangram("the_quick_brown_fox_jumps_over_the_lazy_dog"), True)
+
+    def test_with_numbers(self):
+        self.assertIs(
+            is_pangram("the 1 quick brown fox jumps over the 2 lazy dogs"), True
+        )
+
+    def test_missing_letters_replaced_by_numbers(self):
+        self.assertIs(is_pangram("7h3 qu1ck brown fox jumps ov3r 7h3 lazy dog"), False)
+
+    def test_mixed_case_and_punctuation(self):
+        self.assertIs(is_pangram('"Five quacking Zephyrs jolt my wax bed."'), True)
+
+    def test_a_m_and_a_m_are_26_different_characters_but_not_a_pangram(self):
+        self.assertIs(is_pangram("abcdefghijklm ABCDEFGHIJKLM"), False)
+
+    # Additional tests for this track
+
+    def test_sentence_without_lower_bound(self):
+        self.assertIs(is_pangram("bcdefghijklmnopqrstuvwxyz"), False)
+
+    def test_sentence_without_upper_bound(self):
+        self.assertIs(is_pangram("abcdefghijklmnopqrstuvwxy"), False)
+
+
+=== Target Test Code ===
+package pangram
+
+import (
+	"testing"
+)
+
+func TestPangram(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := IsPangram(tc.input); actual != tc.expected {
+				t.Fatalf("IsPangram(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkPangram(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			IsPangram(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/pangram/.meta/example.go
+package pangram
+
+import (
+	"strings"
+	"unicode"
+)
+
+// IsPangram determines if a sentence is a pangram.
+// A pangram is a sentence using every letter of the alphabet at least once.
+func IsPangram(input string) bool {
+	input = strings.ToLower(input)
+	
+	// Create a map to track which letters have been seen
+	seen := make(map[rune]bool)
+	
+	// Check each character in the input
+	for _, char := range input {
+		if unicode.IsLetter(char) {
+			seen[char] = true
+		}
+	}
+	
+	// Check if all 26 letters of the English alphabet are present
+	return len(seen) == 26
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/pangram	0.276s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

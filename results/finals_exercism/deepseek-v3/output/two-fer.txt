@@ -1,0 +1,128 @@
+=== Initial Source Code ===
+Source file: exercises/practice/two-fer/.meta/example.py
+def two_fer(name='you'):
+    return f'One for {name}, one for me.'
+
+
+=== Source Interface ===
+def two_fer(name):
+    pass
+
+
+=== Target Interface ===
+// This is a "stub" file.  It's a little start on your solution.
+// It's not a complete solution though; you have to write some code.
+
+// Package twofer should have a package comment that summarizes what it's about.
+// https://golang.org/doc/effective_go.html#commentary
+package twofer
+
+// ShareWith should have a comment documenting it.
+func ShareWith(name string) string {
+	// Write some code here to pass the test suite.
+	// Then remove all the stock comments.
+	// They're here to help you get started but they only clutter a finished solution.
+	// If you leave them in, reviewers may protest!
+	return ""
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/two-fer/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from two_fer import (
+    two_fer,
+)
+
+
+class TwoFerTest(unittest.TestCase):
+    def test_no_name_given(self):
+        self.assertEqual(two_fer(), "One for you, one for me.")
+
+    def test_a_name_given(self):
+        self.assertEqual(two_fer("Alice"), "One for Alice, one for me.")
+
+    def test_another_name_given(self):
+        self.assertEqual(two_fer("Bob"), "One for Bob, one for me.")
+
+
+=== Target Test Code ===
+package twofer
+
+import "testing"
+
+type testCase struct {
+	description, input, expected string
+}
+
+var testCases = []testCase{
+	{
+		description: "empty name",
+		input:       "",
+		expected:    "One for you, one for me.",
+	},
+	{
+		description: "name is Alice",
+		input:       "Alice",
+		expected:    "One for Alice, one for me.",
+	},
+	{
+		description: "name is Bob",
+		input:       "Bob",
+		expected:    "One for Bob, one for me.",
+	},
+}
+
+func TestShareWith(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got := ShareWith(tc.input)
+			if got != tc.expected {
+				t.Fatalf("ShareWith(%q)\n got: %q\nwant: %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkShareWith(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+
+		for _, test := range testCases {
+			ShareWith(test.input)
+		}
+
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/two-fer/.meta/example.go
+package twofer
+
+import "fmt"
+
+// ShareWith returns a string in the format "One for [name], one for me."
+// If name is not provided, it defaults to "you".
+func ShareWith(name string) string {
+    if name == "" {
+        name = "you"
+    }
+    return fmt.Sprintf("One for %s, one for me.", name)
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/two-fer	0.316s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

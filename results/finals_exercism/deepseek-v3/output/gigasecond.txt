@@ -1,0 +1,175 @@
+=== Initial Source Code ===
+Source file: exercises/practice/gigasecond/.meta/example.py
+from datetime import timedelta
+
+
+def add(moment):
+    return moment + timedelta(seconds=1e9)
+
+
+=== Source Interface ===
+def add(moment):
+    pass
+
+
+=== Target Interface ===
+// This is a "stub" file.  It's a little start on your solution.
+// It's not a complete solution though; you have to write some code.
+
+// Package gigasecond should have a package comment that summarizes what it's about.
+// https://golang.org/doc/effective_go.html#commentary
+package gigasecond
+
+// import path for the time package from the standard library
+import "time"
+
+// AddGigasecond should have a comment documenting it.
+func AddGigasecond(t time.Time) time.Time {
+	// Write some code here to pass the test suite.
+	// Then remove all the stock comments.
+	// They're here to help you get started but they only clutter a finished solution.
+	// If you leave them in, reviewers may protest!
+	return t
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/gigasecond/canonical-data.json
+# File last updated on 2023-07-19
+
+from datetime import datetime
+import unittest
+
+from gigasecond import (
+    add,
+)
+
+
+class GigasecondTest(unittest.TestCase):
+    def test_date_only_specification_of_time(self):
+        self.assertEqual(
+            add(datetime(2011, 4, 25, 0, 0)), datetime(2043, 1, 1, 1, 46, 40)
+        )
+
+    def test_second_test_for_date_only_specification_of_time(self):
+        self.assertEqual(
+            add(datetime(1977, 6, 13, 0, 0)), datetime(2009, 2, 19, 1, 46, 40)
+        )
+
+    def test_third_test_for_date_only_specification_of_time(self):
+        self.assertEqual(
+            add(datetime(1959, 7, 19, 0, 0)), datetime(1991, 3, 27, 1, 46, 40)
+        )
+
+    def test_full_time_specified(self):
+        self.assertEqual(
+            add(datetime(2015, 1, 24, 22, 0)), datetime(2046, 10, 2, 23, 46, 40)
+        )
+
+    def test_full_time_with_day_roll_over(self):
+        self.assertEqual(
+            add(datetime(2015, 1, 24, 23, 59, 59)), datetime(2046, 10, 3, 1, 46, 39)
+        )
+
+
+=== Target Test Code ===
+package gigasecond
+
+// Write a function AddGigasecond that works with time.Time.
+
+import (
+	"testing"
+	"time"
+)
+
+// date formats used in test data
+const (
+	fmtD  = "2006-01-02"
+	fmtDT = "2006-01-02T15:04:05"
+)
+
+func TestAddGigasecond(t *testing.T) {
+	for _, tc := range addCases {
+		t.Run(tc.description, func(t *testing.T) {
+			in := parse(tc.in, t)
+			want := parse(tc.want, t)
+			got := AddGigasecond(in)
+			if !got.Equal(want) {
+				t.Fatalf("AddGigasecond(%v) = %v, want: %v", in, got, want)
+			}
+		})
+	}
+}
+
+func parse(s string, t *testing.T) time.Time {
+	tt, err := time.Parse(fmtDT, s) // try full date time format first
+	if err != nil {
+		tt, err = time.Parse(fmtD, s) // also allow just date
+	}
+	if err != nil {
+		t.Fatalf("error in test setup: TestAddGigasecond requires datetime in one of the following formats: \nformat 1:%q\nformat 2:%q\ngot:%q", fmtD, fmtDT, s)
+	}
+	return tt
+}
+
+func BenchmarkAddGigasecond(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		AddGigasecond(time.Time{})
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/gigasecond/.meta/example.go
+package gigasecond
+
+import "time"
+
+// AddGigasecond adds one gigasecond (1,000,000,000 seconds) to the given time.
+func AddGigasecond(t time.Time) time.Time {
+    return t.Add(time.Second * 1e9)
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/gigasecond [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/gigasecond [exercism/gigasecond.test]
+./gigasecond_test.go:17:21: undefined: addCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/gigasecond/.meta/example.go
+package gigasecond
+
+import (
+	"time"
+)
+
+// AddGigasecond adds one gigasecond (1,000,000,000 seconds) to the given time.
+func AddGigasecond(t time.Time) time.Time {
+	return t.Add(time.Second * 1e9)
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/gigasecond [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/gigasecond [exercism/gigasecond.test]
+./gigasecond_test.go:17:21: undefined: addCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Missing end token '<｜tool▁calls▁end｜>' in function calls: <｜tool▁calls▁begin｜><｜tool▁call▁begin｜>function<｜t..."}}
+
+=== FINAL STATUS: ERROR ===

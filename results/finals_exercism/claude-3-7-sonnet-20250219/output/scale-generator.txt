@@ -1,0 +1,416 @@
+=== Initial Source Code ===
+Source file: exercises/practice/scale-generator/.meta/example.py
+class Scale:
+    ASCENDING_INTERVALS = ['m', 'M', 'A']
+    CHROMATIC_SCALE = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#']
+    FLAT_CHROMATIC_SCALE = ['A', 'Bb', 'B', 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab']
+    FLAT_KEYS = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'd', 'g', 'c', 'f', 'bb', 'eb']
+
+    def __init__(self, tonic, intervals=None):
+        self.tonic = tonic.capitalize()
+        self.intervals = intervals
+        self.chromatic_scale = (self.FLAT_CHROMATIC_SCALE if tonic in self.FLAT_KEYS else self.CHROMATIC_SCALE)
+
+    def chromatic(self):
+        return self._reorder_chromatic_scale()
+
+    def interval(self, intervals):
+        last_index = 0
+        pitches = []
+        scale = self._reorder_chromatic_scale()
+
+        for _, interval in enumerate(intervals):
+            pitches.append(scale[last_index])
+            last_index += self.ASCENDING_INTERVALS.index(interval) + 1
+
+        pitches.append(self.tonic)
+
+        return pitches
+
+    def _reorder_chromatic_scale(self):
+        index = self.chromatic_scale.index(self.tonic)
+        return  self.chromatic_scale[index:] + self.chromatic_scale[:index]
+
+
+=== Source Interface ===
+class Scale:
+    def __init__(self, tonic):
+        pass
+
+    def chromatic(self):
+        pass
+
+    def interval(self, intervals):
+        pass
+
+
+=== Target Interface ===
+package scale
+
+func Scale(tonic, interval string) []string {
+	panic("Please implement the Scale function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/scale-generator/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from scale_generator import (
+    Scale,
+)
+
+
+class ScaleGeneratorTest(unittest.TestCase):
+
+    # Test chromatic scales
+    def test_chromatic_scale_with_sharps(self):
+        expected = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        self.assertEqual(Scale("C").chromatic(), expected)
+
+    def test_chromatic_scale_with_flats(self):
+        expected = ["F", "Gb", "G", "Ab", "A", "Bb", "B", "C", "Db", "D", "Eb", "E"]
+        self.assertEqual(Scale("F").chromatic(), expected)
+
+    # Test scales with specified intervals
+    def test_simple_major_scale(self):
+        expected = ["C", "D", "E", "F", "G", "A", "B", "C"]
+        self.assertEqual(Scale("C").interval("MMmMMMm"), expected)
+
+    def test_major_scale_with_sharps(self):
+        expected = ["G", "A", "B", "C", "D", "E", "F#", "G"]
+        self.assertEqual(Scale("G").interval("MMmMMMm"), expected)
+
+    def test_major_scale_with_flats(self):
+        expected = ["F", "G", "A", "Bb", "C", "D", "E", "F"]
+        self.assertEqual(Scale("F").interval("MMmMMMm"), expected)
+
+    def test_minor_scale_with_sharps(self):
+        expected = ["F#", "G#", "A", "B", "C#", "D", "E", "F#"]
+        self.assertEqual(Scale("f#").interval("MmMMmMM"), expected)
+
+    def test_minor_scale_with_flats(self):
+        expected = ["Bb", "C", "Db", "Eb", "F", "Gb", "Ab", "Bb"]
+        self.assertEqual(Scale("bb").interval("MmMMmMM"), expected)
+
+    def test_dorian_mode(self):
+        expected = ["D", "E", "F", "G", "A", "B", "C", "D"]
+        self.assertEqual(Scale("d").interval("MmMMMmM"), expected)
+
+    def test_mixolydian_mode(self):
+        expected = ["Eb", "F", "G", "Ab", "Bb", "C", "Db", "Eb"]
+        self.assertEqual(Scale("Eb").interval("MMmMMmM"), expected)
+
+    def test_lydian_mode(self):
+        expected = ["A", "B", "C#", "D#", "E", "F#", "G#", "A"]
+        self.assertEqual(Scale("a").interval("MMMmMMm"), expected)
+
+    def test_phrygian_mode(self):
+        expected = ["E", "F", "G", "A", "B", "C", "D", "E"]
+        self.assertEqual(Scale("e").interval("mMMMmMM"), expected)
+
+    def test_locrian_mode(self):
+        expected = ["G", "Ab", "Bb", "C", "Db", "Eb", "F", "G"]
+        self.assertEqual(Scale("g").interval("mMMmMMM"), expected)
+
+    def test_harmonic_minor(self):
+        expected = ["D", "E", "F", "G", "A", "Bb", "Db", "D"]
+        self.assertEqual(Scale("d").interval("MmMMmAm"), expected)
+
+    def test_octatonic(self):
+        expected = ["C", "D", "D#", "F", "F#", "G#", "A", "B", "C"]
+        self.assertEqual(Scale("C").interval("MmMmMmMm"), expected)
+
+    def test_hexatonic(self):
+        expected = ["Db", "Eb", "F", "G", "A", "B", "Db"]
+        self.assertEqual(Scale("Db").interval("MMMMMM"), expected)
+
+    def test_pentatonic(self):
+        expected = ["A", "B", "C#", "E", "F#", "A"]
+        self.assertEqual(Scale("A").interval("MMAMA"), expected)
+
+    def test_enigmatic(self):
+        expected = ["G", "G#", "B", "C#", "D#", "F", "F#", "G"]
+        self.assertEqual(Scale("G").interval("mAMMMmm"), expected)
+
+
+=== Target Test Code ===
+package scale
+
+import (
+	"fmt"
+	"testing"
+)
+
+func TestScale(t *testing.T) {
+	for _, tc := range scaleTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Scale(tc.tonic, tc.interval)
+			if fmt.Sprintf("%q", actual) != fmt.Sprintf("%q", tc.expected) {
+				t.Fatalf("Scale(%q, %q)\n got:%#v\nwant:%#v", tc.tonic, tc.interval, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScale(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range scaleTestCases {
+			Scale(test.tonic, test.interval)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+// Scale generates a musical scale based on a tonic and interval pattern
+func Scale(tonic, interval string) []string {
+	if interval == "" {
+		// Handle chromatic scale
+		scale := NewScale(tonic)
+		return scale.chromatic()
+	} else {
+		// Handle interval scale
+		scale := NewScale(tonic)
+		return scale.interval(interval)
+	}
+}
+
+// Scale represents a musical scale with a tonic note
+type Scale struct {
+	tonic          string
+	chromaticScale []string
+}
+
+// Constants
+var (
+	ascendingIntervals = []string{"m", "M", "A"}
+	chromaticScale     = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+	flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+	flatKeys           = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+)
+
+// NewScale creates a new Scale with the given tonic
+func NewScale(tonic string) *Scale {
+	// Capitalize first letter only
+	capitalizedTonic := tonic
+	if len(tonic) > 0 {
+		if tonic[0] >= 'a' && tonic[0] <= 'z' {
+			capitalizedTonic = string(tonic[0]-'a'+'A') + tonic[1:]
+		}
+	}
+
+	// Determine which chromatic scale to use (flat or sharp)
+	var usedScale []string
+	for _, key := range flatKeys {
+		if tonic == key {
+			usedScale = flatChromaticScale
+			break
+		}
+	}
+	if usedScale == nil {
+		usedScale = chromaticScale
+	}
+
+	return &Scale{
+		tonic:          capitalizedTonic,
+		chromaticScale: usedScale,
+	}
+}
+
+// chromatic returns the chromatic scale starting with the tonic
+func (s *Scale) chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// interval returns a scale based on the given interval pattern
+func (s *Scale) interval(intervals string) []string {
+	lastIndex := 0
+	pitches := []string{}
+	scale := s.reorderChromaticScale()
+
+	for i := 0; i < len(intervals); i++ {
+		interval := string(intervals[i])
+		pitches = append(pitches, scale[lastIndex])
+		
+		// Find the index of the interval in ascendingIntervals
+		var intervalIndex int
+		for idx, ascInterval := range ascendingIntervals {
+			if interval == ascInterval {
+				intervalIndex = idx
+				break
+			}
+		}
+		
+		lastIndex += intervalIndex + 1
+	}
+
+	// Add the tonic at the octave
+	pitches = append(pitches, s.tonic)
+
+	return pitches
+}
+
+// reorderChromaticScale returns the chromatic scale starting with the tonic
+func (s *Scale) reorderChromaticScale() []string {
+	index := -1
+	for i, note := range s.chromaticScale {
+		if note == s.tonic {
+			index = i
+			break
+		}
+	}
+	
+	if index == -1 {
+		// Handle case where tonic isn't found
+		return s.chromaticScale
+	}
+	
+	return append(s.chromaticScale[index:], s.chromaticScale[:index]...)
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator.go:18:6: Scale redeclared in this block
+	./scale_generator.go:5:6: other declaration of Scale
+./scale_generator.go:32:30: Scale (value of type func(tonic string, interval string) []string) is not a type
+./scale_generator.go:53:10: Scale (value of type func(tonic string, interval string) []string) is not a type
+./scale_generator.go:60:10: Scale (value of type func(tonic string, interval string) []string) is not a type
+./scale_generator.go:65:10: Scale (value of type func(tonic string, interval string) []string) is not a type
+./scale_generator.go:93:10: Scale (value of type func(tonic string, interval string) []string) is not a type
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+// Scale generates a musical scale based on a tonic and interval pattern
+func Scale(tonic, interval string) []string {
+	if interval == "" {
+		// Handle chromatic scale
+		s := NewScale(tonic)
+		return s.chromatic()
+	} else {
+		// Handle interval scale
+		s := NewScale(tonic)
+		return s.interval(interval)
+	}
+}
+
+// scaleType represents a musical scale with a tonic note
+type scaleType struct {
+	tonic          string
+	chromaticScale []string
+}
+
+// Constants
+var (
+	ascendingIntervals = []string{"m", "M", "A"}
+	chromaticScale     = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+	flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+	flatKeys           = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+)
+
+// NewScale creates a new Scale with the given tonic
+func NewScale(tonic string) *scaleType {
+	// Capitalize first letter only
+	capitalizedTonic := tonic
+	if len(tonic) > 0 {
+		if tonic[0] >= 'a' && tonic[0] <= 'z' {
+			capitalizedTonic = string(tonic[0]-'a'+'A') + tonic[1:]
+		}
+	}
+
+	// Determine which chromatic scale to use (flat or sharp)
+	var usedScale []string
+	for _, key := range flatKeys {
+		if tonic == key {
+			usedScale = flatChromaticScale
+			break
+		}
+	}
+	if usedScale == nil {
+		usedScale = chromaticScale
+	}
+
+	return &scaleType{
+		tonic:          capitalizedTonic,
+		chromaticScale: usedScale,
+	}
+}
+
+// chromatic returns the chromatic scale starting with the tonic
+func (s *scaleType) chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// interval returns a scale based on the given interval pattern
+func (s *scaleType) interval(intervals string) []string {
+	lastIndex := 0
+	pitches := []string{}
+	scale := s.reorderChromaticScale()
+
+	for i := 0; i < len(intervals); i++ {
+		interval := string(intervals[i])
+		pitches = append(pitches, scale[lastIndex])
+		
+		// Find the index of the interval in ascendingIntervals
+		var intervalIndex int
+		for idx, ascInterval := range ascendingIntervals {
+			if interval == ascInterval {
+				intervalIndex = idx
+				break
+			}
+		}
+		
+		lastIndex += intervalIndex + 1
+	}
+
+	// Add the tonic at the octave
+	pitches = append(pitches, s.tonic)
+
+	return pitches
+}
+
+// reorderChromaticScale returns the chromatic scale starting with the tonic
+func (s *scaleType) reorderChromaticScale() []string {
+	index := -1
+	for i, note := range s.chromaticScale {
+		if note == s.tonic {
+			index = i
+			break
+		}
+	}
+	
+	if index == -1 {
+		// Handle case where tonic isn't found
+		return s.chromaticScale
+	}
+	
+	return append(s.chromaticScale[index:], s.chromaticScale[:index]...)
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/scale-generator	0.268s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,1217 @@
+=== Initial Source Code ===
+Source file: exercises/practice/collatz-conjecture/.meta/example.py
+def steps(number):
+    if number <= 0:
+        raise ValueError('Only positive integers are allowed')
+
+    step_count = 0
+    while number > 1:
+        if is_odd(number):
+            number = number * 3 + 1
+        else:
+            number = number / 2
+        step_count += 1
+
+    return step_count
+
+
+def is_odd(number):
+    return number % 2 == 1
+
+
+=== Source Interface ===
+def steps(number):
+    pass
+
+
+=== Target Interface ===
+package collatzconjecture
+
+func CollatzConjecture(n int) (int, error) {
+	panic("Please implement the CollatzConjecture function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/collatz-conjecture/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from collatz_conjecture import (
+    steps,
+)
+
+
+class CollatzConjectureTest(unittest.TestCase):
+    def test_zero_steps_for_one(self):
+        self.assertEqual(steps(1), 0)
+
+    def test_divide_if_even(self):
+        self.assertEqual(steps(16), 4)
+
+    def test_even_and_odd_steps(self):
+        self.assertEqual(steps(12), 9)
+
+    def test_large_number_of_even_and_odd_steps(self):
+        self.assertEqual(steps(1000000), 152)
+
+    def test_zero_is_an_error(self):
+        with self.assertRaises(ValueError) as err:
+            steps(0)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Only positive integers are allowed")
+
+    def test_negative_value_is_an_error(self):
+        with self.assertRaises(ValueError) as err:
+            steps(-15)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Only positive integers are allowed")
+
+
+=== Target Test Code ===
+package collatzconjecture
+
+import (
+	"testing"
+)
+
+func TestCollatzConjecture(t *testing.T) {
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			actual, err := CollatzConjecture(testCase.input)
+			if testCase.expectError {
+				if err == nil {
+					t.Errorf("CollatzConjecture(%v) expected an error, got %v", testCase.input, actual)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("CollatzConjecture(%v) returns unexpected error %v", testCase.input, err)
+				} else if actual != testCase.expected {
+					t.Errorf("CollatzConjecture(%v) expected %v, got %v", testCase.input, testCase.expected, actual)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, testCase := range testCases {
+			CollatzConjecture(testCase.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture computes the number of steps required to reach 1 in the Collatz sequence.
+// It returns an error if a non-positive integer is provided.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	stepCount := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		stepCount++
+	}
+	return stepCount, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import (
+	"testing"
+)
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expOutput int
+		expErr    bool
+	}{
+		{
+			name:      "Negative input",
+			input:     -5,
+			expOutput: 0,
+			expErr:    true,
+		},
+		{
+			name:      "Zero input",
+			input:     0,
+			expOutput: 0,
+			expErr:    true,
+		},
+		{
+			name:      "Input 1 returns 0 steps",
+			input:     1,
+			expOutput: 0,
+			expErr:    false,
+		},
+		{
+			name:      "Input 16 returns 4 steps",
+			input:     16,
+			expOutput: 4,
+			expErr:    false,
+		},
+		{
+			name:      "Input 12 returns 9 steps",
+			input:     12,
+			expOutput: 9,
+			expErr:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(tc.input)
+			if tc.expErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				}
+				if steps != tc.expOutput {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expOutput, steps)
+				}
+			}
+		})
+	}
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import (
+	"testing"
+)
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expOutput int
+		expErr    bool
+	}{
+		{
+			name:      "Negative input",
+			input:     -5,
+			expOutput: 0,
+			expErr:    true,
+		},
+		{
+			name:      "Zero input",
+			input:     0,
+			expOutput: 0,
+			expErr:    true,
+		},
+		{
+			name:      "Input 1 returns 0 steps",
+			input:     1,
+			expOutput: 0,
+			expErr:    false,
+		},
+		{
+			name:      "Input 16 returns 4 steps",
+			input:     16,
+			expOutput: 4,
+			expErr:    false,
+		},
+		{
+			name:      "Input 12 returns 9 steps",
+			input:     12,
+			expOutput: 9,
+			expErr:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(tc.input)
+			if tc.expErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				}
+				if steps != tc.expOutput {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expOutput, steps)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	// Benchmark using a few representative inputs
+	inputs := []int{1, 12, 16}
+	for i := 0; i < b.N; i++ {
+		for _, n := range inputs {
+			CollatzConjecture(n)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture_test.go:8:27: undefined: testCases
+./collatz_conjecture_test.go:31:28: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import (
+	"testing"
+)
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{
+			name: "Negative input",
+			input: -5,
+			expected: 0,
+			expectErr: true,
+		},
+		{
+			name: "Zero input",
+			input: 0,
+			expected: 0,
+			expectErr: true,
+		},
+		{
+			name: "Input 1 returns 0 steps",
+			input: 1,
+			expected: 0,
+			expectErr: false,
+		},
+		{
+			name: "Input 16 returns 4 steps",
+			input: 16,
+			expected: 4,
+			expectErr: false,
+		},
+		{
+			name: "Input 12 returns 9 steps",
+			input: 12,
+			expected: 9,
+			expectErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture variable for closure
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(tc.input)
+			if tc.expectErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				}
+				if steps != tc.expected {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expected, steps)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{
+			name: "Negative input",
+			input: -5,
+			expected: 0,
+			expectErr: true,
+		},
+		{
+			name: "Zero input",
+			input: 0,
+			expected: 0,
+			expectErr: true,
+		},
+		{
+			name: "Input 1 returns 0 steps",
+			input: 1,
+			expected: 0,
+			expectErr: false,
+		},
+		{
+			name: "Input 16 returns 4 steps",
+			input: 16,
+			expected: 4,
+			expectErr: false,
+		},
+		{
+			name: "Input 12 returns 9 steps",
+			input: 12,
+			expected: 9,
+			expectErr: false,
+		},
+	}
+
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			CollatzConjecture(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import (
+	"testing"
+)
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{"Negative input", -5, 0, true},
+		{"Zero input", 0, 0, true},
+		{"Input 1 returns 0 steps", 1, 0, false},
+		{"Input 16 returns 4 steps", 16, 4, false},
+		{"Input 12 returns 9 steps", 12, 9, false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(tc.input)
+			if tc.expectErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				}
+				if steps != tc.expected {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expected, steps)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{"Negative input", -5, 0, true},
+		{"Zero input", 0, 0, true},
+		{"Input 1 returns 0 steps", 1, 0, false},
+		{"Input 16 returns 4 steps", 16, 4, false},
+		{"Input 12 returns 9 steps", 12, 9, false},
+	}
+
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			CollatzConjecture(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import (
+	"testing"
+)
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{"Negative input", -5, 0, true},
+		{"Zero input", 0, 0, true},
+		{"Input 1 returns 0 steps", 1, 0, false},
+		{"Input 16 returns 4 steps", 16, 4, false},
+		{"Input 12 returns 9 steps", 12, 9, false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(tc.input)
+			if tc.expectErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				}
+				if steps != tc.expected {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expected, steps)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{"Negative input", -5, 0, true},
+		{"Zero input", 0, 0, true},
+		{"Input 1 returns 0 steps", 1, 0, false},
+		{"Input 16 returns 4 steps", 16, 4, false},
+		{"Input 12 returns 9 steps", 12, 9, false},
+	}
+
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			CollatzConjecture(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import (
+	"testing"
+)
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{"Negative input", -5, 0, true},
+		{"Zero input", 0, 0, true},
+		{"Input 1 returns 0 steps", 1, 0, false},
+		{"Input 16 returns 4 steps", 16, 4, false},
+		{"Input 12 returns 9 steps", 12, 9, false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(tc.input)
+			if tc.expectErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				}
+				if steps != tc.expected {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expected, steps)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	testCases := []struct {
+		name      string
+		input     int
+		expectErr bool
+	}{
+		{"Negative input", -5, true},
+		{"Zero input", 0, true},
+		{"Input 1 returns 0 steps", 1, false},
+		{"Input 16 returns 4 steps", 16, false},
+		{"Input 12 returns 9 steps", 12, false},
+	}
+
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			CollatzConjecture(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import "testing"
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{"Negative input", -5, 0, true},
+		{"Zero input", 0, 0, true},
+		{"Input 1 returns 0 steps", 1, 0, false},
+		{"Input 16 returns 4 steps", 16, 4, false},
+		{"Input 12 returns 9 steps", 12, 9, false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(tc.input)
+			if tc.expectErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				}
+				if steps != tc.expected {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expected, steps)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	testCases := []struct {
+		name      string
+		input     int
+	}{
+		{"Input 1", 1},
+		{"Input 12", 12},
+		{"Input 16", 16},
+	}
+
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			CollatzConjecture(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import "testing"
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{"Negative input", -5, 0, true},
+		{"Zero input", 0, 0, true},
+		{"Input 1 returns 0 steps", 1, 0, false},
+		{"Input 16 returns 4 steps", 16, 4, false},
+		{"Input 12 returns 9 steps", 12, 9, false},
+	}
+
+	for _, tc := range testCases {
+		t := tc // capture loop variable
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(t.input)
+			// Use tc.input instead of t.input; fix error here.
+			steps, err = CollatzConjecture(tc.input)
+			if tc.expectErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				}
+				if steps != tc.expected {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expected, steps)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	testCases := []struct {
+		name  string
+		input int
+	}{
+		{"Input 1", 1},
+		{"Input 12", 12},
+		{"Input 16", 16},
+	}
+
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			CollatzConjecture(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import "testing"
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{"Negative input", -5, 0, true},
+		{"Zero input", 0, 0, true},
+		{"Input 1 returns 0 steps", 1, 0, false},
+		{"Input 16 returns 4 steps", 16, 4, false},
+		{"Input 12 returns 9 steps", 12, 9, false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(tc.input)
+			if tc.expectErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				} else if steps != tc.expected {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expected, steps)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	testCases := []struct {
+		name  string
+		input int
+	}{
+		{"Input 1", 1},
+		{"Input 12", 12},
+		{"Input 16", 16},
+	}
+
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			CollatzConjecture(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "fmt"
+
+// CollatzConjecture calculates the number of steps required to reach 1 in the Collatz sequence for a given positive integer n.
+// It returns an error if n is not a positive integer.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("Only positive integers are allowed")
+	}
+
+	steps := 0
+	for n > 1 {
+		if n%2 == 1 {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		steps++
+	}
+	return steps, nil
+}
+
+// exercises/practice/collatz-conjecture/.meta/example_test.go
+package collatzconjecture
+
+import "testing"
+
+func TestCollatzConjecture(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     int
+		expected  int
+		expectErr bool
+	}{
+		{"Negative input", -5, 0, true},
+		{"Zero input", 0, 0, true},
+		{"Input 1 returns 0 steps", 1, 0, false},
+		{"Input 16 returns 4 steps", 16, 4, false},
+		{"Input 12 returns 9 steps", 12, 9, false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := CollatzConjecture(tc.input)
+			if tc.expectErr {
+				if err == nil {
+					t.Errorf("Expected an error for input %d, but got none", tc.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Did not expect an error for input %d, but got: %v", tc.input, err)
+				}
+				if steps != tc.expected {
+					t.Errorf("For input %d, expected %d steps, but got %d", tc.input, tc.expected, steps)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	testCases := []struct {
+		name  string
+		input int
+	}{
+		{"Input 1", 1},
+		{"Input 12", 12},
+		{"Input 16", 16},
+	}
+
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			CollatzConjecture(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/collatz-conjecture [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/collatz-conjecture [exercism/collatz-conjecture.test]
+./collatz_conjecture.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== FINAL STATUS: FAILED ===

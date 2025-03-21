@@ -1,0 +1,394 @@
+=== Initial Source Code ===
+Source file: exercises/practice/zebra-puzzle/.meta/example.py
+"""This solution for the Zebra Puzzle is adapted from a solution
+by Peter Norvig for the course "Design of Computer Programs" on Udacity.
+https://www.udacity.com/course/cs212
+"""
+
+from itertools import permutations
+
+
+def just_right_of(width, height):
+    return width - height == 1
+
+
+def next_to(width, height):
+    return abs(width - height) == 1
+
+
+def solution():
+    houses = first, _, middle, _, _ = range(5)
+    orderings = list(permutations(houses))
+
+    # The following you are about to witness is code from someone who loves 'comprehensions'.
+    # I just fixed the PEP-8 violations...
+    # Someone please write this in a way that it is actually read-able?
+    # Anyways, enjoy.
+    # - J08K <3 (1:05 AM, nov 29th, 2021)
+
+    result = next(
+        [{
+            english_man: 'Englishman',
+            spaniard: 'Spaniard',
+            ukrainian: 'Ukrainian',
+            japanese: 'Japanese',
+            norwegian: 'Norwegian'
+        }[idx] for idx in (water, zebra)]
+        for (red, green, ivory, yellow, blue) in orderings
+        if just_right_of(green, ivory)
+        for (english_man, spaniard, ukrainian, japanese, norwegian) in orderings
+        if english_man is red if norwegian is first if next_to(norwegian, blue)
+        for (coffee, tea, milk, orange_juice, water) in orderings if coffee is green
+        if ukrainian is tea if milk is middle
+        for (old_gold, kools, chesterfields, lucky_strike, parliaments
+             ) in orderings if kools is yellow if lucky_strike is orange_juice
+        if japanese is parliaments
+        for (dog, snails, fox, horse, zebra) in orderings if spaniard is dog
+        if old_gold is snails if next_to(chesterfields, fox)
+        if next_to(kools, horse))
+    return result
+
+
+def drinks_water():
+    answer, _ = solution()
+    return answer
+
+
+def owns_zebra():
+    _, answer = solution()
+    return answer
+
+
+=== Source Interface ===
+def drinks_water():
+    pass
+
+
+def owns_zebra():
+    pass
+
+
+=== Target Interface ===
+package zebra
+
+type Solution struct {
+	DrinksWater string
+	OwnsZebra   string
+}
+
+func SolvePuzzle() Solution {
+	panic("Please implement the SolvePuzzle function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/zebra-puzzle/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from zebra_puzzle import (
+    drinks_water,
+    owns_zebra,
+)
+
+
+class ZebraPuzzleTest(unittest.TestCase):
+    def test_resident_who_drinks_water(self):
+        self.assertEqual(drinks_water(), "Norwegian")
+
+    def test_resident_who_owns_zebra(self):
+        self.assertEqual(owns_zebra(), "Japanese")
+
+
+=== Target Test Code ===
+package zebra
+
+import "testing"
+
+func TestSolvePuzzle(t *testing.T) {
+	expected := Solution{DrinksWater: "Norwegian", OwnsZebra: "Japanese"}
+	actual := SolvePuzzle()
+	if expected != actual {
+		t.Fatalf("FAILED:\nExpected: %#v\nActual: %#v",
+			expected, actual)
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		SolvePuzzle()
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/zebra-puzzle/.meta/example.go
+package meta
+
+import (
+	"fmt"
+	"math"
+)
+
+// Solution holds the answer to the Zebra Puzzle.
+// DrinksWater is the nationality of the person who drinks water.
+// OwnsZebra is the nationality of the person who owns the zebra.
+// This structure satisfies the interface provided.
+
+type Solution struct {
+	DrinksWater string
+	OwnsZebra   string
+}
+
+// justRightOf returns true if width is immediately right of height (i.e., width - height == 1).
+func justRightOf(width, height int) bool {
+	return width - height == 1
+}
+
+// nextTo returns true if the absolute difference between width and height is 1.
+func nextTo(width, height int) bool {
+	return int(math.Abs(float64(width-height))) == 1
+}
+
+// permutations generates all permutations of the slice nums.
+func permutations(nums []int) [][]int {
+	var helper func([]int, int)
+	res := [][]int{}
+
+	helper = func(arr []int, n int) {
+		if n == 1 {
+			// Make a copy of arr
+			temp := make([]int, len(arr))
+			copy(temp, arr)
+			res = append(res, temp)
+		} else {
+			for i := 0; i < n; i++ {
+				helper(arr, n-1)
+				if n%2 == 1 {
+					arr[0], arr[n-1] = arr[n-1], arr[0]
+				} else {
+					arr[i], arr[n-1] = arr[n-1], arr[i]
+				}
+			}
+		}
+	}
+
+	helper(nums, len(nums))
+	return res
+}
+
+// SolvePuzzle finds the solution to the Zebra Puzzle and returns the nationalities of the water drinker and zebra owner.
+// This is a translation of the Python solution adapted from Peter Norvig's solution.
+func SolvePuzzle() Solution {
+	// houses represent positions 0 to 4.
+	houses := []int{0, 1, 2, 3, 4}
+	first := 0
+	middle := 2
+	orderings := permutations(houses)
+
+	// Loop through all possible arrangements
+	for _, color := range orderings {
+		red, green, ivory, yellow, blue := color[0], color[1], color[2], color[3], color[4]
+		if !justRightOf(green, ivory) {
+			continue
+		}
+		for _, nat := range orderings {
+			english, spaniard, ukrainian, japanese, norwegian := nat[0], nat[1], nat[2], nat[3], nat[4]
+			if english != red || norwegian != first || !nextTo(norwegian, blue) {
+				continue
+			}
+			for _, bev := range orderings {
+				coffee, tea, milk, orangeJuice, water := bev[0], bev[1], bev[2], bev[3], bev[4]
+				if coffee != green || ukrainian != tea || milk != middle {
+					continue
+				}
+				for _, cig := range orderings {
+					oldGold, kools, chesterfields, luckyStrike, parliaments := cig[0], cig[1], cig[2], cig[3], cig[4]
+					if kools != yellow || luckyStrike != orangeJuice || japanese != parliaments {
+						continue
+					}
+					for _, pet := range orderings {
+						dog, snails, fox, horse, zebra := pet[0], pet[1], pet[2], pet[3], pet[4]
+						if spaniard != dog || oldGold != snails || !nextTo(chesterfields, fox) || !nextTo(kools, horse) {
+							continue
+						}
+						// Build a mapping from house position (from the nat ordering) to nationality name
+						mapping := map[int]string{
+							english:    "Englishman",
+							spaniard:   "Spaniard",
+							ukrainian:  "Ukrainian",
+							japanese:   "Japanese",
+							norwegian:  "Norwegian",
+						}
+						// The Python comprehension returns [mapping[water], mapping[zebra]]
+						drinksWater := mapping[water]
+						ownsZebra := mapping[zebra]
+						return Solution{DrinksWater: drinksWater, OwnsZebra: ownsZebra}
+					}
+				}
+			}
+		}
+	}
+
+	panic(fmt.Sprintf("No solution found"))
+}
+
+// drinksWater returns the nationality of the person who drinks water.
+func drinksWater() string {
+	sol := SolvePuzzle()
+	return sol.DrinksWater
+}
+
+// ownsZebra returns the nationality of the person who owns the zebra.
+func ownsZebra() string {
+	sol := SolvePuzzle()
+	return sol.OwnsZebra
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (zebra_puzzle.go) and zebra (zebra_puzzle_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/zebra-puzzle
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/zebra-puzzle/.meta/example.go
+package zebra
+
+import (
+	"fmt"
+	"math"
+)
+
+// Solution holds the answer to the Zebra Puzzle.
+// DrinksWater is the nationality of the person who drinks water.
+// OwnsZebra is the nationality of the person who owns the zebra.
+// This structure satisfies the interface provided.
+
+type Solution struct {
+	DrinksWater string
+	OwnsZebra   string
+}
+
+// justRightOf returns true if width is immediately right of height (i.e., width - height == 1).
+func justRightOf(width, height int) bool {
+	return width-height == 1
+}
+
+// nextTo returns true if the absolute difference between width and height is 1.
+func nextTo(width, height int) bool {
+	return int(math.Abs(float64(width-height))) == 1
+}
+
+// permutations generates all permutations of the slice nums.
+func permutations(nums []int) [][]int {
+	var res [][]int
+
+	var helper func([]int, int)
+	helper = func(arr []int, n int) {
+		if n == 1 {
+			temp := make([]int, len(arr))
+			copy(temp, arr)
+			res = append(res, temp)
+		} else {
+			for i := 0; i < n; i++ {
+				helper(arr, n-1)
+				if n%2 == 1 {
+					arr[0], arr[n-1] = arr[n-1], arr[0]
+				} else {
+					arr[i], arr[n-1] = arr[n-1], arr[i]
+				}
+			}
+		}
+	}
+
+	helper(nums, len(nums))
+	return res
+}
+
+// SolvePuzzle finds the solution to the Zebra Puzzle and returns the nationalities
+// of the water drinker and zebra owner. This is a translation from the Python solution
+// adapted from Peter Norvig's approach.
+func SolvePuzzle() Solution {
+	// houses represent positions 0 to 4.
+	houses := []int{0, 1, 2, 3, 4}
+	first := 0
+	middle := 2
+	orderings := permutations(houses)
+
+	// Loop through all possible arrangements
+	for _, colors := range orderings {
+		red, green, ivory, yellow, blue := colors[0], colors[1], colors[2], colors[3], colors[4]
+		if !justRightOf(green, ivory) {
+			continue
+		}
+		for _, nats := range orderings {
+			english, spaniard, ukrainian, japanese, norwegian := nats[0], nats[1], nats[2], nats[3], nats[4]
+			if english != red || norwegian != first || !nextTo(norwegian, blue) {
+				continue
+			}
+			for _, beverages := range orderings {
+				coffee, tea, milk, orangeJuice, water := beverages[0], beverages[1], beverages[2], beverages[3], beverages[4]
+				if coffee != green || ukrainian != tea || milk != middle {
+					continue
+				}
+				for _, smokes := range orderings {
+					oldGold, kools, chesterfields, luckyStrike, parliaments := smokes[0], smokes[1], smokes[2], smokes[3], smokes[4]
+					if kools != yellow || luckyStrike != orangeJuice || japanese != parliaments {
+						continue
+					}
+					for _, pets := range orderings {
+						dog, snails, fox, horse, zebraHouse := pets[0], pets[1], pets[2], pets[3], pets[4]
+						if spaniard != dog || oldGold != snails || !nextTo(chesterfields, fox) || !nextTo(kools, horse) {
+							continue
+						}
+						// Build a mapping from house position (from nat ordering) to nationality name
+						mapping := map[int]string{
+							english:   "Englishman",
+							spaniard:  "Spaniard",
+							ukrainian:"Ukrainian",
+							japanese:  "Japanese",
+							norwegian:"Norwegian",
+						}
+						drinksWater := mapping[water]
+						ownsZebra := mapping[zebraHouse]
+						return Solution{DrinksWater: drinksWater, OwnsZebra: ownsZebra}
+					}
+				}
+			}
+		}
+	}
+
+	panic(fmt.Sprintf("No solution found"))
+}
+
+// drinksWater returns the nationality of the person who drinks water.
+func drinksWater() string {
+	sol := SolvePuzzle()
+	return sol.DrinksWater
+}
+
+// ownsZebra returns the nationality of the person who owns the zebra.
+func ownsZebra() string {
+	sol := SolvePuzzle()
+	return sol.OwnsZebra
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/zebra-puzzle	0.271s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

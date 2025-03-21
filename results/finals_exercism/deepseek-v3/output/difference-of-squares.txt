@@ -1,0 +1,193 @@
+=== Initial Source Code ===
+Source file: exercises/practice/difference-of-squares/.meta/example.py
+def square_of_sum(number):
+    sum_ = number * (number + 1) / 2
+    return sum_ * sum_
+
+
+def sum_of_squares(number):
+    numerator = number * (number + 1) * (2 * number + 1)
+    return numerator / 6
+
+
+def difference_of_squares(number):
+    return square_of_sum(number) - sum_of_squares(number)
+
+
+=== Source Interface ===
+def square_of_sum(number):
+    pass
+
+
+def sum_of_squares(number):
+    pass
+
+
+def difference_of_squares(number):
+    pass
+
+
+=== Target Interface ===
+package diffsquares
+
+func SquareOfSum(n int) int {
+	panic("Please implement the SquareOfSum function")
+}
+
+func SumOfSquares(n int) int {
+	panic("Please implement the SumOfSquares function")
+}
+
+func Difference(n int) int {
+	panic("Please implement the Difference function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/difference-of-squares/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from difference_of_squares import (
+    difference_of_squares,
+    square_of_sum,
+    sum_of_squares,
+)
+
+
+class DifferenceOfSquaresTest(unittest.TestCase):
+    def test_square_of_sum_1(self):
+        self.assertEqual(square_of_sum(1), 1)
+
+    def test_square_of_sum_5(self):
+        self.assertEqual(square_of_sum(5), 225)
+
+    def test_square_of_sum_100(self):
+        self.assertEqual(square_of_sum(100), 25502500)
+
+    def test_sum_of_squares_1(self):
+        self.assertEqual(sum_of_squares(1), 1)
+
+    def test_sum_of_squares_5(self):
+        self.assertEqual(sum_of_squares(5), 55)
+
+    def test_sum_of_squares_100(self):
+        self.assertEqual(sum_of_squares(100), 338350)
+
+    def test_difference_of_squares_1(self):
+        self.assertEqual(difference_of_squares(1), 0)
+
+    def test_difference_of_squares_5(self):
+        self.assertEqual(difference_of_squares(5), 170)
+
+    def test_difference_of_squares_100(self):
+        self.assertEqual(difference_of_squares(100), 25164150)
+
+
+=== Target Test Code ===
+package diffsquares
+
+import (
+	"fmt"
+	"testing"
+)
+
+var tests = []struct{ input, squareOfSum, sumOfSquares int }{
+	{input: 5, squareOfSum: 225, sumOfSquares: 55},
+	{input: 10, squareOfSum: 3025, sumOfSquares: 385},
+	{input: 100, squareOfSum: 25502500, sumOfSquares: 338350},
+}
+
+func TestSquareOfSum(t *testing.T) {
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Square of sum from 1 to %d", test.input), func(t *testing.T) {
+			if got := SquareOfSum(test.input); got != test.squareOfSum {
+				t.Fatalf("SquareOfSum(%d) = %d, want: %d", test.input, got, test.squareOfSum)
+			}
+		})
+	}
+}
+
+func TestSumOfSquares(t *testing.T) {
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Sum of squares from 1 to %d", test.input), func(t *testing.T) {
+			if got := SumOfSquares(test.input); got != test.sumOfSquares {
+				t.Fatalf("SumOfSquares(%d) = %d, want: %d", test.input, got, test.sumOfSquares)
+			}
+		})
+	}
+}
+
+func TestDifference(t *testing.T) {
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Difference of SquareOfSum and SumOfSquares of value %d", test.input), func(t *testing.T) {
+			want := test.squareOfSum - test.sumOfSquares
+			if got := Difference(test.input); got != want {
+				t.Fatalf("Difference(%d) = %d, want: %d", test.input, got, want)
+			}
+		})
+	}
+}
+
+// Benchmark functions on just a single number (100, from the original PE problem)
+// to avoid overhead of iterating over tests.
+func BenchmarkSquareOfSum(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		SquareOfSum(100)
+	}
+}
+
+func BenchmarkSumOfSquares(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		SumOfSquares(100)
+	}
+}
+
+func BenchmarkDifference(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Difference(100)
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/difference-of-squares/.meta/example.go
+package diffsquares
+
+// SquareOfSum calculates the square of the sum of the first n natural numbers
+func SquareOfSum(n int) int {
+	sum := n * (n + 1) / 2
+	return sum * sum
+}
+
+// SumOfSquares calculates the sum of the squares of the first n natural numbers
+func SumOfSquares(n int) int {
+	numerator := n * (n + 1) * (2*n + 1)
+	return numerator / 6
+}
+
+// Difference calculates the difference between the square of the sum and the sum of the squares of the first n natural numbers
+func Difference(n int) int {
+	return SquareOfSum(n) - SumOfSquares(n)
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/difference-of-squares	0.277s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

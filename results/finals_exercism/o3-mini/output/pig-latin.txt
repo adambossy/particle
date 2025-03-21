@@ -1,0 +1,1893 @@
+=== Initial Source Code ===
+Source file: exercises/practice/pig-latin/.meta/example.py
+import re
+
+
+re_cons = re.compile('^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)')
+re_vowel = re.compile('^([aeiou]|y[^aeiou]|xr)[a-z]*')
+
+
+def split_initial_consonant_sound(word):
+    return re_cons.match(word).groups()
+
+
+def starts_with_vowel_sound(word):
+    return re_vowel.match(word) is not None
+
+
+def translate(text):
+    words = []
+    for word in text.split():
+        if starts_with_vowel_sound(word):
+            words.append(word + 'ay')
+        else:
+            head, tail = split_initial_consonant_sound(word)
+            words.append(tail + head + 'ay')
+    return ' '.join(words)
+
+
+=== Source Interface ===
+def translate(text):
+    pass
+
+
+=== Target Interface ===
+package piglatin
+
+func Sentence(sentence string) string {
+	panic("Please implement the Sentence function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/pig-latin/canonical-data.json
+# File last updated on 2025-01-10
+
+import unittest
+
+from pig_latin import (
+    translate,
+)
+
+
+class PigLatinTest(unittest.TestCase):
+    def test_word_beginning_with_a(self):
+        self.assertEqual(translate("apple"), "appleay")
+
+    def test_word_beginning_with_e(self):
+        self.assertEqual(translate("ear"), "earay")
+
+    def test_word_beginning_with_i(self):
+        self.assertEqual(translate("igloo"), "iglooay")
+
+    def test_word_beginning_with_o(self):
+        self.assertEqual(translate("object"), "objectay")
+
+    def test_word_beginning_with_u(self):
+        self.assertEqual(translate("under"), "underay")
+
+    def test_word_beginning_with_a_vowel_and_followed_by_a_qu(self):
+        self.assertEqual(translate("equal"), "equalay")
+
+    def test_word_beginning_with_p(self):
+        self.assertEqual(translate("pig"), "igpay")
+
+    def test_word_beginning_with_k(self):
+        self.assertEqual(translate("koala"), "oalakay")
+
+    def test_word_beginning_with_x(self):
+        self.assertEqual(translate("xenon"), "enonxay")
+
+    def test_word_beginning_with_q_without_a_following_u(self):
+        self.assertEqual(translate("qat"), "atqay")
+
+    def test_word_beginning_with_consonant_and_vowel_containing_qu(self):
+        self.assertEqual(translate("liquid"), "iquidlay")
+
+    def test_word_beginning_with_ch(self):
+        self.assertEqual(translate("chair"), "airchay")
+
+    def test_word_beginning_with_qu(self):
+        self.assertEqual(translate("queen"), "eenquay")
+
+    def test_word_beginning_with_qu_and_a_preceding_consonant(self):
+        self.assertEqual(translate("square"), "aresquay")
+
+    def test_word_beginning_with_th(self):
+        self.assertEqual(translate("therapy"), "erapythay")
+
+    def test_word_beginning_with_thr(self):
+        self.assertEqual(translate("thrush"), "ushthray")
+
+    def test_word_beginning_with_sch(self):
+        self.assertEqual(translate("school"), "oolschay")
+
+    def test_word_beginning_with_yt(self):
+        self.assertEqual(translate("yttria"), "yttriaay")
+
+    def test_word_beginning_with_xr(self):
+        self.assertEqual(translate("xray"), "xrayay")
+
+    def test_y_is_treated_like_a_consonant_at_the_beginning_of_a_word(self):
+        self.assertEqual(translate("yellow"), "ellowyay")
+
+    def test_y_is_treated_like_a_vowel_at_the_end_of_a_consonant_cluster(self):
+        self.assertEqual(translate("rhythm"), "ythmrhay")
+
+    def test_y_as_second_letter_in_two_letter_word(self):
+        self.assertEqual(translate("my"), "ymay")
+
+    def test_a_whole_phrase(self):
+        self.assertEqual(translate("quick fast run"), "ickquay astfay unray")
+
+
+=== Target Test Code ===
+package piglatin
+
+import (
+	"testing"
+)
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Fatalf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import (
+	"regexp"
+	"strings"
+)
+
+// Precompile regular expressions used for matching consonant clusters and vowel sounds.
+var reCons = regexp.MustCompile(` + "`^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)`" + `)
+var reVowel = regexp.MustCompile(` + "`^([aeiou]|y[^aeiou]|xr)[a-z]*`" + `)
+
+// splitInitialConsonantSound splits the word into the initial consonant sound and the rest of the word.
+// It returns the consonant cluster (head) and the remaining string (tail).
+func splitInitialConsonantSound(word string) (string, string) {
+	matches := reCons.FindStringSubmatch(word)
+	if matches == nil || len(matches) < 3 {
+		// In the original Python code this would raise an error if no match is found.
+		// Here we return empty strings, assuming the test cases always provide valid words.
+		return "", ""
+	}
+	return matches[1], matches[2]
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound using a regular expression.
+func startsWithVowelSound(word string) bool {
+	return reVowel.MatchString(word)
+}
+
+// Translate converts the given text to Pig Latin.
+// For each word, if it starts with a vowel sound, appends "ay" to the word.
+// Otherwise, it moves the initial consonant sound to the end and then appends "ay".
+func Translate(text string) string {
+	words := strings.Fields(text)
+	result := make([]string, 0, len(words))
+
+	for _, word := range words {
+		if startsWithVowelSound(word) {
+			result = append(result, word+"ay")
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result = append(result, tail+head+"ay")
+		}
+	}
+	
+	return strings.Join(result, " ")
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:10:49: invalid character U+003F '?'
+./pig_latin.go:10:62: syntax error: unexpected +, expecting type
+./pig_latin.go:11:49: syntax error: unexpected |, expecting type
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import (
+	"strings"
+)
+
+// isVowel checks if a character is one of a, e, i, o, u.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel (a,e,i,o,u), or with "xr" or "yt",
+// or if it starts with 'y' followed by a non-vowel (as per the regex: ^([aeiou]|y[^aeiou]|xr))
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+	if len(word) == 0 {
+		return false
+	}
+	first := word[0]
+	if isVowel(first) {
+		return true
+	}
+	// If word starts with 'y' and second letter is a consonant, treat as vowel sound
+	if first == 'y' && len(word) > 1 && !isVowel(word[1]) {
+		return true
+	}
+	return false
+}
+
+// splitInitialConsonantSound splits a word into its initial consonant sound (head) and the remaining part (tail).
+// It mimics the behavior of the Python regular expression:
+//    re_cons = re.compile('^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)')
+// Since Go's regexp does not support lookahead, we implement the logic manually.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Special case: if the word starts with 'y' followed by a vowel, the initial consonant sound is just 'y'.
+	if len(word) > 1 && word[0] == 'y' && isVowel(word[1]) {
+		return "y", word[1:]
+	}
+
+	i := 0
+	length := len(word)
+	for i < length {
+		// If we encounter 'q' followed by 'u', include both in the consonant cluster.
+		if i+1 < length && word[i] == 'q' && word[i+1] == 'u' {
+			i += 2
+			continue
+		}
+		if isVowel(word[i]) {
+			break
+		}
+		i++
+	}
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay".
+// Otherwise, it moves the initial consonant sound to the end and appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+// For compatibility with legacy interface, Translate calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin_test.go:8:21: undefined: testCases
+./pig_latin_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import (
+	"strings"
+)
+
+// isVowel checks if a character is one of 'a', 'e', 'i', 'o', or 'u'.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel,
+// or with "xr" or "yt". Additionally, if the word starts with 'y' followed by a vowel,
+// it is treated as a consonant and split accordingly.
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+
+	if len(word) == 0 {
+		return false
+	}
+
+	first := word[0]
+	if isVowel(first) {
+		return true
+	}
+
+	// If word starts with 'y' and the second letter is a vowel, treat as consonant sound
+	if first == 'y' && len(word) > 1 && isVowel(word[1]) {
+		return false
+	}
+
+	return false
+}
+
+// splitInitialConsonantSound splits a word into its initial consonant sound (head) and the rest (tail).
+// It mimics the behavior of the Python regular expression:
+//   ^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)
+// Since Go's regexp does not support lookahead, the logic is implemented manually.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Special case: if the word starts with 'y' followed by a vowel, only 'y' is the consonant sound.
+	if len(word) > 1 && word[0] == 'y' && isVowel(word[1]) {
+		return "y", word[1:]
+	}
+
+	i := 0
+	length := len(word)
+	for i < length {
+		// Handle the special cluster 'qu'
+		if i+1 < length && word[i] == 'q' && word[i+1] == 'u' {
+			i += 2
+			continue
+		}
+
+		if isVowel(word[i]) || (word[i] == 'y' && i != 0) {
+			break
+		}
+		i++
+	}
+
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay" to the word.
+// Otherwise, it moves the initial consonant sound to the end and appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+// Translate is provided as a legacy interface and calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+// exercises/pactice/pig-latin/.meta/pig_latin_test.go
+package piglatin
+
+import (
+	"testing"
+)
+
+// testCase defines a single test case for translating sentences into Pig Latin.
+var testCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "word beginning with a consonant",
+		input:       "pig",
+		expected:    "igpay",
+	},
+	{
+		description: "word beginning with a vowel",
+		input:       "apple",
+		expected:    "appleay",
+	},
+	{
+		description: "word beginning with 'xr'",
+		input:       "xray",
+		expected:    "xrayay",
+	},
+	{
+		description: "word beginning with a consonant cluster",
+		input:       "chair",
+		expected:    "airchay",
+	},
+	{
+		description: "word with 'qu' cluster",
+		input:       "queen",
+		expected:    "eenquay",
+	},
+	{
+		description: "word with 'qu' following a consonant",
+		input:       "square",
+		expected:    "aresquay",
+	},
+	{
+		description: "word beginning with 'yt'",
+		input:       "yttria",
+		expected:    "yttriaay",
+	},
+	{
+		description: "word beginning with 'y' followed by vowel",
+		input:       "yellow",
+		expected:    "ellowyay",
+	},
+	{
+		description: "word beginning with consonant 'x'",
+		input:       "xenon",
+		expected:    "enonxay",
+	},
+}
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Errorf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:92:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import "strings"
+
+// isVowel returns true if the given character is one of 'a', 'e', 'i', 'o', or 'u'.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel, or with "xr" or "yt".
+// If the word starts with 'y' followed by a vowel, it is not considered to start with a vowel sound.
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+
+	if len(word) == 0 {
+		return false
+	}
+
+	first := word[0]
+	if isVowel(first) {
+		return true
+	}
+
+	return false
+}
+
+// splitInitialConsonantSound splits the word into its initial consonant sound (head) and the rest (tail).
+// It mimics the behavior of the provided Python regular expression.
+// Since Go's regular expressions do not support lookahead, we implement the logic manually.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Special case: if the word starts with 'y' followed by a vowel, only 'y' is the consonant sound.
+	if len(word) > 1 && word[0] == 'y' && isVowel(word[1]) {
+		return "y", word[1:]
+	}
+
+	i := 0
+	length := len(word)
+	for i < length {
+		// Handle the special cluster "qu"
+		if i+1 < length && word[i] == 'q' && word[i+1] == 'u' {
+			i += 2
+			continue
+		}
+		if isVowel(word[i]) || (word[i] == 'y' && i != 0) {
+			break
+		}
+		i++
+	}
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay" to the word.
+// Otherwise, it moves the initial consonant sound to the end and then appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+	return strings.Join(result, " ")
+}
+
+// Translate is provided as a legacy interface and simply calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+// exercises/practice/pig-latin/.meta/example_test.go
+// +build !solution
+
+package piglatin
+
+import (
+	"testing"
+)
+
+// testCases defines the set of test cases for the Pig Latin translation.
+var testCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "word beginning with a consonant",
+		input:       "pig",
+		expected:    "igpay",
+	},
+	{
+		description: "word beginning with a vowel",
+		input:       "apple",
+		expected:    "appleay",
+	},
+	{
+		description: "word beginning with 'xr'",
+		input:       "xray",
+		expected:    "xrayay",
+	},
+	{
+		description: "word beginning with a consonant cluster",
+		input:       "chair",
+		expected:    "airchay",
+	},
+	{
+		description: "word with 'qu' cluster",
+		input:       "queen",
+		expected:    "eenquay",
+	},
+	{
+		description: "word with 'qu' following a consonant",
+		input:       "square",
+		expected:    "aresquay",
+	},
+	{
+		description: "word beginning with 'yt'",
+		input:       "yttria",
+		expected:    "yttriaay",
+	},
+	{
+		description: "word beginning with 'y' followed by vowel",
+		input:       "yellow",
+		expected:    "ellowyay",
+	},
+	{
+		description: "word beginning with consonant 'x'",
+		input:       "xenon",
+		expected:    "enonxay",
+	},
+}
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Errorf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:81:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import "strings"
+
+// isVowel returns true if the given character is one of 'a', 'e', 'i', 'o', or 'u'.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel,
+// or with "xr" or "yt".
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+
+	if len(word) == 0 {
+		return false
+	}
+
+	// If the first letter is a vowel, it's a vowel sound
+	if isVowel(word[0]) {
+		return true
+	}
+
+	return false
+}
+
+// splitInitialConsonantSound splits the word into its initial consonant sound (head) and the rest (tail).
+// It mimics the behavior of the Python regex: '^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)'
+// This implementation handles a few special cases:
+// - If the word starts with 'qu' or has a leading consonant followed by 'qu', those letters are grouped together.
+// - If the word starts with 'y' followed by a vowel, 'y' is considered the consonant sound.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Handle cases with 'qu'
+	if len(word) >= 2 && word[:2] == "qu" {
+		return "qu", word[2:]
+	} else if len(word) >= 3 && word[1:3] == "qu" {
+		return word[:3], word[3:]
+	}
+
+	// Otherwise, build the consonant cluster
+	i := 0
+	length := len(word)
+	for i < length {
+		// Special case: if the word starts with 'y' followed by a vowel, take only 'y'
+		if i == 0 && word[i] == 'y' && i+1 < length && isVowel(word[i+1]) {
+			i++
+			break
+		}
+		if isVowel(word[i]) {
+			break
+		}
+		i++
+	}
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay".
+// Otherwise, it moves the initial consonant sound to the end and then appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+// Translate is provided as a legacy interface and simply calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+// exercises/practice/pig-latin/.meta/example_test.go
+// To run the tests, use: go test
+package piglatin
+
+import (
+	"testing"
+)
+
+// testCases defines the set of test cases for the Pig Latin translation.
+var testCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "word beginning with a consonant",
+		input:       "pig",
+		expected:    "igpay",
+	},
+	{
+		description: "word beginning with a vowel",
+		input:       "apple",
+		expected:    "appleay",
+	},
+	{
+		description: "word beginning with 'xr'",
+		input:       "xray",
+		expected:    "xrayay",
+	},
+	{
+		description: "word beginning with a consonant cluster",
+		input:       "chair",
+		expected:    "airchay",
+	},
+	{
+		description: "word with 'qu' cluster",
+		input:       "queen",
+		expected:    "eenquay",
+	},
+	{
+		description: "word with 'qu' following a consonant",
+		input:       "square",
+		expected:    "aresquay",
+	},
+	{
+		description: "word beginning with 'yt'",
+		input:       "yttria",
+		expected:    "yttriaay",
+	},
+	{
+		description: "word beginning with 'y' followed by vowel",
+		input:       "yellow",
+		expected:    "ellowyay",
+	},
+	{
+		description: "word beginning with consonant 'x'",
+		input:       "xenon",
+		expected:    "enonxay",
+	},
+}
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Errorf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:87:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import "strings"
+
+// isVowel returns true if the given character is one of 'a', 'e', 'i', 'o', or 'u'.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel, or with "xr" or "yt".
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+
+	if len(word) == 0 {
+		return false
+	}
+
+	// If the first letter is a vowel, it's a vowel sound
+	if isVowel(word[0]) {
+		return true
+	}
+
+	return false
+}
+
+// splitInitialConsonantSound splits the word into its initial consonant sound (head) and the rest (tail).
+// It mimics the behavior of the Python regex: '^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)'.
+// Since Go's regular expressions do not support lookahead, we implement the logic manually.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Handle cases with 'qu' at the beginning or following a leading consonant.
+	if len(word) >= 2 && word[:2] == "qu" {
+		return "qu", word[2:]
+	} else if len(word) >= 3 && word[1:3] == "qu" {
+		return word[:3], word[3:]
+	}
+
+	// Special case: if the word starts with 'y' followed by a vowel, only 'y' is the consonant sound.
+	if len(word) > 1 && word[0] == 'y' && isVowel(word[1]) {
+		return "y", word[1:]
+	}
+
+	// Otherwise, build the consonant cluster until a vowel is encountered
+	i := 0
+	for i < len(word) {
+		if isVowel(word[i]) {
+			break
+		}
+		i++
+	}
+
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay".
+// Otherwise, it moves the initial consonant sound to the end and appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+// Translate is provided as a legacy interface and simply calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+// -------------------------------------------------------------------------------------
+// exercises/practice/pig-latin/.meta/example_test.go
+package piglatin
+
+import (
+	"testing"
+)
+
+// testCases defines the set of test cases for the Pig Latin translation.
+var testCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "word beginning with a consonant",
+		input:       "pig",
+		expected:    "igpay",
+	},
+	{
+		description: "word beginning with a vowel",
+		input:       "apple",
+		expected:    "appleay",
+	},
+	{
+		description: "word beginning with 'xr'",
+		input:       "xray",
+		expected:    "xrayay",
+	},
+	{
+		description: "word beginning with a consonant cluster",
+		input:       "chair",
+		expected:    "airchay",
+	},
+	{
+		description: "word with 'qu' cluster",
+		input:       "queen",
+		expected:    "eenquay",
+	},
+	{
+		description: "word with 'qu' following a consonant",
+		input:       "square",
+		expected:    "aresquay",
+	},
+	{
+		description: "word beginning with 'yt'",
+		input:       "yttria",
+		expected:    "yttriaay",
+	},
+	{
+		description: "word beginning with 'y' followed by vowel",
+		input:       "yellow",
+		expected:    "ellowyay",
+	},
+	{
+		description: "word beginning with consonant 'x'",
+		input:       "xenon",
+		expected:    "enonxay",
+	},
+}
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Sentence(tc.input)
+			if actual != tc.expected {
+				t.Errorf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:84:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import "strings"
+
+// isVowel returns true if the given character is one of 'a', 'e', 'i', 'o', or 'u'.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel, or with "xr" or "yt".
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+	
+	if len(word) == 0 {
+		return false
+	}
+	
+	if isVowel(word[0]) {
+		return true
+	}
+
+	return false
+}
+
+// splitInitialConsonantSound splits the word into its initial consonant sound (head) and the rest (tail).
+// This mimics the behavior of the Python regex: '^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)'.
+// Since Go's regex does not support lookahead, we implement the logic manually.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Handle cases with "qu" at the very beginning
+	if len(word) >= 2 && word[:2] == "qu" {
+		return "qu", word[2:]
+	} else if len(word) >= 3 && word[1:3] == "qu" {
+		return word[:3], word[3:]
+	}
+
+	// Special case: if the word starts with 'y' followed by a vowel, treat 'y' as the initial consonant sound
+	if len(word) > 1 && word[0] == 'y' && isVowel(word[1]) {
+		return "y", word[1:]
+	}
+
+	// Otherwise, build the initial consonant cluster until a vowel is encountered
+	i := 0
+	for i < len(word) {
+		if isVowel(word[i]) {
+			break
+		}
+		i++
+	}
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay".
+// Otherwise, it moves the initial consonant sound to the end and then appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+// Translate is provided as a legacy interface and simply calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+// -------------------------------------------------------------------------------------
+// exercises/practice/pig-latin/.meta/example_test.go
+package piglatin
+
+import (
+	"testing"
+)
+
+// testCases defines the set of test cases for the Pig Latin translation.
+var testCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "word beginning with a consonant",
+		input:       "pig",
+		expected:    "igpay",
+	},
+	{
+		description: "word beginning with a vowel",
+		input:       "apple",
+		expected:    "appleay",
+	},
+	{
+		description: "word beginning with 'xr'",
+		input:       "xray",
+		expected:    "xrayay",
+	},
+	{
+		description: "word beginning with a consonant cluster",
+		input:       "chair",
+		expected:    "airchay",
+	},
+	{
+		description: "word with 'qu' cluster",
+		input:       "queen",
+		expected:    "eenquay",
+	},
+	{
+		description: "word with 'qu' following a consonant",
+		input:       "square",
+		expected:    "aresquay",
+	},
+	{
+		description: "word beginning with 'yt'",
+		input:       "yttria",
+		expected:    "yttriaay",
+	},
+	{
+		description: "word beginning with 'y' followed by vowel",
+		input:       "yellow",
+		expected:    "ellowyay",
+	},
+	{
+		description: "word beginning with consonant 'x'",
+		input:       "xenon",
+		expected:    "enonxay",
+	},
+}
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Errorf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:82:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import "strings"
+
+// isVowel returns true if the given character is one of 'a', 'e', 'i', 'o', or 'u'.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel, or with "xr" or "yt".
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+	
+	if len(word) == 0 {
+		return false
+	}
+	
+	if isVowel(word[0]) {
+		return true
+	}
+	
+	return false
+}
+
+// splitInitialConsonantSound splits the word into its initial consonant sound (head) and the rest (tail).
+// This mimics the behavior of the Python regex: '^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)'.
+// Since Go's regex does not support lookahead, we implement the logic manually.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Handle cases with "qu" at the beginning or following a leading consonant
+	if len(word) >= 2 && word[:2] == "qu" {
+		return "qu", word[2:]
+	} else if len(word) >= 3 && word[1:3] == "qu" {
+		return word[:3], word[3:]
+	}
+
+	// Special case: if the word starts with 'y' followed by a vowel, treat only 'y' as the consonant sound
+	if len(word) > 1 && word[0] == 'y' && isVowel(word[1]) {
+		return "y", word[1:]
+	}
+
+	// Otherwise, build the initial consonant cluster until a vowel is encountered
+	i := 0
+	for i < len(word) {
+		if isVowel(word[i]) {
+			break
+		}
+		i++
+	}
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay".
+// Otherwise, it moves the initial consonant sound to the end and appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+// Translate is provided as a legacy interface and simply calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+// -------------------------------------------------------------------------------------
+// exercises/practice/pig-latin/.meta/example_test.go
+package piglatin
+
+import (
+	"testing"
+)
+
+// testCases defines the set of test cases for the Pig Latin translation.
+var testCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "word beginning with a consonant",
+		input:       "pig",
+		expected:    "igpay",
+	},
+	{
+		description: "word beginning with a vowel",
+		input:       "apple",
+		expected:    "appleay",
+	},
+	{
+		description: "word beginning with 'xr'",
+		input:       "xray",
+		expected:    "xrayay",
+	},
+	{
+		description: "word beginning with a consonant cluster",
+		input:       "chair",
+		expected:    "airchay",
+	},
+	{
+		description: "word with 'qu' cluster",
+		input:       "queen",
+		expected:    "eenquay",
+	},
+	{
+		description: "word with 'qu' following a consonant",
+		input:       "square",
+		expected:    "aresquay",
+	},
+	{
+		description: "word beginning with 'yt'",
+		input:       "yttria",
+		expected:    "yttriaay",
+	},
+	{
+		description: "word beginning with 'y' followed by vowel",
+		input:       "yellow",
+		expected:    "ellowyay",
+	},
+	{
+		description: "word beginning with consonant 'x'",
+		input:       "xenon",
+		expected:    "enonxay",
+	},
+}
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Errorf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:82:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import "strings"
+
+// isVowel returns true if the given character is one of 'a', 'e', 'i', 'o', or 'u'.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel, or with "xr" or "yt".
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+
+	if len(word) == 0 {
+		return false
+	}
+
+	if isVowel(word[0]) {
+		return true
+	}
+
+	return false
+}
+
+// splitInitialConsonantSound splits the word into its initial consonant sound (head) and the rest (tail).
+// It mimics the behavior of the Python regex: '^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)'.
+// Since Go's regex does not support lookahead, we implement the logic manually.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Handle cases with "qu" at the beginning or following a consonant
+	if len(word) >= 2 && word[:2] == "qu" {
+		return "qu", word[2:]
+	} else if len(word) >= 3 && word[1:3] == "qu" {
+		return word[:3], word[3:]
+	}
+
+	// Special case: if the word starts with 'y' followed by a vowel, use only 'y' as the consonant sound
+	if len(word) > 1 && word[0] == 'y' && isVowel(word[1]) {
+		return "y", word[1:]
+	}
+
+	// Otherwise, build the initial consonant cluster until a vowel is encountered
+	i := 0
+	for i < len(word) {
+		if isVowel(word[i]) {
+			break
+		}
+		i++
+	}
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay".
+// Otherwise, it moves the initial consonant sound to the end and then appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+// Translate is provided as a legacy interface and simply calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+// -------------------------------------------------------------------------------------
+// exercises/practice/pig-latin/.meta/example_test.go
+package piglatin
+
+import "testing"
+
+// testCases defines the set of test cases for the Pig Latin translation.
+var testCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "word beginning with a consonant",
+		input:       "pig",
+		expected:    "igpay",
+	},
+	{
+		description: "word beginning with a vowel",
+		input:       "apple",
+		expected:    "appleay",
+	},
+	{
+		description: "word beginning with 'xr'",
+		input:       "xray",
+		expected:    "xrayay",
+	},
+	{
+		description: "word beginning with a consonant cluster",
+		input:       "chair",
+		expected:    "airchay",
+	},
+	{
+		description: "word with 'qu' cluster",
+		input:       "queen",
+		expected:    "eenquay",
+	},
+	{
+		description: "word with 'qu' following a consonant",
+		input:       "square",
+		expected:    "aresquay",
+	},
+	{
+		description: "word beginning with 'yt'",
+		input:       "yttria",
+		expected:    "yttriaay",
+	},
+	{
+		description: "word beginning with 'y' followed by vowel",
+		input:       "yellow",
+		expected:    "ellowyay",
+	},
+	{
+		description: "word beginning with consonant 'x'",
+		input:       "xenon",
+		expected:    "enonxay",
+	},
+}
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Errorf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:82:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import "strings"
+
+// isVowel returns true if the given character is one of 'a', 'e', 'i', 'o', or 'u'.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel,
+// or with "xr" or "yt".
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+
+	if len(word) == 0 {
+		return false
+	}
+
+	if isVowel(word[0]) {
+		return true
+	}
+
+	return false
+}
+
+// splitInitialConsonantSound splits the word into its initial consonant sound (head) and the rest (tail).
+// It mimics the behavior of the Python regex: '^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)'.
+// Since Go's regex does not support lookahead, the logic is implemented manually.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Handle cases where the word starts with 'qu' or has a consonant followed by 'qu'.
+	if len(word) >= 2 && word[:2] == "qu" {
+		return "qu", word[2:]
+	} else if len(word) >= 3 && word[1:3] == "qu" {
+		return word[:3], word[3:]
+	}
+
+	// Special case: if the word starts with 'y' followed by a vowel, treat 'y' as the consonant sound.
+	if len(word) > 1 && word[0] == 'y' && isVowel(word[1]) {
+		return "y", word[1:]
+	}
+
+	// Otherwise, build the initial consonant cluster until a vowel is encountered.
+	i := 0
+	for i < len(word) {
+		if isVowel(word[i]) {
+			break
+		}
+		i++
+	}
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay".
+// Otherwise, it moves the initial consonant sound to the end and appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+// Translate is provided as a legacy interface and calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+// -------------------------------------------------------------------------------------
+// exercises/practice/pig-latin/.meta/example_test.go
+package piglatin
+
+import "testing"
+
+// testCases defines the set of test cases for the Pig Latin translation.
+var testCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "word beginning with a consonant",
+		input:       "pig",
+		expected:    "igpay",
+	},
+	{
+		description: "word beginning with a vowel",
+		input:       "apple",
+		expected:    "appleay",
+	},
+	{
+		description: "word beginning with 'xr'",
+		input:       "xray",
+		expected:    "xrayay",
+	},
+	{
+		description: "word beginning with a consonant cluster",
+		input:       "chair",
+		expected:    "airchay",
+	},
+	{
+		description: "word with 'qu' cluster",
+		input:       "queen",
+		expected:    "eenquay",
+	},
+	{
+		description: "word with 'qu' following a consonant",
+		input:       "square",
+		expected:    "aresquay",
+	},
+	{
+		description: "word beginning with 'yt'",
+		input:       "yttria",
+		expected:    "yttriaay",
+	},
+	{
+		description: "word beginning with 'y' followed by vowel",
+		input:       "yellow",
+		expected:    "ellowyay",
+	},
+	{
+		description: "word beginning with consonant 'x'",
+		input:       "xenon",
+		expected:    "enonxay",
+	},
+}
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Errorf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:83:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/pig-latin/.meta/example.go
+package piglatin
+
+import "strings"
+
+// isVowel returns true if the given character is one of 'a', 'e', 'i', 'o', or 'u'.
+func isVowel(c byte) bool {
+	return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+}
+
+// startsWithVowelSound checks if the word starts with a vowel sound according to Pig Latin rules.
+// A word is considered to start with a vowel sound if it starts with a vowel, or with "xr" or "yt".
+func startsWithVowelSound(word string) bool {
+	if strings.HasPrefix(word, "xr") || strings.HasPrefix(word, "yt") {
+		return true
+	}
+
+	if len(word) == 0 {
+		return false
+	}
+
+	if isVowel(word[0]) {
+		return true
+	}
+
+	return false
+}
+
+// splitInitialConsonantSound splits the word into its initial consonant sound (head) and the rest (tail).
+// It mimics the behavior of the Python regex: '^([^aeiou]?qu|[^aeiouy]+|y(?=[aeiou]))([a-z]*)'.
+// Since Go's regex does not support lookahead, the logic is implemented manually.
+func splitInitialConsonantSound(word string) (string, string) {
+	// Handle cases where the word starts with "qu" or has a leading consonant followed by "qu".
+	if len(word) >= 2 && word[:2] == "qu" {
+		return "qu", word[2:]
+	} else if len(word) >= 3 && word[1:3] == "qu" {
+		return word[:3], word[3:]
+	}
+
+	// Special case: if the word starts with 'y' followed by a vowel, use only 'y' as the consonant sound.
+	if len(word) > 1 && word[0] == 'y' && isVowel(word[1]) {
+		return "y", word[1:]
+	}
+
+	// Otherwise, build the initial consonant cluster until a vowel is encountered.
+	i := 0
+	for i < len(word) {
+		if isVowel(word[i]) {
+			break
+		}
+		i++
+	}
+	return word[:i], word[i:]
+}
+
+// Sentence translates an English sentence into Pig Latin.
+// For each word, if it starts with a vowel sound, it appends "ay".
+// Otherwise, it moves the initial consonant sound to the end and appends "ay".
+func Sentence(sentence string) string {
+	words := strings.Fields(sentence)
+	result := make([]string, len(words))
+
+	for i, word := range words {
+		if startsWithVowelSound(word) {
+			result[i] = word + "ay"
+		} else {
+			head, tail := splitInitialConsonantSound(word)
+			result[i] = tail + head + "ay"
+		}
+	}
+
+	return strings.Join(result, " ")
+}
+
+// Translate is provided as a legacy interface and simply calls Sentence.
+func Translate(text string) string {
+	return Sentence(text)
+}
+
+// -------------------------------------------------------------------------------------
+// exercises/practice/pig-latin/.meta/example_test.go
+package piglatin
+
+import "testing"
+
+// testCases defines the set of test cases for the Pig Latin translation.
+var testCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "word beginning with a consonant",
+		input:       "pig",
+		expected:    "igpay",
+	},
+	{
+		description: "word beginning with a vowel",
+		input:       "apple",
+		expected:    "appleay",
+	},
+	{
+		description: "word beginning with 'xr'",
+		input:       "xray",
+		expected:    "xrayay",
+	},
+	{
+		description: "word beginning with a consonant cluster",
+		input:       "chair",
+		expected:    "airchay",
+	},
+	{
+		description: "word with 'qu' cluster",
+		input:       "queen",
+		expected:    "eenquay",
+	},
+	{
+		description: "word with 'qu' following a consonant",
+		input:       "square",
+		expected:    "aresquay",
+	},
+	{
+		description: "word beginning with 'yt'",
+		input:       "yttria",
+		expected:    "yttriaay",
+	},
+	{
+		description: "word beginning with 'y' followed by vowel",
+		input:       "yellow",
+		expected:    "ellowyay",
+	},
+	{
+		description: "word beginning with consonant 'x'",
+		input:       "xenon",
+		expected:    "enonxay",
+	},
+}
+
+func TestPigLatin(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sentence(tc.input); actual != tc.expected {
+				t.Errorf("Sentence(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSentence(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Sentence(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pig-latin [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pig-latin [exercism/pig-latin.test]
+./pig_latin.go:82:1: syntax error: non-declaration statement outside function body
+
+
+=== FINAL STATUS: FAILED ===

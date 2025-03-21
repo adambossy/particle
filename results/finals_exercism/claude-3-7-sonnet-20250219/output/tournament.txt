@@ -1,0 +1,690 @@
+=== Initial Source Code ===
+Source file: exercises/practice/tournament/.meta/example.py
+from collections import defaultdict
+
+RESULTS = dict(win=0, draw=1, loss=2)
+
+
+def invert_result(result):
+    if result == 0:
+        return 2
+    elif result == 2:
+        return 0
+    return result
+
+
+def parse_game(game_line):
+    game = game_line.split(';')
+    if len(game) == 3 and game[2] in RESULTS:
+        result = RESULTS[game[2]]
+        return (game[0], result), (game[1], invert_result(result))
+    return []
+
+
+def calculate_points(stats):
+    return stats[0] * 3 + stats[1]
+
+
+def format_table(results):
+    table = ['Team                           | MP |  W |  D |  L |  P']
+
+    for team, games in sorted(
+            results.items(), key=lambda group: (-calculate_points(group[1]), group[0])):
+        team_fmt = '{0:30} | {1:2} | {3:2} | {4:2} | {5:2} | {2:2}'
+        table.append(
+            team_fmt.format(team, sum(games), calculate_points(games), *games))
+    return table
+
+
+def tally(data):
+    table = defaultdict(lambda: [0, 0, 0])
+
+    for line in data:
+        for team, result in parse_game(line):
+            table[team][result] += 1
+
+    return format_table(table)
+
+
+=== Source Interface ===
+def tally(rows):
+    pass
+
+
+=== Target Interface ===
+package tournament
+
+import "io"
+
+func Tally(reader io.Reader, writer io.Writer) error {
+	panic("Please implement the Tally function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/tournament/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from tournament import (
+    tally,
+)
+
+
+class TournamentTest(unittest.TestCase):
+    def test_just_the_header_if_no_input(self):
+        results = []
+        table = ["Team                           | MP |  W |  D |  L |  P"]
+        self.assertEqual(tally(results), table)
+
+    def test_a_win_is_three_points_a_loss_is_zero_points(self):
+        results = ["Allegoric Alaskans;Blithering Badgers;win"]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Allegoric Alaskans             |  1 |  1 |  0 |  0 |  3",
+            "Blithering Badgers             |  1 |  0 |  0 |  1 |  0",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_a_win_can_also_be_expressed_as_a_loss(self):
+        results = ["Blithering Badgers;Allegoric Alaskans;loss"]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Allegoric Alaskans             |  1 |  1 |  0 |  0 |  3",
+            "Blithering Badgers             |  1 |  0 |  0 |  1 |  0",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_a_different_team_can_win(self):
+        results = ["Blithering Badgers;Allegoric Alaskans;win"]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Blithering Badgers             |  1 |  1 |  0 |  0 |  3",
+            "Allegoric Alaskans             |  1 |  0 |  0 |  1 |  0",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_a_draw_is_one_point_each(self):
+        results = ["Allegoric Alaskans;Blithering Badgers;draw"]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Allegoric Alaskans             |  1 |  0 |  1 |  0 |  1",
+            "Blithering Badgers             |  1 |  0 |  1 |  0 |  1",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_there_can_be_more_than_one_match(self):
+        results = [
+            "Allegoric Alaskans;Blithering Badgers;win",
+            "Allegoric Alaskans;Blithering Badgers;win",
+        ]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Allegoric Alaskans             |  2 |  2 |  0 |  0 |  6",
+            "Blithering Badgers             |  2 |  0 |  0 |  2 |  0",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_there_can_be_more_than_one_winner(self):
+        results = [
+            "Allegoric Alaskans;Blithering Badgers;loss",
+            "Allegoric Alaskans;Blithering Badgers;win",
+        ]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Allegoric Alaskans             |  2 |  1 |  0 |  1 |  3",
+            "Blithering Badgers             |  2 |  1 |  0 |  1 |  3",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_there_can_be_more_than_two_teams(self):
+        results = [
+            "Allegoric Alaskans;Blithering Badgers;win",
+            "Blithering Badgers;Courageous Californians;win",
+            "Courageous Californians;Allegoric Alaskans;loss",
+        ]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Allegoric Alaskans             |  2 |  2 |  0 |  0 |  6",
+            "Blithering Badgers             |  2 |  1 |  0 |  1 |  3",
+            "Courageous Californians        |  2 |  0 |  0 |  2 |  0",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_typical_input(self):
+        results = [
+            "Allegoric Alaskans;Blithering Badgers;win",
+            "Devastating Donkeys;Courageous Californians;draw",
+            "Devastating Donkeys;Allegoric Alaskans;win",
+            "Courageous Californians;Blithering Badgers;loss",
+            "Blithering Badgers;Devastating Donkeys;loss",
+            "Allegoric Alaskans;Courageous Californians;win",
+        ]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Devastating Donkeys            |  3 |  2 |  1 |  0 |  7",
+            "Allegoric Alaskans             |  3 |  2 |  0 |  1 |  6",
+            "Blithering Badgers             |  3 |  1 |  0 |  2 |  3",
+            "Courageous Californians        |  3 |  0 |  1 |  2 |  1",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_incomplete_competition_not_all_pairs_have_played(self):
+        results = [
+            "Allegoric Alaskans;Blithering Badgers;loss",
+            "Devastating Donkeys;Allegoric Alaskans;loss",
+            "Courageous Californians;Blithering Badgers;draw",
+            "Allegoric Alaskans;Courageous Californians;win",
+        ]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Allegoric Alaskans             |  3 |  2 |  0 |  1 |  6",
+            "Blithering Badgers             |  2 |  1 |  1 |  0 |  4",
+            "Courageous Californians        |  2 |  0 |  1 |  1 |  1",
+            "Devastating Donkeys            |  1 |  0 |  0 |  1 |  0",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_ties_broken_alphabetically(self):
+        results = [
+            "Courageous Californians;Devastating Donkeys;win",
+            "Allegoric Alaskans;Blithering Badgers;win",
+            "Devastating Donkeys;Allegoric Alaskans;loss",
+            "Courageous Californians;Blithering Badgers;win",
+            "Blithering Badgers;Devastating Donkeys;draw",
+            "Allegoric Alaskans;Courageous Californians;draw",
+        ]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Allegoric Alaskans             |  3 |  2 |  1 |  0 |  7",
+            "Courageous Californians        |  3 |  2 |  1 |  0 |  7",
+            "Blithering Badgers             |  3 |  0 |  1 |  2 |  1",
+            "Devastating Donkeys            |  3 |  0 |  1 |  2 |  1",
+        ]
+        self.assertEqual(tally(results), table)
+
+    def test_ensure_points_sorted_numerically(self):
+        results = [
+            "Devastating Donkeys;Blithering Badgers;win",
+            "Devastating Donkeys;Blithering Badgers;win",
+            "Devastating Donkeys;Blithering Badgers;win",
+            "Devastating Donkeys;Blithering Badgers;win",
+            "Blithering Badgers;Devastating Donkeys;win",
+        ]
+        table = [
+            "Team                           | MP |  W |  D |  L |  P",
+            "Devastating Donkeys            |  5 |  4 |  0 |  1 | 12",
+            "Blithering Badgers             |  5 |  1 |  0 |  4 |  3",
+        ]
+        self.assertEqual(tally(results), table)
+
+
+=== Target Test Code ===
+package tournament
+
+import (
+	"bytes"
+	"fmt"
+	"strings"
+	"testing"
+)
+
+// Define a function Tally(io.Reader, io.Writer) error.
+//
+// Note that unlike other tracks the Go version of the tally function
+// should not ignore errors. It's not idiomatic Go to ignore errors.
+
+// These test what testers call the happy path, where there's no error.
+var happyTestCases = []struct {
+	description string
+	input       string
+	expected    string
+}{
+	{
+		description: "good",
+		input: `
+Allegoric Alaskians;Blithering Badgers;win
+Devastating Donkeys;Courageous Californians;draw
+Devastating Donkeys;Allegoric Alaskians;win
+Courageous Californians;Blithering Badgers;loss
+Blithering Badgers;Devastating Donkeys;loss
+Allegoric Alaskians;Courageous Californians;win
+`,
+		expected: `
+Team                           | MP |  W |  D |  L |  P
+Devastating Donkeys            |  3 |  2 |  1 |  0 |  7
+Allegoric Alaskians            |  3 |  2 |  0 |  1 |  6
+Blithering Badgers             |  3 |  1 |  0 |  2 |  3
+Courageous Californians        |  3 |  0 |  1 |  2 |  1
+`[1:], // [1:] = strip initial readability newline
+	},
+	{
+		description: "ignore comments and newlines",
+		input: `
+
+Allegoric Alaskians;Blithering Badgers;win
+Devastating Donkeys;Allegoric Alaskians;win
+# Catastrophic Loss of the Californians
+Courageous Californians;Blithering Badgers;loss
+
+Blithering Badgers;Devastating Donkeys;loss
+Allegoric Alaskians;Courageous Californians;win
+Devastating Donkeys;Courageous Californians;draw
+
+
+`,
+		expected: `
+Team                           | MP |  W |  D |  L |  P
+Devastating Donkeys            |  3 |  2 |  1 |  0 |  7
+Allegoric Alaskians            |  3 |  2 |  0 |  1 |  6
+Blithering Badgers             |  3 |  1 |  0 |  2 |  3
+Courageous Californians        |  3 |  0 |  1 |  2 |  1
+`[1:],
+	},
+	{
+		// A complete competition has all teams play eachother once or twice.
+		description: "incomplete competition",
+		input: `
+Allegoric Alaskians;Blithering Badgers;win
+Devastating Donkeys;Allegoric Alaskians;win
+Courageous Californians;Blithering Badgers;loss
+Allegoric Alaskians;Courageous Californians;win
+`,
+		expected: `
+Team                           | MP |  W |  D |  L |  P
+Allegoric Alaskians            |  3 |  2 |  0 |  1 |  6
+Blithering Badgers             |  2 |  1 |  0 |  1 |  3
+Devastating Donkeys            |  1 |  1 |  0 |  0 |  3
+Courageous Californians        |  2 |  0 |  0 |  2 |  0
+`[1:],
+	},
+	{
+		description: "tie for first and last place",
+		input: `
+Courageous Californians;Devastating Donkeys;win
+Allegoric Alaskians;Blithering Badgers;win
+Devastating Donkeys;Allegoric Alaskians;loss
+Courageous Californians;Blithering Badgers;win
+Blithering Badgers;Devastating Donkeys;draw
+Allegoric Alaskians;Courageous Californians;draw
+`,
+		expected: `
+Team                           | MP |  W |  D |  L |  P
+Allegoric Alaskians            |  3 |  2 |  1 |  0 |  7
+Courageous Californians        |  3 |  2 |  1 |  0 |  7
+Blithering Badgers             |  3 |  0 |  1 |  2 |  1
+Devastating Donkeys            |  3 |  0 |  1 |  2 |  1
+`[1:],
+	},
+}
+
+var errorTestCases = []string{
+	"Bla;Bla;Bla",
+	"Devastating Donkeys_Courageous Californians;draw",
+	"Devastating Donkeys@Courageous Californians;draw",
+	"Devastating Donkeys;Allegoric Alaskians;dra",
+}
+
+func TestTallyHappy(t *testing.T) {
+	for _, tc := range happyTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			reader := strings.NewReader(tc.input)
+			var buffer bytes.Buffer
+			err := Tally(reader, &buffer)
+			// We don't expect errors for any of the test cases
+			if err != nil {
+				t.Fatalf("Tally for input named %q returned unexpected error %v", tc.description, err)
+			}
+			got := buffer.String()
+			if got != tc.expected {
+				t.Fatalf("Tally for input named %q returned unexpected value\ngot: %s\nwant: %s", tc.description, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestTallyError(t *testing.T) {
+	for i, errorInput := range errorTestCases {
+		t.Run(fmt.Sprintf("Error Input %d", i), func(t *testing.T) {
+			reader := strings.NewReader(errorInput)
+			var buffer bytes.Buffer
+			err := Tally(reader, &buffer)
+			if err == nil {
+				t.Fatalf("Tally for input %q expected error, got nil", errorInput)
+			}
+		})
+	}
+}
+
+func BenchmarkTally(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tt := range happyTestCases {
+			var buffer bytes.Buffer
+			Tally(strings.NewReader(tt.input), &buffer)
+		}
+		for _, s := range errorTestCases {
+			var buffer bytes.Buffer
+			Tally(strings.NewReader(s), &buffer)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/tournament/.meta/example.go
+package tournament
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"sort"
+	"strings"
+)
+
+// invert_result returns the opposite result (win becomes loss, loss becomes win)
+func invertResult(result int) int {
+	if result == 0 {
+		return 2
+	} else if result == 2 {
+		return 0
+	}
+	return result
+}
+
+// parseGame parses a single game line into team results
+func parseGame(gameLine string) []struct {
+	team   string
+	result int
+} {
+	game := strings.Split(gameLine, ";")
+	if len(game) == 3 {
+		var result int
+		switch game[2] {
+		case "win":
+			result = 0
+		case "draw":
+			result = 1
+		case "loss":
+			result = 2
+		default:
+			return []struct {
+				team   string
+				result int
+			}{}
+		}
+
+		return []struct {
+			team   string
+			result int
+		}{
+			{game[0], result},
+			{game[1], invertResult(result)},
+		}
+	}
+	return []struct {
+		team   string
+		result int
+	}{}
+}
+
+// calculatePoints calculates points from wins and draws
+func calculatePoints(stats [3]int) int {
+	return stats[0]*3 + stats[1]
+}
+
+// formatTable formats the results into a table
+func formatTable(results map[string][3]int) []string {
+	table := []string{"Team                           | MP |  W |  D |  L |  P"}
+
+	// Create a slice to sort teams
+	type teamResult struct {
+		name  string
+		stats [3]int
+	}
+	teamResults := make([]teamResult, 0, len(results))
+	
+	for team, games := range results {
+		teamResults = append(teamResults, teamResult{team, games})
+	}
+
+	// Sort by points (descending) and then by team name (ascending)
+	sort.Slice(teamResults, func(i, j int) bool {
+		pointsI := calculatePoints(teamResults[i].stats)
+		pointsJ := calculatePoints(teamResults[j].stats)
+		if pointsI != pointsJ {
+			return pointsI > pointsJ
+		}
+		return teamResults[i].name < teamResults[j].name
+	})
+
+	// Format each team's results
+	for _, tr := range teamResults {
+		team := tr.name
+		games := tr.stats
+		matchesPlayed := games[0] + games[1] + games[2]
+		points := calculatePoints(games)
+		
+		row := fmt.Sprintf("%-30s | %2d | %2d | %2d | %2d | %2d", 
+			team, matchesPlayed, games[0], games[1], games[2], points)
+		table = append(table, row)
+	}
+
+	return table
+}
+
+// Tally processes match data and writes formatted results
+func Tally(reader io.Reader, writer io.Writer) error {
+	scanner := bufio.NewScanner(reader)
+	
+	// Map to store team statistics [wins, draws, losses]
+	table := make(map[string][3]int)
+
+	// Process each line
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Skip comments and empty lines
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
+			continue
+		}
+		
+		for _, result := range parseGame(line) {
+			stats := table[result.team]
+			stats[result.result]++
+			table[result.team] = stats
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	// Write the formatted table
+	formattedTable := formatTable(table)
+	for _, row := range formattedTable {
+		fmt.Fprintln(writer, row)
+	}
+
+	return nil
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestTallyError (0.00s)
+    --- FAIL: TestTallyError/Error_Input_0 (0.00s)
+        tournament_test.go:131: Tally for input "Bla;Bla;Bla" expected error, got nil
+    --- FAIL: TestTallyError/Error_Input_1 (0.00s)
+        tournament_test.go:131: Tally for input "Devastating Donkeys_Courageous Californians;draw" expected error, got nil
+    --- FAIL: TestTallyError/Error_Input_2 (0.00s)
+        tournament_test.go:131: Tally for input "Devastating Donkeys@Courageous Californians;draw" expected error, got nil
+    --- FAIL: TestTallyError/Error_Input_3 (0.00s)
+        tournament_test.go:131: Tally for input "Devastating Donkeys;Allegoric Alaskians;dra" expected error, got nil
+FAIL
+FAIL	exercism/tournament	0.292s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/tournament/.meta/example.go
+package tournament
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"io"
+	"sort"
+	"strings"
+)
+
+// invert_result returns the opposite result (win becomes loss, loss becomes win)
+func invertResult(result int) int {
+	if result == 0 {
+		return 2
+	} else if result == 2 {
+		return 0
+	}
+	return result
+}
+
+// parseGame parses a single game line into team results
+// returns team results and an error if the format is invalid
+func parseGame(gameLine string) ([]struct {
+	team   string
+	result int
+}, error) {
+	game := strings.Split(gameLine, ";")
+	if len(game) != 3 {
+		return nil, errors.New("invalid format: each line must have exactly 3 fields")
+	}
+
+	// Validate team names (no special characters)
+	for i := 0; i < 2; i++ {
+		if strings.ContainsAny(game[i], "_@") {
+			return nil, errors.New("invalid team name: contains invalid characters")
+		}
+	}
+
+	var result int
+	switch game[2] {
+	case "win":
+		result = 0
+	case "draw":
+		result = 1
+	case "loss":
+		result = 2
+	default:
+		return nil, errors.New("invalid result: must be win, draw, or loss")
+	}
+
+	return []struct {
+		team   string
+		result int
+	}{
+		{game[0], result},
+		{game[1], invertResult(result)},
+	}, nil
+}
+
+// calculatePoints calculates points from wins and draws
+func calculatePoints(stats [3]int) int {
+	return stats[0]*3 + stats[1]
+}
+
+// formatTable formats the results into a table
+func formatTable(results map[string][3]int) []string {
+	table := []string{"Team                           | MP |  W |  D |  L |  P"}
+
+	// Create a slice to sort teams
+	type teamResult struct {
+		name  string
+		stats [3]int
+	}
+	teamResults := make([]teamResult, 0, len(results))
+	
+	for team, games := range results {
+		teamResults = append(teamResults, teamResult{team, games})
+	}
+
+	// Sort by points (descending) and then by team name (ascending)
+	sort.Slice(teamResults, func(i, j int) bool {
+		pointsI := calculatePoints(teamResults[i].stats)
+		pointsJ := calculatePoints(teamResults[j].stats)
+		if pointsI != pointsJ {
+			return pointsI > pointsJ
+		}
+		return teamResults[i].name < teamResults[j].name
+	})
+
+	// Format each team's results
+	for _, tr := range teamResults {
+		team := tr.name
+		games := tr.stats
+		matchesPlayed := games[0] + games[1] + games[2]
+		points := calculatePoints(games)
+		
+		row := fmt.Sprintf("%-30s | %2d | %2d | %2d | %2d | %2d", 
+			team, matchesPlayed, games[0], games[1], games[2], points)
+		table = append(table, row)
+	}
+
+	return table
+}
+
+// Tally processes match data and writes formatted results
+func Tally(reader io.Reader, writer io.Writer) error {
+	scanner := bufio.NewScanner(reader)
+	
+	// Map to store team statistics [wins, draws, losses]
+	table := make(map[string][3]int)
+
+	// Process each line
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Skip comments and empty lines
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
+			continue
+		}
+		
+		results, err := parseGame(line)
+		if err != nil {
+			return err
+		}
+		
+		for _, result := range results {
+			stats := table[result.team]
+			stats[result.result]++
+			table[result.team] = stats
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	// Write the formatted table
+	formattedTable := formatTable(table)
+	for _, row := range formattedTable {
+		fmt.Fprintln(writer, row)
+	}
+
+	return nil
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/tournament	0.257s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

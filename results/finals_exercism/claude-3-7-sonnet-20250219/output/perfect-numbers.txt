@@ -1,0 +1,339 @@
+=== Initial Source Code ===
+Source file: exercises/practice/perfect-numbers/.meta/example.py
+import math
+
+def divisor_generator(number):
+    """Returns an unordered list of divisors for n (1 < number).
+
+    :param number: int a positive integer
+    :return: list of int divisors
+    """
+
+    for index in range(2, int(math.sqrt(number)) + 1):
+        if number % index == 0:
+            yield index
+            if index * index != number:
+                yield number // index
+
+
+def classify(number):
+    """ A perfect number equals the sum of its positive divisors.
+
+    :param number: int a positive integer
+    :return: str the classification of the input integer
+    """
+
+    if number <= 0:
+        raise ValueError('Classification is only possible for positive integers.')
+
+    aliquot_sum = sum(divisor_generator(number)) + (1 if number > 1 else 0)
+
+    if aliquot_sum < number:
+        return 'deficient'
+    elif aliquot_sum == number:
+        return 'perfect'
+    else:
+        return 'abundant'
+
+
+=== Source Interface ===
+def classify(number):
+    """ A perfect number equals the sum of its positive divisors.
+
+    :param number: int a positive integer
+    :return: str the classification of the input integer
+    """
+    pass
+
+
+=== Target Interface ===
+package perfect
+
+// Define the Classification type here.
+
+func Classify(n int64) (Classification, error) {
+	panic("Please implement the Classify function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/perfect-numbers/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from perfect_numbers import (
+    classify,
+)
+
+
+class PerfectNumbersTest(unittest.TestCase):
+    def test_smallest_perfect_number_is_classified_correctly(self):
+        self.assertEqual(classify(6), "perfect")
+
+    def test_medium_perfect_number_is_classified_correctly(self):
+        self.assertEqual(classify(28), "perfect")
+
+    def test_large_perfect_number_is_classified_correctly(self):
+        self.assertEqual(classify(33550336), "perfect")
+
+
+class AbundantNumbersTest(unittest.TestCase):
+    def test_smallest_abundant_number_is_classified_correctly(self):
+        self.assertEqual(classify(12), "abundant")
+
+    def test_medium_abundant_number_is_classified_correctly(self):
+        self.assertEqual(classify(30), "abundant")
+
+    def test_large_abundant_number_is_classified_correctly(self):
+        self.assertEqual(classify(33550335), "abundant")
+
+
+class DeficientNumbersTest(unittest.TestCase):
+    def test_smallest_prime_deficient_number_is_classified_correctly(self):
+        self.assertEqual(classify(2), "deficient")
+
+    def test_smallest_non_prime_deficient_number_is_classified_correctly(self):
+        self.assertEqual(classify(4), "deficient")
+
+    def test_medium_deficient_number_is_classified_correctly(self):
+        self.assertEqual(classify(32), "deficient")
+
+    def test_large_deficient_number_is_classified_correctly(self):
+        self.assertEqual(classify(33550337), "deficient")
+
+    def test_edge_case_no_factors_other_than_itself_is_classified_correctly(self):
+        self.assertEqual(classify(1), "deficient")
+
+
+class InvalidInputsTest(unittest.TestCase):
+    def test_zero_is_rejected_as_it_is_not_a_positive_integer(self):
+        with self.assertRaises(ValueError) as err:
+            classify(0)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0],
+            "Classification is only possible for positive integers.",
+        )
+
+    def test_negative_integer_is_rejected_as_it_is_not_a_positive_integer(self):
+        with self.assertRaises(ValueError) as err:
+            classify(-1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0],
+            "Classification is only possible for positive integers.",
+        )
+
+
+=== Target Test Code ===
+package perfect
+
+import "testing"
+
+func TestZeroGivesPositiveRequiredError(t *testing.T) {
+	t.Run("GivesPositiveRequiredError", func(t *testing.T) {
+		if _, err := Classify(0); err != ErrOnlyPositive {
+			t.Fatalf("Classify(0) expected error %q, got: %q", ErrOnlyPositive, err)
+		}
+	})
+}
+
+func TestClassifiesCorrectly(t *testing.T) {
+	for _, tc := range classificationTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := Classify(tc.input)
+			switch {
+			case !tc.ok:
+				// expect error
+				if err == nil {
+					t.Fatalf("Classify(%d) expected error, got: %q", tc.input, actual)
+				}
+			case err != nil:
+				t.Fatalf("Classify(%d) returned error: %q, want: %q", tc.input, err, tc.expected)
+			case actual != tc.expected:
+				t.Fatalf("Classify(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// Test that the classifications are not equal to each other.
+// If they are equal, then the tests will return false positives.
+func TestClassificationsNotEqual(t *testing.T) {
+	classifications := []struct {
+		class Classification
+		name  string
+	}{
+		{ClassificationAbundant, "ClassificationAbundant"},
+		{ClassificationDeficient, "ClassificationDeficient"},
+		{ClassificationPerfect, "ClassificationPerfect"},
+	}
+
+	for i, pair1 := range classifications {
+		for j := i + 1; j < len(classifications); j++ {
+			pair2 := classifications[j]
+			if pair1.class == pair2.class {
+				t.Fatalf("%s should not be equal to %s", pair1.name, pair2.name)
+			}
+		}
+	}
+}
+
+func BenchmarkClassify(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, c := range classificationTestCases {
+			Classify(c.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/perfect-numbers/.meta/example.go
+package perfect
+
+import (
+	"fmt"
+	"math"
+)
+
+// Classification represents the type of number: perfect, abundant, or deficient
+type Classification string
+
+const (
+	ClassificationPerfect   Classification = "perfect"
+	ClassificationAbundant  Classification = "abundant"
+	ClassificationDeficient Classification = "deficient"
+)
+
+// divisorGenerator returns a slice of divisors for n (1 < n).
+func divisorGenerator(number int64) []int64 {
+	var divisors []int64
+	
+	for index := int64(2); index <= int64(math.Sqrt(float64(number))); index++ {
+		if number%index == 0 {
+			divisors = append(divisors, index)
+			if index*index != number {
+				divisors = append(divisors, number/index)
+			}
+		}
+	}
+	
+	return divisors
+}
+
+// Classify determines if a number is perfect, abundant, or deficient
+// based on the sum of its positive divisors.
+//
+// A perfect number equals the sum of its positive divisors.
+func Classify(number int64) (Classification, error) {
+	if number <= 0 {
+		return "", fmt.Errorf("Classification is only possible for positive integers.")
+	}
+	
+	var aliquotSum int64 = 0
+	if number > 1 {
+		for _, divisor := range divisorGenerator(number) {
+			aliquotSum += divisor
+		}
+		aliquotSum += 1 // Add 1 as a divisor
+	}
+	
+	if aliquotSum < number {
+		return ClassificationDeficient, nil
+	} else if aliquotSum == number {
+		return ClassificationPerfect, nil
+	} else {
+		return ClassificationAbundant, nil
+	}
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/perfect-numbers [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/perfect-numbers [exercism/perfect-numbers.test]
+./perfect_numbers_test.go:7:36: undefined: ErrOnlyPositive
+./perfect_numbers_test.go:8:55: undefined: ErrOnlyPositive
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/perfect-numbers/.meta/example.go
+package perfect
+
+import (
+	"errors"
+	"math"
+)
+
+// Classification represents the type of number: perfect, abundant, or deficient
+type Classification string
+
+const (
+	ClassificationPerfect   Classification = "perfect"
+	ClassificationAbundant  Classification = "abundant"
+	ClassificationDeficient Classification = "deficient"
+)
+
+// ErrOnlyPositive is returned when a non-positive number is provided to Classify
+var ErrOnlyPositive = errors.New("Classification is only possible for positive integers.")
+
+// divisorGenerator returns a slice of divisors for n (1 < n).
+func divisorGenerator(number int64) []int64 {
+	var divisors []int64
+	
+	for index := int64(2); index <= int64(math.Sqrt(float64(number))); index++ {
+		if number%index == 0 {
+			divisors = append(divisors, index)
+			if index*index != number {
+				divisors = append(divisors, number/index)
+			}
+		}
+	}
+	
+	return divisors
+}
+
+// Classify determines if a number is perfect, abundant, or deficient
+// based on the sum of its positive divisors.
+//
+// A perfect number equals the sum of its positive divisors.
+func Classify(number int64) (Classification, error) {
+	if number <= 0 {
+		return "", ErrOnlyPositive
+	}
+	
+	var aliquotSum int64 = 0
+	if number > 1 {
+		for _, divisor := range divisorGenerator(number) {
+			aliquotSum += divisor
+		}
+		aliquotSum += 1 // Add 1 as a divisor
+	}
+	
+	if aliquotSum < number {
+		return ClassificationDeficient, nil
+	} else if aliquotSum == number {
+		return ClassificationPerfect, nil
+	} else {
+		return ClassificationAbundant, nil
+	}
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/perfect-numbers	0.278s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

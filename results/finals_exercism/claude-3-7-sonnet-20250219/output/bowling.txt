@@ -1,0 +1,585 @@
+=== Initial Source Code ===
+Source file: exercises/practice/bowling/.meta/example.py
+MAX_FRAME = 10
+
+
+class Frame:
+    def __init__(self, idx):
+        self.idx = idx
+        self.throws = []
+
+    @property
+    def total_pins(self):
+        """Total pins knocked down in a frame."""
+        return sum(self.throws)
+
+    def is_strike(self):
+        return self.total_pins == 10 and len(self.throws) == 1
+
+    def is_spare(self):
+        return self.total_pins == 10 and len(self.throws) == 2
+
+    def is_open(self):
+        return self.total_pins < 10 and len(self.throws) == 2
+
+    def is_closed(self):
+        """Return whether a frame is over."""
+        return self.total_pins == 10 or len(self.throws) == 2
+
+    def throw(self, pins):
+        if self.total_pins + pins > 10:
+            raise ValueError("a frame's rolls cannot exceed 10")
+        self.throws.append(pins)
+
+    def score(self, next_throws):
+        result = self.total_pins
+        if self.is_strike():
+            result += sum(next_throws[:2])
+        elif self.is_spare():
+            result += sum(next_throws[:1])
+        return result
+
+
+class BowlingGame:
+    def __init__(self):
+        self.current_frame_idx = 0
+        self.bonus_throws = []
+        self.frames = [Frame(idx) for idx in range(MAX_FRAME)]
+
+    @property
+    def current_frame(self):
+        return self.frames[self.current_frame_idx]
+
+    def next_throws(self, frame_idx):
+        """Return a frame's next throws in the form of a list."""
+        throws = []
+        for idx in range(frame_idx + 1, MAX_FRAME):
+            throws.extend(self.frames[idx].throws)
+        throws.extend(self.bonus_throws)
+        return throws
+
+    def roll_bonus(self, pins):
+        tenth_frame = self.frames[-1]
+        if tenth_frame.is_open():
+            raise IndexError('cannot throw bonus with an open tenth frame')
+
+        self.bonus_throws.append(pins)
+
+        # Check against invalid fill balls, e.g. [3, 10]
+        if (len(self.bonus_throws) == 2 and self.bonus_throws[0] != 10 and
+                sum(self.bonus_throws) > 10):
+            raise ValueError('invalid fill balls')
+
+        # Check if there are more bonuses than it should be
+        if tenth_frame.is_strike() and len(self.bonus_throws) > 2:
+            raise IndexError(
+                'wrong number of fill balls when the tenth frame is a strike')
+        elif tenth_frame.is_spare() and len(self.bonus_throws) > 1:
+            raise IndexError(
+                'wrong number of fill balls when the tenth frame is a spare')
+
+    def roll(self, pins):
+        if not 0 <= pins <= 10:
+            raise ValueError('invalid pins')
+        elif self.current_frame_idx == MAX_FRAME:
+            self.roll_bonus(pins)
+        else:
+            self.current_frame.throw(pins)
+            if self.current_frame.is_closed():
+                self.current_frame_idx += 1
+
+    def score(self):
+        if self.current_frame_idx < MAX_FRAME:
+            raise IndexError('frame less than 10')
+        if self.frames[-1].is_spare() and len(self.bonus_throws) != 1:
+            raise IndexError(
+                'one bonus must be rolled when the tenth frame is spare')
+        if self.frames[-1].is_strike() and len(self.bonus_throws) != 2:
+            raise IndexError(
+                'two bonuses must be rolled when the tenth frame is strike')
+        return sum(frame.score(self.next_throws(frame.idx))
+                   for frame in self.frames)
+
+
+=== Source Interface ===
+class BowlingGame:
+    def __init__(self):
+        pass
+
+    def roll(self, pins):
+        pass
+
+    def score(self):
+        pass
+
+
+=== Target Interface ===
+package bowling
+
+// Define the Game type here.
+
+func NewGame() *Game {
+	panic("Please implement the NewGame function")
+}
+
+func (g *Game) Roll(pins int) error {
+	panic("Please implement the Roll function")
+}
+
+func (g *Game) Score() (int, error) {
+	panic("Please implement the Score function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/bowling/canonical-data.json
+# File last updated on 2023-07-21
+
+import unittest
+
+from bowling import (
+    BowlingGame,
+)
+
+
+class BowlingTest(unittest.TestCase):
+    def roll_new_game(self, rolls):
+        game = BowlingGame()
+        for roll in rolls:
+            game.roll(roll)
+        return game
+
+    def test_should_be_able_to_score_a_game_with_all_zeros(self):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 0)
+
+    def test_should_be_able_to_score_a_game_with_no_strikes_or_spares(self):
+        rolls = [3, 6, 3, 6, 3, 6, 3, 6, 3, 6, 3, 6, 3, 6, 3, 6, 3, 6, 3, 6]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 90)
+
+    def test_a_spare_followed_by_zeros_is_worth_ten_points(self):
+        rolls = [6, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 10)
+
+    def test_points_scored_in_the_roll_after_a_spare_are_counted_twice(self):
+        rolls = [6, 4, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 16)
+
+    def test_consecutive_spares_each_get_a_one_roll_bonus(self):
+        rolls = [5, 5, 3, 7, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 31)
+
+    def test_a_spare_in_the_last_frame_gets_a_one_roll_bonus_that_is_counted_once(self):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 3, 7]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 17)
+
+    def test_a_strike_earns_ten_points_in_a_frame_with_a_single_roll(self):
+        rolls = [10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 10)
+
+    def test_points_scored_in_the_two_rolls_after_a_strike_are_counted_twice_as_a_bonus(
+        self,
+    ):
+        rolls = [10, 5, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 26)
+
+    def test_consecutive_strikes_each_get_the_two_roll_bonus(self):
+        rolls = [10, 10, 10, 5, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 81)
+
+    def test_a_strike_in_the_last_frame_gets_a_two_roll_bonus_that_is_counted_once(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 7, 1]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 18)
+
+    def test_rolling_a_spare_with_the_two_roll_bonus_does_not_get_a_bonus_roll(self):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 7, 3]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 20)
+
+    def test_strikes_with_the_two_roll_bonus_do_not_get_bonus_rolls(self):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 30)
+
+    def test_last_two_strikes_followed_by_only_last_bonus_with_non_strike_points(self):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 0, 1]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 31)
+
+    def test_a_strike_with_the_one_roll_bonus_after_a_spare_in_the_last_frame_does_not_get_a_bonus(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 3, 10]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 20)
+
+    def test_all_strikes_is_a_perfect_game(self):
+        rolls = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 300)
+
+    def test_rolls_cannot_score_negative_points(self):
+        rolls = []
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(-1)
+
+    def test_a_roll_cannot_score_more_than_10_points(self):
+        rolls = []
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(11)
+
+    def test_two_rolls_in_a_frame_cannot_score_more_than_10_points(self):
+        rolls = [5]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(6)
+
+    def test_bonus_roll_after_a_strike_in_the_last_frame_cannot_score_more_than_10_points(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(11)
+
+    def test_two_bonus_rolls_after_a_strike_in_the_last_frame_cannot_score_more_than_10_points(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 5]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(6)
+
+    def test_two_bonus_rolls_after_a_strike_in_the_last_frame_can_score_more_than_10_points_if_one_is_a_strike(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 6]
+        game = self.roll_new_game(rolls)
+        self.assertEqual(game.score(), 26)
+
+    def test_the_second_bonus_rolls_after_a_strike_in_the_last_frame_cannot_be_a_strike_if_the_first_one_is_not_a_strike(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 6]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(10)
+
+    def test_second_bonus_roll_after_a_strike_in_the_last_frame_cannot_score_more_than_10_points(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(11)
+
+    def test_an_unstarted_game_cannot_be_scored(self):
+        rolls = []
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.score()
+
+    def test_an_incomplete_game_cannot_be_scored(self):
+        rolls = [0, 0]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.score()
+
+    def test_cannot_roll_if_game_already_has_ten_frames(self):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(0)
+
+    def test_bonus_rolls_for_a_strike_in_the_last_frame_must_be_rolled_before_score_can_be_calculated(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.score()
+
+    def test_both_bonus_rolls_for_a_strike_in_the_last_frame_must_be_rolled_before_score_can_be_calculated(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.score()
+
+    def test_bonus_roll_for_a_spare_in_the_last_frame_must_be_rolled_before_score_can_be_calculated(
+        self,
+    ):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 3]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.score()
+
+    def test_cannot_roll_after_bonus_roll_for_spare(self):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 3, 2]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(2)
+
+    def test_cannot_roll_after_bonus_rolls_for_strike(self):
+        rolls = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 3, 2]
+        game = self.roll_new_game(rolls)
+        with self.assertRaisesWithMessage(Exception):
+            game.roll(2)
+
+    # Utility functions
+    def assertRaisesWithMessage(self, exception):
+        return self.assertRaisesRegex(exception, r".+")
+
+
+=== Target Test Code ===
+package bowling
+
+import "testing"
+
+const previousRollErrorMessage = `
+	Unexpected error occurred: %v
+	while applying the previous rolls for the
+	test case: %v
+	The error was returned from Roll(%d) for previousRolls[%d].`
+
+func applyPreviousRolls(g *Game, rolls []int) (index, pins int, err error) {
+	for index, pins := range rolls {
+		if err := g.Roll(pins); err != nil {
+			return index, pins, err
+		}
+	}
+	return 0, 0, nil
+}
+
+func TestRoll(t *testing.T) {
+	for _, tc := range rollTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			g := NewGame()
+			index, pins, err := applyPreviousRolls(g, tc.previousRolls)
+			if err != nil {
+				t.Fatalf(previousRollErrorMessage, err, tc.previousRolls, pins, index)
+			}
+			err = g.Roll(tc.roll)
+			if tc.valid && err != nil {
+				t.Fatalf("Roll(%d) after Previous Rolls: %#v returned unexpected error: %v", tc.roll, tc.previousRolls, err)
+			} else if !tc.valid && err == nil {
+				t.Fatalf("Roll(%d) after Previous Rolls: %#v expected an error, got nil\n\tExplanation: %s", tc.roll, tc.previousRolls, tc.explainText)
+			}
+		})
+	}
+}
+
+func TestScore(t *testing.T) {
+	for _, tc := range scoreTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			g := NewGame()
+			index, pins, err := applyPreviousRolls(g, tc.previousRolls)
+			if err != nil {
+				t.Fatalf(previousRollErrorMessage, err, tc.previousRolls, pins, index)
+			}
+			score, err := g.Score()
+			switch {
+			case !tc.valid:
+				if err == nil {
+					t.Fatalf("Score() after Previous Rolls: %#v expected an error, got score %d\n\tExplanation: %s", tc.previousRolls, score, tc.explainText)
+				}
+			case err != nil:
+				t.Fatalf("Score() after Previous Rolls: %#v returned error: %v, want: %d", tc.previousRolls, err, tc.score)
+			case score != tc.score:
+				t.Fatalf("Score() after Previous Rolls: %#v = %d, want: %d", tc.previousRolls, score, tc.score)
+			}
+		})
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/bowling/.meta/example.go
+package bowling
+
+import (
+	"errors"
+)
+
+const maxFrame = 10
+
+// Frame represents a single frame in a bowling game
+type Frame struct {
+	idx    int
+	throws []int
+}
+
+// TotalPins returns the total pins knocked down in a frame
+func (f *Frame) TotalPins() int {
+	sum := 0
+	for _, pins := range f.throws {
+		sum += pins
+	}
+	return sum
+}
+
+// IsStrike returns whether a frame is a strike
+func (f *Frame) IsStrike() bool {
+	return f.TotalPins() == 10 && len(f.throws) == 1
+}
+
+// IsSpare returns whether a frame is a spare
+func (f *Frame) IsSpare() bool {
+	return f.TotalPins() == 10 && len(f.throws) == 2
+}
+
+// IsOpen returns whether a frame is open (not a strike or spare)
+func (f *Frame) IsOpen() bool {
+	return f.TotalPins() < 10 && len(f.throws) == 2
+}
+
+// IsClosed returns whether a frame is over
+func (f *Frame) IsClosed() bool {
+	return f.TotalPins() == 10 || len(f.throws) == 2
+}
+
+// Throw adds a throw to a frame
+func (f *Frame) Throw(pins int) error {
+	if f.TotalPins()+pins > 10 {
+		return errors.New("a frame's rolls cannot exceed 10")
+	}
+	f.throws = append(f.throws, pins)
+	return nil
+}
+
+// Score calculates the score for this frame
+func (f *Frame) Score(nextThrows []int) int {
+	result := f.TotalPins()
+	if f.IsStrike() {
+		if len(nextThrows) >= 2 {
+			result += nextThrows[0] + nextThrows[1]
+		}
+	} else if f.IsSpare() {
+		if len(nextThrows) >= 1 {
+			result += nextThrows[0]
+		}
+	}
+	return result
+}
+
+// Game represents a bowling game
+type Game struct {
+	currentFrameIdx int
+	bonusThrows     []int
+	frames          []*Frame
+}
+
+// NewGame creates a new bowling game
+func NewGame() *Game {
+	frames := make([]*Frame, maxFrame)
+	for i := range frames {
+		frames[i] = &Frame{idx: i, throws: []int{}}
+	}
+	return &Game{
+		currentFrameIdx: 0,
+		bonusThrows:     []int{},
+		frames:          frames,
+	}
+}
+
+// CurrentFrame returns the current frame
+func (g *Game) CurrentFrame() *Frame {
+	return g.frames[g.currentFrameIdx]
+}
+
+// NextThrows returns a frame's next throws in the form of a slice
+func (g *Game) NextThrows(frameIdx int) []int {
+	throws := []int{}
+	for idx := frameIdx + 1; idx < maxFrame; idx++ {
+		throws = append(throws, g.frames[idx].throws...)
+	}
+	throws = append(throws, g.bonusThrows...)
+	return throws
+}
+
+// RollBonus adds a bonus throw
+func (g *Game) RollBonus(pins int) error {
+	tenthFrame := g.frames[maxFrame-1]
+	if tenthFrame.IsOpen() {
+		return errors.New("cannot throw bonus with an open tenth frame")
+	}
+
+	g.bonusThrows = append(g.bonusThrows, pins)
+
+	// Check against invalid fill balls, e.g. [3, 10]
+	if len(g.bonusThrows) == 2 && g.bonusThrows[0] != 10 && g.bonusThrows[0]+g.bonusThrows[1] > 10 {
+		return errors.New("invalid fill balls")
+	}
+
+	// Check if there are more bonuses than it should be
+	if tenthFrame.IsStrike() && len(g.bonusThrows) > 2 {
+		return errors.New("wrong number of fill balls when the tenth frame is a strike")
+	} else if tenthFrame.IsSpare() && len(g.bonusThrows) > 1 {
+		return errors.New("wrong number of fill balls when the tenth frame is a spare")
+	}
+
+	return nil
+}
+
+// Roll adds a new roll to the game
+func (g *Game) Roll(pins int) error {
+	if pins < 0 || pins > 10 {
+		return errors.New("invalid pins")
+	} else if g.currentFrameIdx == maxFrame {
+		return g.RollBonus(pins)
+	} else {
+		err := g.CurrentFrame().Throw(pins)
+		if err != nil {
+			return err
+		}
+		if g.CurrentFrame().IsClosed() {
+			g.currentFrameIdx++
+		}
+		return nil
+	}
+}
+
+// Score calculates the total score for the game
+func (g *Game) Score() (int, error) {
+	if g.currentFrameIdx < maxFrame {
+		return 0, errors.New("frame less than 10")
+	}
+	if g.frames[maxFrame-1].IsSpare() && len(g.bonusThrows) != 1 {
+		return 0, errors.New("one bonus must be rolled when the tenth frame is spare")
+	}
+	if g.frames[maxFrame-1].IsStrike() && len(g.bonusThrows) != 2 {
+		return 0, errors.New("two bonuses must be rolled when the tenth frame is strike")
+	}
+
+	total := 0
+	for _, frame := range g.frames {
+		total += frame.Score(g.NextThrows(frame.idx))
+	}
+	return total, nil
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/bowling	0.273s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

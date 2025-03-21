@@ -1,0 +1,337 @@
+=== Initial Source Code ===
+Source file: exercises/practice/dnd-character/.meta/example.py
+import random
+import math
+
+
+class Character:
+    def __init__(self):
+        self.strength = self.ability()
+        self.dexterity = self.ability()
+        self.constitution = self.ability()
+        self.intelligence = self.ability()
+        self.wisdom = self.ability()
+        self.charisma = self.ability()
+        self.hitpoints = 10 + modifier(self.constitution)
+
+    def ability(self):
+        dice_rolls = sorted(random.randint(1, 6) for _ in range(4))
+        return sum(dice_rolls[1:])
+
+
+def modifier(value):
+    return math.floor((value-10)/2)
+
+
+=== Source Interface ===
+class Character:
+    def __init__(self):
+        pass
+
+def modifier(value):
+    pass
+
+
+=== Target Interface ===
+package dndcharacter
+
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// Modifier calculates the ability modifier for a given ability score
+func Modifier(score int) int {
+	panic("Please implement the Modifier() function")
+}
+
+// Ability uses randomness to generate the score for an ability
+func Ability() int {
+	panic("Please implement the Ability() function")
+}
+
+// GenerateCharacter creates a new Character with random scores for abilities
+func GenerateCharacter() Character {
+	panic("Please implement the GenerateCharacter() function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/dnd-character/canonical-data.json
+# File last updated on 2023-12-27
+
+import unittest
+
+from dnd_character import (
+    Character,
+    modifier,
+)
+
+
+class DndCharacterTest(unittest.TestCase):
+    def test_ability_modifier_for_score_3_is_n4(self):
+        self.assertEqual(modifier(3), -4)
+
+    def test_ability_modifier_for_score_4_is_n3(self):
+        self.assertEqual(modifier(4), -3)
+
+    def test_ability_modifier_for_score_5_is_n3(self):
+        self.assertEqual(modifier(5), -3)
+
+    def test_ability_modifier_for_score_6_is_n2(self):
+        self.assertEqual(modifier(6), -2)
+
+    def test_ability_modifier_for_score_7_is_n2(self):
+        self.assertEqual(modifier(7), -2)
+
+    def test_ability_modifier_for_score_8_is_n1(self):
+        self.assertEqual(modifier(8), -1)
+
+    def test_ability_modifier_for_score_9_is_n1(self):
+        self.assertEqual(modifier(9), -1)
+
+    def test_ability_modifier_for_score_10_is_0(self):
+        self.assertEqual(modifier(10), 0)
+
+    def test_ability_modifier_for_score_11_is_0(self):
+        self.assertEqual(modifier(11), 0)
+
+    def test_ability_modifier_for_score_12_is_1(self):
+        self.assertEqual(modifier(12), 1)
+
+    def test_ability_modifier_for_score_13_is_1(self):
+        self.assertEqual(modifier(13), 1)
+
+    def test_ability_modifier_for_score_14_is_2(self):
+        self.assertEqual(modifier(14), 2)
+
+    def test_ability_modifier_for_score_15_is_2(self):
+        self.assertEqual(modifier(15), 2)
+
+    def test_ability_modifier_for_score_16_is_3(self):
+        self.assertEqual(modifier(16), 3)
+
+    def test_ability_modifier_for_score_17_is_3(self):
+        self.assertEqual(modifier(17), 3)
+
+    def test_ability_modifier_for_score_18_is_4(self):
+        self.assertEqual(modifier(18), 4)
+
+    def test_random_ability_is_within_range(self):
+        score = Character().ability()
+        self.assertIs(score >= 3 and score <= 18, True)
+
+    def test_random_character_is_valid(self):
+        Char = Character()
+        self.assertIs(Char.strength >= 3 and Char.strength <= 18, True)
+        self.assertIs(Char.dexterity >= 3 and Char.dexterity <= 18, True)
+        self.assertIs(Char.constitution >= 3 and Char.constitution <= 18, True)
+        self.assertIs(Char.intelligence >= 3 and Char.intelligence <= 18, True)
+        self.assertIs(Char.wisdom >= 3 and Char.wisdom <= 18, True)
+        self.assertIs(Char.charisma >= 3 and Char.charisma <= 18, True)
+        self.assertIs(Char.hitpoints == 10 + modifier(Char.constitution), True)
+
+    def test_each_ability_is_only_calculated_once(self):
+        Char = Character()
+        self.assertIs(Char.strength == Char.strength, True)
+        self.assertIs(Char.dexterity == Char.dexterity, True)
+        self.assertIs(Char.constitution == Char.constitution, True)
+        self.assertIs(Char.intelligence == Char.intelligence, True)
+        self.assertIs(Char.wisdom == Char.wisdom, True)
+        self.assertIs(Char.charisma == Char.charisma, True)
+
+
+=== Target Test Code ===
+package dndcharacter
+
+import "testing"
+
+func TestModifier(t *testing.T) {
+	for _, tc := range modifierTests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Modifier(tc.input.Score)
+			if actual != tc.expected {
+				t.Fatalf("Modifier(%d) = %d, want %d", tc.input.Score, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestAbility(t *testing.T) {
+	t.Run("should generate ability score within accepted range", func(t *testing.T) {
+		for i := 0; i < 1000; i++ {
+			got := Ability()
+			if !inAcceptedRange(got) {
+				t.Fatalf("Ability() returned a score for an ability outside the accepted range. Got %d, expected a value between 3 and 18 inclusive.", got)
+			}
+		}
+	})
+}
+
+func TestGenerateCharacter(t *testing.T) {
+	t.Run("should generate a character with random ability scores", func(t *testing.T) {
+		for i := 0; i < 1000; i++ {
+			character := GenerateCharacter()
+
+			assertCharacterAbilityScoreInRange(t, "Charisma", character.Charisma)
+			assertCharacterAbilityScoreInRange(t, "Strength", character.Strength)
+			assertCharacterAbilityScoreInRange(t, "Dexterity", character.Dexterity)
+			assertCharacterAbilityScoreInRange(t, "Wisdom", character.Wisdom)
+			assertCharacterAbilityScoreInRange(t, "Intelligence", character.Intelligence)
+			assertCharacterAbilityScoreInRange(t, "Constitution", character.Constitution)
+
+			expectedHitpoints := 10 + Modifier(character.Constitution)
+			if character.Hitpoints != expectedHitpoints {
+				t.Fatalf("Got %d hitpoints for a character with %d constitution, expected %d hitpoints", character.Hitpoints, character.Constitution, expectedHitpoints)
+			}
+		}
+	})
+}
+
+func inAcceptedRange(score int) bool {
+	return score >= 3 && score <= 18
+}
+
+func assertCharacterAbilityScoreInRange(t *testing.T, ability string, score int) {
+	t.Helper()
+
+	if !inAcceptedRange(score) {
+		t.Fatalf("GenerateCharacter() created a character with a %s score of %d, but the score for an ability is expected to be between 3 and 18 inclusive", ability, score)
+	}
+}
+
+func BenchmarkModifier(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Modifier(i)
+	}
+}
+
+func BenchmarkAbility(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Ability()
+	}
+}
+
+func BenchmarkCharacter(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		GenerateCharacter()
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/dnd-character/.meta/example.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+)
+
+// Modifier calculates the ability modifier for a given ability score
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2))
+}
+
+// Ability uses randomness to generate the score for an ability
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // 1-6
+	}
+	sort.Ints(diceRolls)
+	return diceRolls[1] + diceRolls[2] + diceRolls[3] // Sum the 3 highest dice rolls
+}
+
+// GenerateCharacter creates a new Character with random scores for abilities
+func GenerateCharacter() Character {
+	character := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	character.Hitpoints = 10 + Modifier(character.Constitution)
+	return character
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/dnd-character [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/dnd-character [exercism/dnd-character.test]
+./dnd_character.go:26:26: undefined: Character
+./dnd_character.go:27:15: undefined: Character
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/dnd-character/.meta/example.go
+package dndcharacter
+
+import (
+	"math"
+	"math/rand"
+	"sort"
+)
+
+// Character represents a D&D character with ability scores
+type Character struct {
+	Strength     int
+	Dexterity    int
+	Constitution int
+	Intelligence int
+	Wisdom       int
+	Charisma     int
+	Hitpoints    int
+}
+
+// Modifier calculates the ability modifier for a given ability score
+func Modifier(score int) int {
+	return int(math.Floor(float64(score-10) / 2))
+}
+
+// Ability uses randomness to generate the score for an ability
+func Ability() int {
+	diceRolls := make([]int, 4)
+	for i := 0; i < 4; i++ {
+		diceRolls[i] = rand.Intn(6) + 1 // 1-6
+	}
+	sort.Ints(diceRolls)
+	return diceRolls[1] + diceRolls[2] + diceRolls[3] // Sum the 3 highest dice rolls
+}
+
+// GenerateCharacter creates a new Character with random scores for abilities
+func GenerateCharacter() Character {
+	character := Character{
+		Strength:     Ability(),
+		Dexterity:    Ability(),
+		Constitution: Ability(),
+		Intelligence: Ability(),
+		Wisdom:       Ability(),
+		Charisma:     Ability(),
+	}
+	character.Hitpoints = 10 + Modifier(character.Constitution)
+	return character
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/dnd-character	0.333s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

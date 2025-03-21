@@ -1,0 +1,194 @@
+=== Initial Source Code ===
+Source file: exercises/practice/spiral-matrix/.meta/example.py
+def spiral_matrix(size):
+    matrix = [[0]*size for row in range(size)]
+    idx = 0
+    jdx = -1
+    element = 1
+
+    digital = [0, 1, 0, -1]
+    disco = [1, 0, -1, 0]
+
+    for edx in range(2*size - 1):
+        for _ in range((2*size - edx) // 2):
+            idx += digital[edx % 4]
+            jdx += disco[edx % 4]
+            matrix[idx][jdx] = element
+            element += 1
+    return matrix
+
+
+=== Source Interface ===
+def spiral_matrix(size):
+    pass
+
+
+=== Target Interface ===
+package spiralmatrix
+
+func SpiralMatrix(size int) [][]int {
+	panic("Please implement the SpiralMatrix function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/spiral-matrix/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from spiral_matrix import (
+    spiral_matrix,
+)
+
+
+class SpiralMatrixTest(unittest.TestCase):
+    def test_empty_spiral(self):
+        self.assertEqual(spiral_matrix(0), [])
+
+    def test_trivial_spiral(self):
+        self.assertEqual(spiral_matrix(1), [[1]])
+
+    def test_spiral_of_size_2(self):
+        self.assertEqual(spiral_matrix(2), [[1, 2], [4, 3]])
+
+    def test_spiral_of_size_3(self):
+        self.assertEqual(spiral_matrix(3), [[1, 2, 3], [8, 9, 4], [7, 6, 5]])
+
+    def test_spiral_of_size_4(self):
+        self.assertEqual(
+            spiral_matrix(4),
+            [[1, 2, 3, 4], [12, 13, 14, 5], [11, 16, 15, 6], [10, 9, 8, 7]],
+        )
+
+    def test_spiral_of_size_5(self):
+        self.assertEqual(
+            spiral_matrix(5),
+            [
+                [1, 2, 3, 4, 5],
+                [16, 17, 18, 19, 6],
+                [15, 24, 25, 20, 7],
+                [14, 23, 22, 21, 8],
+                [13, 12, 11, 10, 9],
+            ],
+        )
+
+
+=== Target Test Code ===
+package spiralmatrix
+
+import (
+	"reflect"
+	"testing"
+)
+
+var testCases = []struct {
+	description string
+	input       int
+	expected    [][]int
+}{
+	{
+		description: "empty spiral",
+		input:       0,
+		expected:    [][]int{},
+	},
+	{
+		description: "trivial spiral",
+		input:       1,
+		expected: [][]int{
+			{1},
+		},
+	},
+	{
+		description: "spiral of size 2",
+		input:       2,
+		expected: [][]int{
+			{1, 2},
+			{4, 3},
+		},
+	},
+	{
+		description: "spiral of size 3",
+		input:       3,
+		expected: [][]int{
+			{1, 2, 3},
+			{8, 9, 4},
+			{7, 6, 5},
+		},
+	},
+	{
+		description: "spiral of size 4",
+		input:       4,
+		expected: [][]int{
+			{1, 2, 3, 4},
+			{12, 13, 14, 5},
+			{11, 16, 15, 6},
+			{10, 9, 8, 7},
+		},
+	},
+}
+
+func TestSpiralMatrix(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got := SpiralMatrix(tc.input)
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Fatalf("SpiralMatrix(%d)\n got: %v\nwant: %v", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSpiralMatrix(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, testCase := range testCases {
+			SpiralMatrix(testCase.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/spiral-matrix/.meta/example.go
+package spiralmatrix
+
+func SpiralMatrix(size int) [][]int {
+	// Initialize the matrix with zeros
+	matrix := make([][]int, size)
+	for i := range matrix {
+		matrix[i] = make([]int, size)
+	}
+
+	idx := 0
+	jdx := -1
+	element := 1
+
+	// Direction vectors for moving right, down, left, and up
+	digital := []int{0, 1, 0, -1}
+	disco := []int{1, 0, -1, 0}
+
+	for edx := 0; edx < 2*size-1; edx++ {
+		for step := 0; step < (2*size-edx)/2; step++ {
+			idx += digital[edx%4]
+			jdx += disco[edx%4]
+			matrix[idx][jdx] = element
+			element++
+		}
+	}
+
+	return matrix
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/spiral-matrix	0.490s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

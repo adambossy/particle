@@ -1,0 +1,899 @@
+=== Initial Source Code ===
+Source file: exercises/practice/knapsack/.meta/example.py
+def maximum_value(maximum_weight, items):
+    totals = [[0 for _ in range(len(items) + 1)]
+              for _ in range(maximum_weight + 1)]
+
+    for weight in range(1, maximum_weight + 1):
+        for index, item in enumerate(items, 1):
+            if item['weight'] <= weight:
+                value = item['value'] + \
+                        totals[weight - item['weight']][index - 1]
+
+                value_without_item = totals[weight][index - 1]
+                totals[weight][index] = max(value, value_without_item)
+            else:
+                totals[weight][index] = totals[weight][index - 1]
+    return totals[maximum_weight][len(items)]
+
+
+=== Source Interface ===
+def maximum_value(maximum_weight, items):
+    pass
+
+
+=== Target Interface ===
+package knapsack
+
+type Item struct {
+	Weight, Value int
+}
+
+// Knapsack takes in a maximum carrying capacity and a collection of items
+// and returns the maximum value that can be carried by the knapsack
+// given that the knapsack can only carry a maximum weight given by maximumWeight
+func Knapsack(maximumWeight int, items []Item) int {
+	panic("Please implement the Knapsack() function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/knapsack/canonical-data.json
+# File last updated on 2023-12-27
+
+import unittest
+
+from knapsack import (
+    maximum_value,
+)
+
+
+class KnapsackTest(unittest.TestCase):
+    def test_no_items(self):
+        self.assertEqual(maximum_value(100, []), 0)
+
+    def test_one_item_too_heavy(self):
+        self.assertEqual(maximum_value(10, [{"weight": 100, "value": 1}]), 0)
+
+    def test_five_items_cannot_be_greedy_by_weight(self):
+        self.assertEqual(
+            maximum_value(
+                10,
+                [
+                    {"weight": 2, "value": 5},
+                    {"weight": 2, "value": 5},
+                    {"weight": 2, "value": 5},
+                    {"weight": 2, "value": 5},
+                    {"weight": 10, "value": 21},
+                ],
+            ),
+            21,
+        )
+
+    def test_five_items_cannot_be_greedy_by_value(self):
+        self.assertEqual(
+            maximum_value(
+                10,
+                [
+                    {"weight": 2, "value": 20},
+                    {"weight": 2, "value": 20},
+                    {"weight": 2, "value": 20},
+                    {"weight": 2, "value": 20},
+                    {"weight": 10, "value": 50},
+                ],
+            ),
+            80,
+        )
+
+    def test_example_knapsack(self):
+        self.assertEqual(
+            maximum_value(
+                10,
+                [
+                    {"weight": 5, "value": 10},
+                    {"weight": 4, "value": 40},
+                    {"weight": 6, "value": 30},
+                    {"weight": 4, "value": 50},
+                ],
+            ),
+            90,
+        )
+
+    def test_8_items(self):
+        self.assertEqual(
+            maximum_value(
+                104,
+                [
+                    {"weight": 25, "value": 350},
+                    {"weight": 35, "value": 400},
+                    {"weight": 45, "value": 450},
+                    {"weight": 5, "value": 20},
+                    {"weight": 25, "value": 70},
+                    {"weight": 3, "value": 8},
+                    {"weight": 2, "value": 5},
+                    {"weight": 2, "value": 5},
+                ],
+            ),
+            900,
+        )
+
+    def test_15_items(self):
+        self.assertEqual(
+            maximum_value(
+                750,
+                [
+                    {"weight": 70, "value": 135},
+                    {"weight": 73, "value": 139},
+                    {"weight": 77, "value": 149},
+                    {"weight": 80, "value": 150},
+                    {"weight": 82, "value": 156},
+                    {"weight": 87, "value": 163},
+                    {"weight": 90, "value": 173},
+                    {"weight": 94, "value": 184},
+                    {"weight": 98, "value": 192},
+                    {"weight": 106, "value": 201},
+                    {"weight": 110, "value": 210},
+                    {"weight": 113, "value": 214},
+                    {"weight": 115, "value": 221},
+                    {"weight": 118, "value": 229},
+                    {"weight": 120, "value": 240},
+                ],
+            ),
+            1458,
+        )
+
+
+=== Target Test Code ===
+package knapsack
+
+import "testing"
+
+func TestKnapsack(t *testing.T) {
+	for _, tc := range maximumValueTests {
+		actual := Knapsack(tc.input.MaximumWeight, tc.input.Items)
+		expected := tc.expected
+
+		if actual != expected {
+			t.Fatalf("Knapsack(%d, %+v) = %d, want %d", tc.input.MaximumWeight, tc.input.Items, actual, tc.expected)
+		}
+	}
+}
+
+func BenchmarkKnapsack(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range maximumValueTests {
+			Knapsack(tc.input.MaximumWeight, tc.input.Items)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/knapsack/.meta/example.go
+package meta
+
+// Item represents an item with a weight and a value.
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried with a given maximum weight capacity.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the DP table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				value := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if value > valueWithoutItem {
+					totals[weight][index] = value
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+	
+	return totals[maximumWeight][n]
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (knapsack.go) and knapsack (knapsack_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/knapsack
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/knapsack/.meta/example.go
+package meta
+
+import "fmt"
+
+// Item represents an item with a weight and a value.
+// This struct is used in the Knapsack function.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+//
+// Example: Item{Weight: 2, Value: 3}
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried with a given maximum weight capacity.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of items available to choose from
+//
+// Returns:
+//   The maximum value that can be achieved without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the DP table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				value := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if value > valueWithoutItem {
+					totals[weight][index] = value
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+	
+	return totals[maximumWeight][n]
+}
+
+// A helper function to pretty-print the DP table (useful for debugging).
+func printTotals(totals [][]int) {
+	for i, row := range totals {
+		fmt.Printf("Weight %d: %v\n", i, row)
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (knapsack.go) and knapsack (knapsack_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/knapsack
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/knapsack/.meta/example.go
+package meta
+
+// Item represents an item with a weight and a value.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+
+// Note: Although this file is located in a directory named “.meta", the package is named "meta".
+// This is to ensure a valid Go package name.
+
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried with a given maximum weight capacity.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of available items
+//
+// Returns:
+//   The maximum value that can be achieved without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the DP table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				value := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if value > valueWithoutItem {
+					totals[weight][index] = value
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+
+	return totals[maximumWeight][n]
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (knapsack.go) and knapsack (knapsack_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/knapsack
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/knapsack/.meta/example.go
+package meta
+
+// Item represents an item with a weight and a value.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+//
+// Note: Although this file is located under a directory named ".meta", we use the package name "meta"
+// to ensure a valid Go package name.
+
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried with a given maximum weight capacity.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of available items
+//
+// Returns:
+//   The maximum value that can be achieved without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the DP table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				value := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if value > valueWithoutItem {
+					totals[weight][index] = value
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+
+	return totals[maximumWeight][n]
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (knapsack.go) and knapsack (knapsack_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/knapsack
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/knapsack/.meta/example.go
+package meta
+
+// Item represents an item with a weight and a value.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+//
+// Note: This file is located under the directory ".meta". However, for a valid Go package name,
+// we use the package name "meta".
+
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried given a maximum weight capacity and a list of items.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of available items
+//
+// Returns:
+//   The maximum possible value without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the dynamic programming table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				valueWithItem := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if valueWithItem > valueWithoutItem {
+					totals[weight][index] = valueWithItem
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+
+	return totals[maximumWeight][n]
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (knapsack.go) and knapsack (knapsack_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/knapsack
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/knapsack/.meta/example.go
+package meta
+
+// Item represents an item with a weight and a value.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+//
+// Note: This file is located under the directory “.meta”. However, for a valid Go package name,
+// we use the package name "meta".
+
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried given a maximum weight capacity and a list of items.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of available items
+//
+// Returns:
+//   The maximum possible value without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the dynamic programming table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				valueWithItem := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if valueWithItem > valueWithoutItem {
+					totals[weight][index] = valueWithItem
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+
+	return totals[maximumWeight][n]
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (knapsack.go) and knapsack (knapsack_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/knapsack
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/knapsack/example.go
+package knapsack
+
+// Item represents an item with a weight and a value.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+
+// NOTE: Although the original Python file was located in a .meta directory, we place the implementation
+// in the same directory as the tests to avoid package conflicts. The package name matches the enclosing
+// directory: knapsack.
+
+// Item defines an item for the knapsack problem.
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried given a maximum weight capacity and a list of items.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of available items
+//
+// Returns:
+//   The maximum achievable value without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the DP table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				valueWithItem := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if valueWithItem > valueWithoutItem {
+					totals[weight][index] = valueWithItem
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+
+	return totals[maximumWeight][n]
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/knapsack [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/knapsack [exercism/knapsack.test]
+./knapsack_test.go:6:21: undefined: maximumValueTests
+./knapsack_test.go:18:22: undefined: maximumValueTests
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/knapsack/.meta/example.go
+package knapsack
+
+// Item represents an item with a weight and a value.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+//
+// NOTE: Although the original Python file was located in a “.meta” directory, we set the package
+// name to "knapsack" to match the test package and avoid package conflicts.
+
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried given a maximum weight capacity and a list of items.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of available items
+//
+// Returns:
+//   The maximum achievable value without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the DP table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				valueWithItem := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if valueWithItem > valueWithoutItem {
+					totals[weight][index] = valueWithItem
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+
+	return totals[maximumWeight][n]
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/knapsack [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/knapsack [exercism/knapsack.test]
+./knapsack_test.go:6:21: undefined: maximumValueTests
+./knapsack_test.go:18:22: undefined: maximumValueTests
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/knapsack/example.go
+package knapsack
+
+// Item represents an item with a weight and a value.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+//
+// NOTE: Although the original Python file was located in a “.meta” directory, we place the implementation
+// in this file with package name "knapsack" to match the test package and avoid package conflicts.
+
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried given a maximum weight capacity and a list of items.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of available items
+//
+// Returns:
+//   The maximum achievable value without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the dynamic programming table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				valueWithItem := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if valueWithItem > valueWithoutItem {
+					totals[weight][index] = valueWithItem
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+
+	return totals[maximumWeight][n]
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/knapsack [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/knapsack [exercism/knapsack.test]
+./knapsack_test.go:6:21: undefined: maximumValueTests
+./knapsack_test.go:18:22: undefined: maximumValueTests
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/knapsack/example.go
+package knapsack
+
+// Item represents an item with a weight and a value.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+//
+// NOTE: Although the original Python file was located in a ".meta" directory, we place the implementation in
+// this file with package name "knapsack" to match the test package and avoid package conflicts.
+
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried given a maximum weight capacity and a list of items.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of available items
+//
+// Returns:
+//   The maximum achievable value without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the dynamic programming table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				valueWithItem := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if valueWithItem > valueWithoutItem {
+					totals[weight][index] = valueWithItem
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+
+	return totals[maximumWeight][n]
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/knapsack [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/knapsack [exercism/knapsack.test]
+./knapsack_test.go:6:21: undefined: maximumValueTests
+./knapsack_test.go:18:22: undefined: maximumValueTests
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/knapsack/example.go
+package knapsack
+
+// Item represents an item with a weight and a value.
+//
+// Attributes:
+//   Weight: the weight of the item
+//   Value: the value of the item
+
+type Item struct {
+	Weight int
+	Value  int
+}
+
+// Knapsack calculates the maximum value that can be carried given a maximum weight capacity and a list of items.
+// It implements the 0/1 knapsack dynamic programming algorithm.
+//
+// Parameters:
+//   maximumWeight - the maximum weight the knapsack can carry
+//   items - a slice of available items
+//
+// Returns:
+//   The maximum achievable value without exceeding the maximum weight.
+func Knapsack(maximumWeight int, items []Item) int {
+	n := len(items)
+	// Create a 2D slice with dimensions (maximumWeight+1) x (n+1).
+	totals := make([][]int, maximumWeight+1)
+	for i := 0; i <= maximumWeight; i++ {
+		totals[i] = make([]int, n+1)
+	}
+
+	// Build the dynamic programming table.
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index := 1; index <= n; index++ {
+			item := items[index-1]
+			if item.Weight <= weight {
+				valueWithItem := item.Value + totals[weight-item.Weight][index-1]
+				valueWithoutItem := totals[weight][index-1]
+				if valueWithItem > valueWithoutItem {
+					totals[weight][index] = valueWithItem
+				} else {
+					totals[weight][index] = valueWithoutItem
+				}
+			} else {
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+
+	return totals[maximumWeight][n]
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/knapsack [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/knapsack [exercism/knapsack.test]
+./knapsack_test.go:6:21: undefined: maximumValueTests
+./knapsack_test.go:18:22: undefined: maximumValueTests
+
+
+=== FINAL STATUS: FAILED ===

@@ -1,0 +1,418 @@
+=== Initial Source Code ===
+Source file: exercises/practice/book-store/.meta/example.py
+from collections import Counter
+
+PER_BOOK = 800.00
+PER_GROUP = {
+    1: 1 * PER_BOOK * 1.00,
+    2: 2 * PER_BOOK * 0.95,
+    3: 3 * PER_BOOK * 0.90,
+    4: 4 * PER_BOOK * 0.80,
+    5: 5 * PER_BOOK * 0.75,
+}
+
+
+def _total(basket):
+    volumes = Counter(basket)
+    price = len(basket) * PER_BOOK
+    for size in range(len(volumes), 1, -1):
+        group = volumes - Counter(k for k, _ in volumes.most_common(size))
+        group_books = sorted(group.elements())
+        price = min(price, PER_GROUP[size] + _total(group_books))
+    return price
+
+
+def total(basket):
+    if not basket:
+        return 0
+    return _total(sorted(basket))
+
+
+=== Source Interface ===
+def total(basket):
+    pass
+
+
+=== Target Interface ===
+package bookstore
+
+func Cost(books []int) int {
+	panic("Please implement the Cost function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/book-store/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from book_store import (
+    total,
+)
+
+
+class BookStoreTest(unittest.TestCase):
+    def test_only_a_single_book(self):
+        basket = [1]
+        self.assertEqual(total(basket), 800)
+
+    def test_two_of_the_same_book(self):
+        basket = [2, 2]
+        self.assertEqual(total(basket), 1600)
+
+    def test_empty_basket(self):
+        basket = []
+        self.assertEqual(total(basket), 0)
+
+    def test_two_different_books(self):
+        basket = [1, 2]
+        self.assertEqual(total(basket), 1520)
+
+    def test_three_different_books(self):
+        basket = [1, 2, 3]
+        self.assertEqual(total(basket), 2160)
+
+    def test_four_different_books(self):
+        basket = [1, 2, 3, 4]
+        self.assertEqual(total(basket), 2560)
+
+    def test_five_different_books(self):
+        basket = [1, 2, 3, 4, 5]
+        self.assertEqual(total(basket), 3000)
+
+    def test_two_groups_of_four_is_cheaper_than_group_of_five_plus_group_of_three(self):
+        basket = [1, 1, 2, 2, 3, 3, 4, 5]
+        self.assertEqual(total(basket), 5120)
+
+    def test_two_groups_of_four_is_cheaper_than_groups_of_five_and_three(self):
+        basket = [1, 1, 2, 3, 4, 4, 5, 5]
+        self.assertEqual(total(basket), 5120)
+
+    def test_group_of_four_plus_group_of_two_is_cheaper_than_two_groups_of_three(self):
+        basket = [1, 1, 2, 2, 3, 4]
+        self.assertEqual(total(basket), 4080)
+
+    def test_two_each_of_first_four_books_and_one_copy_each_of_rest(self):
+        basket = [1, 1, 2, 2, 3, 3, 4, 4, 5]
+        self.assertEqual(total(basket), 5560)
+
+    def test_two_copies_of_each_book(self):
+        basket = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
+        self.assertEqual(total(basket), 6000)
+
+    def test_three_copies_of_first_book_and_two_each_of_remaining(self):
+        basket = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 1]
+        self.assertEqual(total(basket), 6800)
+
+    def test_three_each_of_first_two_books_and_two_each_of_remaining_books(self):
+        basket = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 1, 2]
+        self.assertEqual(total(basket), 7520)
+
+    def test_four_groups_of_four_are_cheaper_than_two_groups_each_of_five_and_three(
+        self,
+    ):
+        basket = [1, 1, 2, 2, 3, 3, 4, 5, 1, 1, 2, 2, 3, 3, 4, 5]
+        self.assertEqual(total(basket), 10240)
+
+    def test_check_that_groups_of_four_are_created_properly_even_when_there_are_more_groups_of_three_than_groups_of_five(
+        self,
+    ):
+        basket = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 5, 5]
+        self.assertEqual(total(basket), 14560)
+
+    def test_one_group_of_one_and_four_is_cheaper_than_one_group_of_two_and_three(self):
+        basket = [1, 1, 2, 3, 4]
+        self.assertEqual(total(basket), 3360)
+
+    def test_one_group_of_one_and_two_plus_three_groups_of_four_is_cheaper_than_one_group_of_each_size(
+        self,
+    ):
+        basket = [1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5]
+        self.assertEqual(total(basket), 10000)
+
+    # Additional tests for this track
+
+    def test_two_groups_of_four_and_a_group_of_five(self):
+        basket = [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5]
+        self.assertEqual(total(basket), 8120)
+
+    def test_shuffled_book_order(self):
+        basket = [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3]
+        self.assertEqual(total(basket), 8120)
+
+
+=== Target Test Code ===
+package bookstore
+
+import (
+	"testing"
+)
+
+func TestCost(t *testing.T) {
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			actual := Cost(testCase.basket)
+			if testCase.expected != actual {
+				t.Errorf("Cost(%v) expected %d, got %d", testCase.basket, testCase.expected, actual)
+			}
+		})
+	}
+}
+
+func BenchmarkCost(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, testCase := range testCases {
+			Cost(testCase.basket)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/book-store/.meta/example.go
+package bookstore
+
+import (
+	"sort"
+)
+
+const perBook = 800.00
+
+var perGroup = map[int]float64{
+	1: 1 * perBook * 1.00,
+	2: 2 * perBook * 0.95,
+	3: 3 * perBook * 0.90,
+	4: 4 * perBook * 0.80,
+	5: 5 * perBook * 0.75,
+}
+
+// Cost calculates the price of a basket of books considering the discounts
+// available when purchasing multiple books from the series
+func Cost(basket []int) int {
+	if len(basket) == 0 {
+		return 0
+	}
+	
+	// Sort the basket to ensure consistent results
+	sortedBasket := make([]int, len(basket))
+	copy(sortedBasket, basket)
+	sort.Ints(sortedBasket)
+	
+	return _total(sortedBasket)
+}
+
+func _total(basket []int) int {
+	// Count frequency of each book
+	volumes := make(map[int]int)
+	for _, book := range basket {
+		volumes[book]++
+	}
+	
+	price := len(basket) * perBook
+	
+	// Try different group sizes to find the optimal price
+	for size := len(volumes); size > 1; size-- {
+		// Find most common books to extract as a group
+		mostCommon := getMostCommon(volumes, size)
+		
+		// Create remaining books after removing the group
+		group := make(map[int]int)
+		for k, v := range volumes {
+			group[k] = v
+		}
+		
+		// Remove the most common books
+		for _, book := range mostCommon {
+			group[book]--
+			if group[book] == 0 {
+				delete(group, book)
+			}
+		}
+		
+		// Convert remaining books back to a slice
+		groupBooks := []int{}
+		for book, count := range group {
+			for i := 0; i < count; i++ {
+				groupBooks = append(groupBooks, book)
+			}
+		}
+		sort.Ints(groupBooks)
+		
+		// Calculate price with this grouping strategy
+		groupPrice := perGroup[size] + float64(_total(groupBooks))
+		if groupPrice < price {
+			price = groupPrice
+		}
+	}
+	
+	return int(price)
+}
+
+// getMostCommon returns the n most common books from the volumes map
+func getMostCommon(volumes map[int]int, n int) []int {
+	// Create a slice of book IDs and counts
+	type bookCount struct {
+		book  int
+		count int
+	}
+	
+	counts := []bookCount{}
+	for book, count := range volumes {
+		counts = append(counts, bookCount{book, count})
+	}
+	
+	// Sort by count (descending)
+	sort.Slice(counts, func(i, j int) bool {
+		if counts[i].count == counts[j].count {
+			return counts[i].book < counts[j].book // tie-breaker for consistent results
+		}
+		return counts[i].count > counts[j].count
+	})
+	
+	// Take the first n books
+	result := []int{}
+	for i := 0; i < n && i < len(counts); i++ {
+		result = append(result, counts[i].book)
+	}
+	
+	sort.Ints(result) // ensure consistent ordering
+	return result
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/book-store [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/book-store [exercism/book-store.test]
+./book_store.go:72:19: invalid operation: groupPrice < price (mismatched types float64 and int)
+./book_store.go:73:12: cannot use groupPrice (variable of type float64) as type int in assignment
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/book-store/.meta/example.go
+package bookstore
+
+import (
+	"sort"
+)
+
+const perBook = 800.00
+
+var perGroup = map[int]float64{
+	1: 1 * perBook * 1.00,
+	2: 2 * perBook * 0.95,
+	3: 3 * perBook * 0.90,
+	4: 4 * perBook * 0.80,
+	5: 5 * perBook * 0.75,
+}
+
+// Cost calculates the price of a basket of books considering the discounts
+// available when purchasing multiple books from the series
+func Cost(basket []int) int {
+	if len(basket) == 0 {
+		return 0
+	}
+	
+	// Sort the basket to ensure consistent results
+	sortedBasket := make([]int, len(basket))
+	copy(sortedBasket, basket)
+	sort.Ints(sortedBasket)
+	
+	return _total(sortedBasket)
+}
+
+func _total(basket []int) int {
+	// Count frequency of each book
+	volumes := make(map[int]int)
+	for _, book := range basket {
+		volumes[book]++
+	}
+	
+	price := float64(len(basket) * int(perBook))
+	
+	// Try different group sizes to find the optimal price
+	for size := len(volumes); size > 1; size-- {
+		// Find most common books to extract as a group
+		mostCommon := getMostCommon(volumes, size)
+		
+		// Create remaining books after removing the group
+		group := make(map[int]int)
+		for k, v := range volumes {
+			group[k] = v
+		}
+		
+		// Remove the most common books
+		for _, book := range mostCommon {
+			group[book]--
+			if group[book] == 0 {
+				delete(group, book)
+			}
+		}
+		
+		// Convert remaining books back to a slice
+		groupBooks := []int{}
+		for book, count := range group {
+			for i := 0; i < count; i++ {
+				groupBooks = append(groupBooks, book)
+			}
+		}
+		sort.Ints(groupBooks)
+		
+		// Calculate price with this grouping strategy
+		groupPrice := perGroup[size] + float64(_total(groupBooks))
+		if groupPrice < price {
+			price = groupPrice
+		}
+	}
+	
+	return int(price)
+}
+
+// getMostCommon returns the n most common books from the volumes map
+func getMostCommon(volumes map[int]int, n int) []int {
+	// Create a slice of book IDs and counts
+	type bookCount struct {
+		book  int
+		count int
+	}
+	
+	counts := []bookCount{}
+	for book, count := range volumes {
+		counts = append(counts, bookCount{book, count})
+	}
+	
+	// Sort by count (descending)
+	sort.Slice(counts, func(i, j int) bool {
+		if counts[i].count == counts[j].count {
+			return counts[i].book < counts[j].book // tie-breaker for consistent results
+		}
+		return counts[i].count > counts[j].count
+	})
+	
+	// Take the first n books
+	result := []int{}
+	for i := 0; i < n && i < len(counts); i++ {
+		result = append(result, counts[i].book)
+	}
+	
+	sort.Ints(result) // ensure consistent ordering
+	return result
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/book-store	0.311s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

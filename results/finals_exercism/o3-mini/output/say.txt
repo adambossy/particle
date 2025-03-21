@@ -1,0 +1,2672 @@
+=== Initial Source Code ===
+Source file: exercises/practice/say/.meta/example.py
+def say(number):
+    small = dict(enumerate((
+            'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+            'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
+            'sixteen', 'seventeen', 'eighteen', 'nineteen')))
+
+    tens = {20: 'twenty', 30: 'thirty', 40: 'forty', 50: 'fifty',
+            60: 'sixty', 70: 'seventy', 80: 'eighty', 90: 'ninety'}
+
+    kilo = 1e3
+    mega = 1e6
+    giga = 1e9
+    tera = 1e12
+
+    if number < 0:
+        raise ValueError('input out of range')
+    if number >= tera:
+        raise ValueError('input out of range')
+
+    if number < 20:
+        return small[number]
+
+    if number < 100:
+        if number % 10 == 0:
+            return tens[number]
+        return tens[number // 10 * 10] + '-' + small[number % 10]
+
+    if number < kilo:
+        if number % 100 == 0:
+            return small[number // 100] + ' hundred'
+        return small[number // 100] + ' hundred ' + say(number % 100)
+
+    if number < mega:
+        if number % kilo == 0:
+            return say(number // kilo) + ' thousand'
+        return say(number // kilo) + ' thousand ' + say(number % kilo)
+
+    if number < giga:
+        if number % mega == 0:
+            return say(number // mega) + ' million'
+        return say(number // mega) + ' million ' + say(number % mega)
+
+    if number % giga == 0:
+        return say(number // giga) + ' billion'
+    return say(number // giga) + ' billion ' + say(number % giga)
+
+=== Source Interface ===
+def say(number):
+    pass
+
+
+=== Target Interface ===
+package say
+
+func Say(n int64) (string, bool) {
+	panic("Please implement the Say function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/say/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from say import (
+    say,
+)
+
+
+class SayTest(unittest.TestCase):
+    def test_zero(self):
+        self.assertEqual(say(0), "zero")
+
+    def test_one(self):
+        self.assertEqual(say(1), "one")
+
+    def test_fourteen(self):
+        self.assertEqual(say(14), "fourteen")
+
+    def test_twenty(self):
+        self.assertEqual(say(20), "twenty")
+
+    def test_twenty_two(self):
+        self.assertEqual(say(22), "twenty-two")
+
+    def test_thirty(self):
+        self.assertEqual(say(30), "thirty")
+
+    def test_ninety_nine(self):
+        self.assertEqual(say(99), "ninety-nine")
+
+    def test_one_hundred(self):
+        self.assertEqual(say(100), "one hundred")
+
+    def test_one_hundred_twenty_three(self):
+        self.assertEqual(say(123), "one hundred twenty-three")
+
+    def test_two_hundred(self):
+        self.assertEqual(say(200), "two hundred")
+
+    def test_nine_hundred_ninety_nine(self):
+        self.assertEqual(say(999), "nine hundred ninety-nine")
+
+    def test_one_thousand(self):
+        self.assertEqual(say(1000), "one thousand")
+
+    def test_one_thousand_two_hundred_thirty_four(self):
+        self.assertEqual(say(1234), "one thousand two hundred thirty-four")
+
+    def test_one_million(self):
+        self.assertEqual(say(1000000), "one million")
+
+    def test_one_million_two_thousand_three_hundred_forty_five(self):
+        self.assertEqual(
+            say(1002345), "one million two thousand three hundred forty-five"
+        )
+
+    def test_one_billion(self):
+        self.assertEqual(say(1000000000), "one billion")
+
+    def test_a_big_number(self):
+        self.assertEqual(
+            say(987654321123),
+            "nine hundred eighty-seven billion six hundred fifty-four million three hundred twenty-one thousand one hundred twenty-three",
+        )
+
+    def test_numbers_below_zero_are_out_of_range(self):
+        with self.assertRaises(ValueError) as err:
+            say(-1)
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "input out of range")
+
+    def test_numbers_above_999_999_999_999_are_out_of_range(self):
+        with self.assertRaises(ValueError) as err:
+            say(1000000000000)
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "input out of range")
+
+    # Additional tests for this track
+    def test_one_hundred_seventy(self):
+        self.assertEqual(say(170), "one hundred seventy")
+
+
+=== Target Test Code ===
+package say
+
+import (
+	"testing"
+)
+
+func TestSay(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Say(tc.input)
+			switch {
+			case tc.expectError:
+				if ok {
+					t.Fatalf("Say(%d) expected error, got: %q", tc.input, actual)
+				}
+			case !ok:
+				t.Fatalf("Say(%d) got ok:%t, want: %q", tc.input, ok, tc.expected)
+			case actual != tc.expected:
+				t.Fatalf("Say(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSay(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Say(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/say/.meta/example.go
+package meta
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// For inputs out of range, it returns an empty string and false.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// An example function to show usage; this can be removed or used for debugging.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (say.go) and say (say_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/say
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// It returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+// exercises/practice/say/example_test.go
+// Package say provides tests for the Say function.
+
+// Note: This file should be placed in the same directory as example.go.
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say_test.go:8:21: undefined: testCases
+./say_test.go:30:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// It returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+// exercises/practice/say/.meta/example_test.go
+package say
+
+import (
+	"testing"
+)
+
+// testCase defines a single test scenario for the Say function
+type testCase struct {
+	description string
+	input       int64
+	expected    string
+	expectError bool
+}
+
+// testCases contains various scenarios for testing the Say function
+var testCases = []testCase{
+	{
+		description: "zero",
+		input:       0,
+		expected:    "zero",
+		expectError: false,
+	},
+	{
+		description: "less than twenty",
+		input:       13,
+		expected:    "thirteen",
+		expectError: false,
+	},
+	{
+		description: "exact multiple of ten",
+		input:       20,
+		expected:    "twenty",
+		expectError: false,
+	},
+	{
+		description: "non-multiple tens",
+		input:       45,
+		expected:    "forty-five",
+		expectError: false,
+	},
+	{
+		description: "round hundred",
+		input:       100,
+		expected:    "one hundred",
+		expectError: false,
+	},
+	{
+		description: "hundred with remainder",
+		input:       115,
+		expected:    "one hundred fifteen",
+		expectError: false,
+	},
+	{
+		description: "round thousand",
+		input:       1000,
+		expected:    "one thousand",
+		expectError: false,
+	},
+	{
+		description: "thousand with remainder",
+		input:       1234,
+		expected:    "one thousand two hundred thirty-four",
+		expectError: false,
+	},
+	{
+		description: "million round",
+		input:       1000000,
+		expected:    "one million",
+		expectError: false,
+	},
+	{
+		description: "billion round",
+		input:       1000000000,
+		expected:    "one billion",
+		expectError: false,
+	},
+	{
+		description: "negative value",
+		input:       -1,
+		expected:    "",
+		expectError: true,
+	},
+	{
+		description: "input too large",
+		input:       tera,
+		expected:    "",
+		expectError: true,
+	},
+}
+
+func TestSay(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Say(tc.input)
+			switch {
+			case tc.expectError:
+				if ok {
+					t.Fatalf("Say(%d) expected error, got: %q", tc.input, actual)
+				}
+			case !ok:
+				// Not expecting error but got one
+					t.Fatalf("Say(%d) returned error, expected: %q", tc.input, tc.expected)
+			case actual != tc.expected:
+				 t.Fatalf("Say(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSay(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Say(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say.go:159:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// It returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say_test.go:8:21: undefined: testCases
+./say_test.go:30:22: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// It returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+// exercises/practice/say/.meta/example_test.go
+package say
+
+import (
+	"testing"
+)
+
+// testCase defines a single test scenario for the Say function.
+type testCase struct {
+	description string
+	input       int64
+	expected    string
+	expectError bool
+}
+
+// testCases contains various scenarios for testing the Say function.
+var testCases = []testCase{
+	{
+		description: "zero",
+		input:       0,
+		expected:    "zero",
+		expectError: false,
+	},
+	{
+		description: "less than twenty",
+		input:       13,
+		expected:    "thirteen",
+		expectError: false,
+	},
+	{
+		description: "exact multiple of ten",
+		input:       20,
+		expected:    "twenty",
+		expectError: false,
+	},
+	{
+		description: "non-multiple tens",
+		input:       45,
+		expected:    "forty-five",
+		expectError: false,
+	},
+	{
+		description: "round hundred",
+		input:       100,
+		expected:    "one hundred",
+		expectError: false,
+	},
+	{
+		description: "hundred with remainder",
+		input:       115,
+		expected:    "one hundred fifteen",
+		expectError: false,
+	},
+	{
+		description: "round thousand",
+		input:       1000,
+		expected:    "one thousand",
+		expectError: false,
+	},
+	{
+		description: "thousand with remainder",
+		input:       1234,
+		expected:    "one thousand two hundred thirty-four",
+		expectError: false,
+	},
+	{
+		description: "million round",
+		input:       1000000,
+		expected:    "one million",
+		expectError: false,
+	},
+	{
+		description: "billion round",
+		input:       1000000000,
+		expected:    "one billion",
+		expectError: false,
+	},
+	{
+		description: "negative value",
+		input:       -1,
+		expected:    "",
+		expectError: true,
+	},
+	{
+		description: "input too large",
+		input:       tera,
+		expected:    "",
+		expectError: true,
+	},
+}
+
+func TestSay(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Say(tc.input)
+			switch {
+			case tc.expectError:
+				if ok {
+					t.Fatalf("Say(%d) expected error, got: %q", tc.input, actual)
+				}
+			case !ok:
+				// Not expecting error but got one
+				t.Fatalf("Say(%d) returned error, expected: %q", tc.input, tc.expected)
+			case actual != tc.expected:
+				t.Fatalf("Say(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSay(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Say(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say.go:159:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// Returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say_test.go:8:21: undefined: testCases
+./say_test.go:30:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// It returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+// -------------------------------------------------------------
+// exercises/practice/say/.meta/example_test.go
+package say
+
+import (
+	"testing"
+)
+
+// testCase defines a single test scenario for the Say function.
+type testCase struct {
+	description string
+	input       int64
+	expected    string
+	expectError bool
+}
+
+// testCases contains various scenarios for testing the Say function.
+var testCases = []testCase{
+	{
+		description: "zero",
+		input:       0,
+		expected:    "zero",
+		expectError: false,
+	},
+	{
+		description: "less than twenty",
+		input:       13,
+		expected:    "thirteen",
+		expectError: false,
+	},
+	{
+		description: "exact multiple of ten",
+		input:       20,
+		expected:    "twenty",
+		expectError: false,
+	},
+	{
+		description: "non-multiple tens",
+		input:       45,
+		expected:    "forty-five",
+		expectError: false,
+	},
+	{
+		description: "round hundred",
+		input:       100,
+		expected:    "one hundred",
+		expectError: false,
+	},
+	{
+		description: "hundred with remainder",
+		input:       115,
+		expected:    "one hundred fifteen",
+		expectError: false,
+	},
+	{
+		description: "round thousand",
+		input:       1000,
+		expected:    "one thousand",
+		expectError: false,
+	},
+	{
+		description: "thousand with remainder",
+		input:       1234,
+		expected:    "one thousand two hundred thirty-four",
+		expectError: false,
+	},
+	{
+		description: "million round",
+		input:       1000000,
+		expected:    "one million",
+		expectError: false,
+	},
+	{
+		description: "billion round",
+		input:       1000000000,
+		expected:    "one billion",
+		expectError: false,
+	},
+	{
+		description: "negative value",
+		input:       -1,
+		expected:    "",
+		expectError: true,
+	},
+	{
+		description: "input too large",
+		input:       tera,
+		expected:    "",
+		expectError: true,
+	},
+}
+
+func TestSay(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Say(tc.input)
+			switch {
+			case tc.expectError:
+				if ok {
+					t.Fatalf("Say(%d) expected error, got: %q", tc.input, actual)
+				}
+			case !ok:
+				// Not expecting error but got one
+					t.Fatalf("Say(%d) returned error, expected: %q", tc.input, tc.expected)
+			case actual != tc.expected:
+				 t.Fatalf("Say(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSay(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Say(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say.go:160:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// It returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+// ----------------------------------------------------------------
+// exercises/practice/say/.meta/example_test.go
+package say
+
+import (
+	"testing"
+)
+
+// testCase defines a single test scenario for the Say function.
+type testCase struct {
+	description string
+	input       int64
+	expected    string
+	expectError bool
+}
+
+// testCases contains various scenarios for testing the Say function.
+var testCases = []testCase{
+	{
+		description: "zero",
+		input:       0,
+		expected:    "zero",
+		expectError: false,
+	},
+	{
+		description: "less than twenty",
+		input:       13,
+		expected:    "thirteen",
+		expectError: false,
+	},
+	{
+		description: "exact multiple of ten",
+		input:       20,
+		expected:    "twenty",
+		expectError: false,
+	},
+	{
+		description: "non-multiple tens",
+		input:       45,
+		expected:    "forty-five",
+		expectError: false,
+	},
+	{
+		description: "round hundred",
+		input:       100,
+		expected:    "one hundred",
+		expectError: false,
+	},
+	{
+		description: "hundred with remainder",
+		input:       115,
+		expected:    "one hundred fifteen",
+		expectError: false,
+	},
+	{
+		description: "round thousand",
+		input:       1000,
+		expected:    "one thousand",
+		expectError: false,
+	},
+	{
+		description: "thousand with remainder",
+		input:       1234,
+		expected:    "one thousand two hundred thirty-four",
+		expectError: false,
+	},
+	{
+		description: "million round",
+		input:       1000000,
+		expected:    "one million",
+		expectError: false,
+	},
+	{
+		description: "billion round",
+		input:       1000000000,
+		expected:    "one billion",
+		expectError: false,
+	},
+	{
+		description: "negative value",
+		input:       -1,
+		expected:    "",
+		expectError: true,
+	},
+	{
+		description: "input too large",
+		input:       tera,
+		expected:    "",
+		expectError: true,
+	},
+}
+
+func TestSay(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Say(tc.input)
+			switch {
+			case tc.expectError:
+				if ok {
+					t.Fatalf("Say(%d) expected error, got: %q", tc.input, actual)
+				}
+			case !ok:
+				// Not expecting an error but got one
+					t.Fatalf("Say(%d) returned error, expected: %q", tc.input, tc.expected)
+			case actual != tc.expected:
+					t.Fatalf("Say(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSay(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Say(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say.go:160:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// It returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say_test.go:8:21: undefined: testCases
+./say_test.go:30:22: undefined: testCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// It returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say_test.go:8:21: undefined: testCases
+./say_test.go:30:22: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/say/.meta/example.go
+package say
+
+import "fmt"
+
+// Define constants for numerical thresholds
+const (
+	kilo int64 = 1000
+	mega int64 = 1000000
+	giga int64 = 1000000000
+	tera int64 = 1000000000000
+)
+
+// small maps numbers 0 through 19 to their word representations
+var small = map[int64]string{
+	0:  "zero",
+	1:  "one",
+	2:  "two",
+	3:  "three",
+	4:  "four",
+	5:  "five",
+	6:  "six",
+	7:  "seven",
+	8:  "eight",
+	9:  "nine",
+	10: "ten",
+	11: "eleven",
+	12: "twelve",
+	13: "thirteen",
+	14: "fourteen",
+	15: "fifteen",
+	16: "sixteen",
+	17: "seventeen",
+	18: "eighteen",
+	19: "nineteen",
+}
+
+// tens maps multiples of ten from 20 to 90 into words
+var tens = map[int64]string{
+	20: "twenty",
+	30: "thirty",
+	40: "forty",
+	50: "fifty",
+	60: "sixty",
+	70: "seventy",
+	80: "eighty",
+	90: "ninety",
+}
+
+// Say converts a non-negative integer less than 1e12 into its English words representation.
+// It returns the word representation and true on success, or an empty string and false if the input is out of range.
+func Say(n int64) (string, bool) {
+	if n < 0 || n >= tera {
+		return "", false
+	}
+
+	if n < 20 {
+		return small[n], true
+	}
+
+	if n < 100 {
+		if n%10 == 0 {
+			word, ok := tens[n]
+			if !ok {
+				return "", false
+			}
+			return word, true
+		}
+		tensPart, ok := tens[(n/10)*10]
+		if !ok {
+			return "", false
+		}
+		smallPart, ok := small[n%10]
+		if !ok {
+			return "", false
+		}
+		return tensPart + "-" + smallPart, true
+	}
+
+	if n < kilo {
+		hundreds := n / 100
+		remainder := n % 100
+		hundredsWord, ok := small[hundreds]
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return hundredsWord + " hundred", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return hundredsWord + " hundred " + rest, true
+	}
+
+	if n < mega {
+		thousands := n / kilo
+		remainder := n % kilo
+		thousandsWord, ok := Say(thousands)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return thousandsWord + " thousand", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return thousandsWord + " thousand " + rest, true
+	}
+
+	if n < giga {
+		millions := n / mega
+		remainder := n % mega
+		millionsWord, ok := Say(millions)
+		if !ok {
+			return "", false
+		}
+		if remainder == 0 {
+			return millionsWord + " million", true
+		}
+		rest, ok := Say(remainder)
+		if !ok {
+			return "", false
+		}
+		return millionsWord + " million " + rest, true
+	}
+
+	// For numbers less than tera and at least giga, handle billions
+	billions := n / giga
+	remainder := n % giga
+	billionsWord, ok := Say(billions)
+	if !ok {
+		return "", false
+	}
+	if remainder == 0 {
+		return billionsWord + " billion", true
+	}
+	rest, ok := Say(remainder)
+	if !ok {
+		return "", false
+	}
+	return billionsWord + " billion " + rest, true
+}
+
+// Example demonstrates usage of the Say function.
+func Example() {
+	res, ok := Say(123456789)
+	if ok {
+		fmt.Println(res)
+	} else {
+		fmt.Println("input out of range")
+	}
+}
+
+// ------------------------------------------------------------
+// exercises/practice/say/.meta/example_test.go
+package say
+
+import (
+	"testing"
+)
+
+// testCase defines a single test scenario for the Say function.
+type testCase struct {
+	description string
+	input       int64
+	expected    string
+	expectError bool
+}
+
+// testCases contains various scenarios for testing the Say function.
+var testCases = []testCase{
+	{
+		description: "zero",
+		input:       0,
+		expected:    "zero",
+		expectError: false,
+	},
+	{
+		description: "less than twenty",
+		input:       13,
+		expected:    "thirteen",
+		expectError: false,
+	},
+	{
+		description: "exact multiple of ten",
+		input:       20,
+		expected:    "twenty",
+		expectError: false,
+	},
+	{
+		description: "non-multiple tens",
+		input:       45,
+		expected:    "forty-five",
+		expectError: false,
+	},
+	{
+		description: "round hundred",
+		input:       100,
+		expected:    "one hundred",
+		expectError: false,
+	},
+	{
+		description: "hundred with remainder",
+		input:       115,
+		expected:    "one hundred fifteen",
+		expectError: false,
+	},
+	{
+		description: "round thousand",
+		input:       1000,
+		expected:    "one thousand",
+		expectError: false,
+	},
+	{
+		description: "thousand with remainder",
+		input:       1234,
+		expected:    "one thousand two hundred thirty-four",
+		expectError: false,
+	},
+	{
+		description: "million round",
+		input:       1000000,
+		expected:    "one million",
+		expectError: false,
+	},
+	{
+		description: "billion round",
+		input:       1000000000,
+		expected:    "one billion",
+		expectError: false,
+	},
+	{
+		description: "negative value",
+		input:       -1,
+		expected:    "",
+		expectError: true,
+	},
+	{
+		description: "input too large",
+		input:       tera,
+		expected:    "",
+		expectError: true,
+	},
+}
+
+func TestSay(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Say(tc.input)
+			switch {
+			case tc.expectError:
+				if ok {
+					t.Fatalf("Say(%d) expected error, got: %q", tc.input, actual)
+				}
+			case !ok:
+				// Not expecting an error but got one
+					t.Fatalf("Say(%d) returned error, expected: %q", tc.input, tc.expected)
+			case actual != tc.expected:
+					t.Fatalf("Say(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSay(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Say(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/say [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/say [exercism/say.test]
+./say.go:160:1: syntax error: non-declaration statement outside function body
+
+
+=== FINAL STATUS: FAILED ===

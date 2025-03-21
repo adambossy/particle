@@ -1,0 +1,937 @@
+=== Initial Source Code ===
+Source file: exercises/practice/bob/.meta/example.py
+def response(hey_bob):
+    hey_bob = hey_bob.strip()
+
+    if _is_silence(hey_bob):
+        return 'Fine. Be that way!'
+    if _is_shouting(hey_bob):
+        if _is_question(hey_bob):
+            return "Calm down, I know what I'm doing!"
+        else:
+            return 'Whoa, chill out!'
+    elif _is_question(hey_bob):
+        return 'Sure.'
+    else:
+        return 'Whatever.'
+
+
+def _is_silence(hey_bob):
+    return hey_bob == ''
+
+
+def _is_shouting(hey_bob):
+    return hey_bob.isupper()
+
+
+def _is_question(hey_bob):
+    return hey_bob.endswith('?')
+
+
+=== Source Interface ===
+def response(hey_bob):
+    pass
+
+
+=== Target Interface ===
+// This is a "stub" file.  It's a little start on your solution.
+// It's not a complete solution though; you have to write some code.
+
+// Package bob should have a package comment that summarizes what it's about.
+// https://golang.org/doc/effective_go.html#commentary
+package bob
+
+// Hey should have a comment documenting it.
+func Hey(remark string) string {
+	// Write some code here to pass the test suite.
+	// Then remove all the stock comments.
+	// They're here to help you get started but they only clutter a finished solution.
+	// If you leave them in, reviewers may protest!
+	return ""
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/bob/canonical-data.json
+# File last updated on 2025-01-10
+
+import unittest
+
+from bob import (
+    response,
+)
+
+
+class BobTest(unittest.TestCase):
+    def test_stating_something(self):
+        self.assertEqual(response("Tom-ay-to, tom-aaaah-to."), "Whatever.")
+
+    def test_shouting(self):
+        self.assertEqual(response("WATCH OUT!"), "Whoa, chill out!")
+
+    def test_shouting_gibberish(self):
+        self.assertEqual(response("FCECDFCAAB"), "Whoa, chill out!")
+
+    def test_asking_a_question(self):
+        self.assertEqual(
+            response("Does this cryogenic chamber make me look fat?"), "Sure."
+        )
+
+    def test_asking_a_numeric_question(self):
+        self.assertEqual(response("You are, what, like 15?"), "Sure.")
+
+    def test_asking_gibberish(self):
+        self.assertEqual(response("fffbbcbeab?"), "Sure.")
+
+    def test_talking_forcefully(self):
+        self.assertEqual(response("Hi there!"), "Whatever.")
+
+    def test_using_acronyms_in_regular_speech(self):
+        self.assertEqual(
+            response("It's OK if you don't want to go work for NASA."), "Whatever."
+        )
+
+    def test_forceful_question(self):
+        self.assertEqual(
+            response("WHAT'S GOING ON?"), "Calm down, I know what I'm doing!"
+        )
+
+    def test_shouting_numbers(self):
+        self.assertEqual(response("1, 2, 3 GO!"), "Whoa, chill out!")
+
+    def test_no_letters(self):
+        self.assertEqual(response("1, 2, 3"), "Whatever.")
+
+    def test_question_with_no_letters(self):
+        self.assertEqual(response("4?"), "Sure.")
+
+    def test_shouting_with_special_characters(self):
+        self.assertEqual(
+            response("ZOMG THE %^*@#$(*^ ZOMBIES ARE COMING!!11!!1!"),
+            "Whoa, chill out!",
+        )
+
+    def test_shouting_with_no_exclamation_mark(self):
+        self.assertEqual(response("I HATE THE DENTIST"), "Whoa, chill out!")
+
+    def test_statement_containing_question_mark(self):
+        self.assertEqual(response("Ending with ? means a question."), "Whatever.")
+
+    def test_non_letters_with_question(self):
+        self.assertEqual(response(":) ?"), "Sure.")
+
+    def test_prattling_on(self):
+        self.assertEqual(response("Wait! Hang on. Are you going to be OK?"), "Sure.")
+
+    def test_silence(self):
+        self.assertEqual(response(""), "Fine. Be that way!")
+
+    def test_prolonged_silence(self):
+        self.assertEqual(response("          "), "Fine. Be that way!")
+
+    def test_alternate_silence(self):
+        self.assertEqual(response("\t\t\t\t\t\t\t\t\t\t"), "Fine. Be that way!")
+
+    def test_starting_with_whitespace(self):
+        self.assertEqual(response("         hmmmmmmm..."), "Whatever.")
+
+    def test_ending_with_whitespace(self):
+        self.assertEqual(
+            response("Okay if like my  spacebar  quite a bit?   "), "Sure."
+        )
+
+    def test_other_whitespace(self):
+        self.assertEqual(response("\n\r \t"), "Fine. Be that way!")
+
+    def test_non_question_ending_with_whitespace(self):
+        self.assertEqual(
+            response("This is a statement ending with whitespace      "), "Whatever."
+        )
+
+    def test_multiple_line_question(self):
+        self.assertEqual(
+            response("\nDoes this cryogenic chamber make\n me look fat?"), "Sure."
+        )
+
+
+=== Target Test Code ===
+package bob
+
+import "testing"
+
+func TestHey(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Hey(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Hey(%q) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkHey(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Hey(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import (
+	"strings"
+)
+
+// Hey filters and responds to Bob's remarks.
+// It processes the remark by trimming whitespace and then applying the following logic:
+// - If the remark is silence, returns "Fine. Be that way!"
+// - If the remark is shouting and a question, returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), returns "Sure."
+// - Otherwise, returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence checks if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting checks if the remark contains at least one alphabetic character and all alphabetic characters are uppercase.
+func isShouting(remark string) bool {
+	// To determine shouting, the string must be equal to its upper case version and different from its lower case version
+	// This ensures that there's at least one letter, because strings like "123" would otherwise be considered shouting.
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion checks if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import (
+	"strings"
+)
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one alphabetic character and all such characters are uppercase.
+func isShouting(remark string) bool {
+	// Check that remark equals its upper-case version and is not equal to its lower-case version, which implies there is at least one letter.
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+// exercises/practice/bob/.meta/example_test.go
+// To run tests: go test
+
+import "testing"
+
+// testCase defines a structure for test cases used in testing the Hey function.
+type testCase struct {
+	description string
+	input       string
+	expected    string
+}
+
+// testCases is a slice of testCase used for testing the Hey function.
+var testCases = []testCase{
+	{
+		description: "stating something",
+		input:       "Tom-ay-to, tom-aaaah-to.",
+		expected:    "Whatever.",
+	},
+	{
+		description: "yelling",
+		input:       "WATCH OUT!",
+		expected:    "Whoa, chill out!",
+	},
+	{
+		description: "question",
+		input:       "Does this cryogenic chamber make me look fat?",
+		expected:    "Sure.",
+	},
+	{
+		description: "shouting question",
+		input:       "WHAT THE HELL WERE YOU THINKING?",
+		expected:    "Calm down, I know what I'm doing!",
+	},
+	{
+		description: "silence",
+		input:       "",
+		expected:    "Fine. Be that way!",
+	},
+	{
+		description: "whitespace silence",
+		input:       "    ",
+		expected:    "Fine. Be that way!",
+	},
+	{
+		description: "anything else",
+		input:       "Let's go make out behind the gym!",
+		expected:    "Whatever.",
+	},
+}
+
+// TestHey runs unit tests against the Hey function.
+func TestHey(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Hey(tc.input)
+			if actual != tc.expected {
+				t.Errorf("Hey(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkHey benchmarks the Hey function using all test cases.
+func BenchmarkHey(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Hey(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob.go:53:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import "strings"
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one letter and all letters are uppercase.
+// This check avoids numeric strings or symbols being regarded as shouting.
+func isShouting(remark string) bool {
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import "strings"
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one letter and all letters in the remark are uppercase.
+// This avoids non-alphabetic strings such as "123" from being considered shouting.
+func isShouting(remark string) bool {
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import "strings"
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one alphabetic character and all alphabetic characters are uppercase.
+// This check prevents non-alphabetic strings (e.g. "123") from being seen as shouting.
+func isShouting(remark string) bool {
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import "strings"
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one alphabetic character and all alphabetic characters are uppercase.
+// This ensures that strings without any letters (like "123") are not considered shouting.
+func isShouting(remark string) bool {
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import "strings"
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one alphabetic character and all alphabetic characters are uppercase.
+// This ensures that strings without any letters (like "123") are not considered shouting.
+func isShouting(remark string) bool {
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import "strings"
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one alphabetic letter and all such letters are uppercase.
+// This ensures that strings that contain no letters (such as "123") are not considered shouting.
+func isShouting(remark string) bool {
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import "strings"
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one alphabetic letter and all such letters are uppercase.
+// This ensures that strings without any letters (e.g. "123") are not considered shouting.
+func isShouting(remark string) bool {
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import "strings"
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one alphabetic letter and all such letters are uppercase.
+// This ensures that strings without any letters (for example, "123") are not considered shouting.
+func isShouting(remark string) bool {
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import "strings"
+
+// Hey processes Bob's remark and returns an appropriate response.
+// It applies the following rules:
+// - If the remark is silence (empty or whitespace only), it returns "Fine. Be that way!"
+// - If the remark is shouting (alphabetic characters in uppercase) and a question, it returns "Calm down, I know what I'm doing!"
+// - If the remark is shouting (and not a question), it returns "Whoa, chill out!"
+// - If the remark is a question (and not shouting), it returns "Sure."
+// - Otherwise, it returns "Whatever."
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		}
+		return "Whoa, chill out!"
+	} else if isQuestion(remark) {
+		return "Sure."
+	}
+
+	return "Whatever."
+}
+
+// isSilence returns true if the remark is empty after trimming whitespace.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting returns true if there is at least one alphabetic letter and all such letters
+// in the remark are uppercase. This ensures that strings without any letters (e.g. "123")
+// are not considered shouting.
+func isShouting(remark string) bool {
+	return remark == strings.ToUpper(remark) && remark != strings.ToLower(remark)
+}
+
+// isQuestion returns true if the remark ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bob [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bob [exercism/bob.test]
+./bob_test.go:6:21: undefined: testCases
+./bob_test.go:21:22: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

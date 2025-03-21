@@ -1,0 +1,1690 @@
+=== Initial Source Code ===
+Source file: exercises/practice/isbn-verifier/.meta/example.py
+def is_valid(isbn):
+    chars = list(isbn.replace('-', ''))
+    if chars and chars[-1] == 'X':
+        chars[-1] = '10'
+    if not len(chars) == 10 or not all(char.isdigit() for char in chars):
+        return False
+    indices = list(range(10, 0, -1))
+    return sum(int(char) * idx for char, idx in zip(chars, indices)) % 11 == 0
+
+
+=== Source Interface ===
+def is_valid(isbn):
+    pass
+
+
+=== Target Interface ===
+package isbn
+
+func IsValidISBN(isbn string) bool {
+	panic("Please implement the IsValidISBN function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/isbn-verifier/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from isbn_verifier import (
+    is_valid,
+)
+
+
+class IsbnVerifierTest(unittest.TestCase):
+    def test_valid_isbn(self):
+        self.assertIs(is_valid("3-598-21508-8"), True)
+
+    def test_invalid_isbn_check_digit(self):
+        self.assertIs(is_valid("3-598-21508-9"), False)
+
+    def test_valid_isbn_with_a_check_digit_of_10(self):
+        self.assertIs(is_valid("3-598-21507-X"), True)
+
+    def test_check_digit_is_a_character_other_than_x(self):
+        self.assertIs(is_valid("3-598-21507-A"), False)
+
+    def test_invalid_check_digit_in_isbn_is_not_treated_as_zero(self):
+        self.assertIs(is_valid("4-598-21507-B"), False)
+
+    def test_invalid_character_in_isbn_is_not_treated_as_zero(self):
+        self.assertIs(is_valid("3-598-P1581-X"), False)
+
+    def test_x_is_only_valid_as_a_check_digit(self):
+        self.assertIs(is_valid("3-598-2X507-9"), False)
+
+    def test_valid_isbn_without_separating_dashes(self):
+        self.assertIs(is_valid("3598215088"), True)
+
+    def test_isbn_without_separating_dashes_and_x_as_check_digit(self):
+        self.assertIs(is_valid("359821507X"), True)
+
+    def test_isbn_without_check_digit_and_dashes(self):
+        self.assertIs(is_valid("359821507"), False)
+
+    def test_too_long_isbn_and_no_dashes(self):
+        self.assertIs(is_valid("3598215078X"), False)
+
+    def test_too_short_isbn(self):
+        self.assertIs(is_valid("00"), False)
+
+    def test_isbn_without_check_digit(self):
+        self.assertIs(is_valid("3-598-21507"), False)
+
+    def test_check_digit_of_x_should_not_be_used_for_0(self):
+        self.assertIs(is_valid("3-598-21515-X"), False)
+
+    def test_empty_isbn(self):
+        self.assertIs(is_valid(""), False)
+
+    def test_input_is_9_characters(self):
+        self.assertIs(is_valid("134456729"), False)
+
+    def test_invalid_characters_are_not_ignored_after_checking_length(self):
+        self.assertIs(is_valid("3132P34035"), False)
+
+    def test_invalid_characters_are_not_ignored_before_checking_length(self):
+        self.assertIs(is_valid("3598P215088"), False)
+
+    def test_input_is_too_long_but_contains_a_valid_isbn(self):
+        self.assertIs(is_valid("98245726788"), False)
+
+
+=== Target Test Code ===
+package isbn
+
+import (
+	"testing"
+)
+
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := IsValidISBN(tc.isbn)
+			if actual != tc.expected {
+				t.Errorf("IsValidISBN(%q)=%t, want: %t", tc.isbn, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, n := range testCases {
+			IsValidISBN(n.isbn)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates the given ISBN-10 string. It removes any dashes, replaces an ending 'X' with "10",
+// ensures the string has exactly 10 digits (after replacement) where each character is numeric,
+// and then computes a weighted sum to verify the ISBN (sum of each digit times its weight in descending order from 10 to 1 is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process first 9 characters; the last character may be 'X'
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Compute weighted sum. Weight for digit at index i is 10-i
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum % 11 == 0
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces an ending 'X' with "10",
+// ensures the string has exactly 10 characters after processing (each being a valid digit), and
+// computes a weighted sum (with weights from 10 to 1) to verify the ISBN is valid (i.e., the sum is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character: it can be a digit or 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum. Weight for character at index i is (10 - i)
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase represents a single test scenario for IsValidISBN
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the IsValidISBN function using all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces an ending 'X' with "10",
+// ensures the processed string has exactly 10 characters (with valid digits), and computes a weighted sum
+// (weights from 10 to 1) to verify the ISBN is valid (i.e., the sum is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character, which may be 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum with weights from 10 to 1
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase represents a single test case for IsValidISBN.
+// description: explanation of the test case
+// isbn: the input ISBN string
+// expected: the expected boolean outcome
+//
+// Various cases include valid ISBN with dashes, ISBN ending with 'X', incorrect checksums, and invalid formats.
+
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the IsValidISBN function across all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces an ending 'X' with "10",
+// ensures that the processed string has exactly 10 characters (with valid digits), and computes a weighted sum
+// (weights from 10 to 1) to verify the ISBN (i.e., the sum is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character, which may be a digit or 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum with weights from 10 to 1
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase represents a single test case for IsValidISBN.
+// description: explanation of the test
+// isbn: the input ISBN string
+// expected: the expected boolean outcome
+//
+// The test cases cover valid ISBN with dashes, valid ISBN ending with 'X', incorrect checksums,
+// and invalid formats (too short, too long, non-digit characters).
+
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify that IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the performance of the IsValidISBN function over all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces an ending 'X' with "10",
+// ensures that the processed string has exactly 10 characters (with valid digits), and computes a weighted sum
+// (with weights from 10 to 1) to verify that the ISBN is valid (i.e., the total is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character which could be a digit or 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum: weight for a digit at index i is (10 - i)
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase represents a single test case for the IsValidISBN function.
+// description: explanation of the test case
+// isbn: the input ISBN string
+// expected: the expected boolean output
+//
+// The test cases cover valid ISBNs (with and without dashes, and with a trailing X), as well as invalid cases.
+
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify that IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the performance of the IsValidISBN function over all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces an ending 'X' with "10",
+// ensures that the processed string has exactly 10 characters (with valid digits), and computes a weighted sum
+// (with weights from 10 to 1) to verify that the ISBN is valid (i.e., the total is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character which may be a digit or 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum: weight for digit at index i is (10 - i)
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase represents a single test case for the IsValidISBN function.
+// description: explanation of the test case
+// isbn: the input ISBN string
+// expected: the expected boolean result
+//
+// The test cases cover valid ISBNs (with and without dashes, and with a trailing X) as well as various invalid scenarios.
+
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify that IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the performance of the IsValidISBN function over all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces an ending 'X' with "10",
+// ensures that the processed string has exactly 10 characters (with valid digits), and computes a weighted sum
+// (with weights from 10 to 1) to verify that the ISBN is valid (i.e., the total is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character which may be a digit or 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum: weight for digit at index i is (10 - i)
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase represents a single test case for the IsValidISBN function.
+// description: explanation of the test case
+// isbn: the input ISBN string
+// expected: the expected boolean result
+//
+// The test cases cover valid ISBNs (with and without dashes, including a trailing X) as well as various invalid scenarios.
+
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify that IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the performance of the IsValidISBN function over all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces an ending 'X' with "10",
+// ensures that the processed string has exactly 10 characters (with valid digits), and computes a weighted sum
+// (with weights from 10 to 1) to verify that the ISBN is valid (i.e., the total is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process the first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character which may be a digit or 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum: weight for digit at index i is (10 - i)
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase represents a single test case for IsValidISBN.
+// description: explanation of the test case
+// isbn: the input ISBN string
+// expected: the expected boolean result
+//
+// The test cases cover valid ISBNs (with and without dashes, including a trailing 'X') as well as various invalid scenarios.
+
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify that IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the performance of the IsValidISBN function over all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces a trailing 'X' with "10",
+// ensures that the processed string has exactly 10 characters (all valid digits), and computes a weighted sum
+// (with weights from 10 to 1) to verify that the ISBN is valid (i.e., the total is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process the first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character which can be a digit or 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum: weight for the digit at index i is (10 - i)
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase describes a single test scenario for the IsValidISBN function.
+// description: Explanation of the test case
+// isbn: The ISBN string to validate
+// expected: The expected boolean outcome
+
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify that IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the performance of the IsValidISBN function over all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces a trailing 'X' with "10",
+// ensures that the processed string has exactly 10 characters (with valid digits), and computes a weighted sum
+// (with weights from 10 to 1) to verify that the ISBN is valid (i.e., the total is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character which may be a digit or 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum: weight for digit at index i is (10 - i)
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+	
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase represents a single test scenario for the IsValidISBN function.
+// description: explanation of the test case
+// isbn: the input ISBN string
+// expected: the expected boolean result
+//
+// The test cases cover valid ISBNs (with and without dashes, including a trailing 'X') as well as invalid scenarios.
+
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify that IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the performance of the IsValidISBN function over all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/isbn-verifier/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// IsValidISBN validates a given ISBN-10 string. It removes any dashes, replaces a trailing 'X' with "10",
+// ensures that the processed string has exactly 10 characters (all valid digits), and computes a weighted sum
+// (with weights from 10 to 1) to verify that the ISBN is valid (i.e., the total is divisible by 11).
+func IsValidISBN(isbn string) bool {
+	// Remove all dashes
+	cleaned := strings.ReplaceAll(isbn, "-", "")
+
+	// Must have exactly 10 characters
+	if len(cleaned) != 10 {
+		return false
+	}
+
+	digits := make([]int, 10)
+
+	// Process the first 9 characters
+	for i := 0; i < 9; i++ {
+		c := cleaned[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		val, err := strconv.Atoi(string(c))
+		if err != nil {
+			return false
+		}
+		digits[i] = val
+	}
+
+	// Process the last character which may be a digit or 'X'
+	lastChar := cleaned[9]
+	if lastChar == 'X' {
+		digits[9] = 10
+	} else if lastChar >= '0' && lastChar <= '9' {
+		val, err := strconv.Atoi(string(lastChar))
+		if err != nil {
+			return false
+		}
+		digits[9] = val
+	} else {
+		return false
+	}
+
+	// Calculate the weighted sum: weight for digit at index i is (10 - i)
+	sum := 0
+	for i, d := range digits {
+		sum += (10 - i) * d
+	}
+
+	return sum%11 == 0
+}
+
+// exercises/practice/isbn-verifier/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCase represents a single test scenario for the IsValidISBN function.
+// description: explanation of the test case
+// isbn: the input ISBN string
+// expected: the expected boolean result
+//
+// The test cases cover valid ISBNs (with and without dashes, including a trailing 'X') as well as various invalid scenarios.
+//
+// Note: Both the implementation and its tests are in package meta.
+
+type testCase struct {
+	description string
+	isbn        string
+	expected    bool
+}
+
+var testCases = []testCase{
+	{
+		description: "Valid ISBN with dashes",
+		isbn:        "3-598-21508-8",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN with wrong checksum",
+		isbn:        "3-598-21508-9",
+		expected:    false,
+	},
+	{
+		description: "Valid ISBN with X",
+		isbn:        "3-598-21507-X",
+		expected:    true,
+	},
+	{
+		description: "Invalid ISBN: too short",
+		isbn:        "359821507",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: too long",
+		isbn:        "3598215078X",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: non-digit characters",
+		isbn:        "ABCDEFGHIJ",
+		expected:    false,
+	},
+	{
+		description: "Invalid ISBN: empty string",
+		isbn:        "",
+		expected:    false,
+	},
+}
+
+// TestIsValidISBN runs multiple test cases to verify that IsValidISBN works correctly.
+func TestIsValidISBN(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := IsValidISBN(tc.isbn)
+			if result != tc.expected {
+				t.Errorf("IsValidISBN(%q) = %t, want %t", tc.isbn, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkIsValidISBN benchmarks the performance of the IsValidISBN function over all test cases.
+func BenchmarkIsValidISBN(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			IsValidISBN(tc.isbn)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (isbn_verifier.go) and isbn (isbn_verifier_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/isbn-verifier
+
+
+=== FINAL STATUS: FAILED ===

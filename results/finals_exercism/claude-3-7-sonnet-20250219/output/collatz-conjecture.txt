@@ -1,0 +1,150 @@
+=== Initial Source Code ===
+Source file: exercises/practice/collatz-conjecture/.meta/example.py
+def steps(number):
+    if number <= 0:
+        raise ValueError('Only positive integers are allowed')
+
+    step_count = 0
+    while number > 1:
+        if is_odd(number):
+            number = number * 3 + 1
+        else:
+            number = number / 2
+        step_count += 1
+
+    return step_count
+
+
+def is_odd(number):
+    return number % 2 == 1
+
+
+=== Source Interface ===
+def steps(number):
+    pass
+
+
+=== Target Interface ===
+package collatzconjecture
+
+func CollatzConjecture(n int) (int, error) {
+	panic("Please implement the CollatzConjecture function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/collatz-conjecture/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from collatz_conjecture import (
+    steps,
+)
+
+
+class CollatzConjectureTest(unittest.TestCase):
+    def test_zero_steps_for_one(self):
+        self.assertEqual(steps(1), 0)
+
+    def test_divide_if_even(self):
+        self.assertEqual(steps(16), 4)
+
+    def test_even_and_odd_steps(self):
+        self.assertEqual(steps(12), 9)
+
+    def test_large_number_of_even_and_odd_steps(self):
+        self.assertEqual(steps(1000000), 152)
+
+    def test_zero_is_an_error(self):
+        with self.assertRaises(ValueError) as err:
+            steps(0)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Only positive integers are allowed")
+
+    def test_negative_value_is_an_error(self):
+        with self.assertRaises(ValueError) as err:
+            steps(-15)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Only positive integers are allowed")
+
+
+=== Target Test Code ===
+package collatzconjecture
+
+import (
+	"testing"
+)
+
+func TestCollatzConjecture(t *testing.T) {
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			actual, err := CollatzConjecture(testCase.input)
+			if testCase.expectError {
+				if err == nil {
+					t.Errorf("CollatzConjecture(%v) expected an error, got %v", testCase.input, actual)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("CollatzConjecture(%v) returns unexpected error %v", testCase.input, err)
+				} else if actual != testCase.expected {
+					t.Errorf("CollatzConjecture(%v) expected %v, got %v", testCase.input, testCase.expected, actual)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCollatzConjecture(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, testCase := range testCases {
+			CollatzConjecture(testCase.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/collatz-conjecture/.meta/example.go
+package collatzconjecture
+
+import "errors"
+
+// CollatzConjecture returns the number of steps required to reach 1
+// from the given number using the Collatz Conjecture algorithm.
+func CollatzConjecture(n int) (int, error) {
+	if n <= 0 {
+		return 0, errors.New("Only positive integers are allowed")
+	}
+
+	stepCount := 0
+	for n > 1 {
+		if isOdd(n) {
+			n = n*3 + 1
+		} else {
+			n = n / 2
+		}
+		stepCount++
+	}
+
+	return stepCount, nil
+}
+
+// isOdd returns true if the number is odd
+func isOdd(number int) bool {
+	return number%2 == 1
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/collatz-conjecture	0.270s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

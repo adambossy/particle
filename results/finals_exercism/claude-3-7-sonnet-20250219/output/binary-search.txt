@@ -1,0 +1,257 @@
+=== Initial Source Code ===
+Source file: exercises/practice/binary-search/.meta/example.py
+def find(search_list, value):
+    low = 0
+    high = len(search_list) - 1
+    while low <= high:
+        middle = (low + high) // 2
+        if search_list[middle] > value:
+            high = middle - 1
+        elif search_list[middle] < value:
+            low = middle + 1
+        else:
+            return middle
+    raise ValueError('value not in array')
+
+
+=== Source Interface ===
+def find(search_list, value):
+    pass
+
+
+=== Target Interface ===
+package binarysearch
+
+func SearchInts(list []int, key int) int {
+	panic("Please implement the SearchInts function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/binary-search/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from binary_search import (
+    find,
+)
+
+
+class BinarySearchTest(unittest.TestCase):
+    def test_finds_a_value_in_an_array_with_one_element(self):
+
+        self.assertEqual(find([6], 6), 0)
+
+    def test_finds_a_value_in_the_middle_of_an_array(self):
+
+        self.assertEqual(find([1, 3, 4, 6, 8, 9, 11], 6), 3)
+
+    def test_finds_a_value_at_the_beginning_of_an_array(self):
+
+        self.assertEqual(find([1, 3, 4, 6, 8, 9, 11], 1), 0)
+
+    def test_finds_a_value_at_the_end_of_an_array(self):
+
+        self.assertEqual(find([1, 3, 4, 6, 8, 9, 11], 11), 6)
+
+    def test_finds_a_value_in_an_array_of_odd_length(self):
+
+        self.assertEqual(
+            find([1, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 634], 144), 9
+        )
+
+    def test_finds_a_value_in_an_array_of_even_length(self):
+
+        self.assertEqual(find([1, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377], 21), 5)
+
+    def test_identifies_that_a_value_is_not_included_in_the_array(self):
+
+        with self.assertRaises(ValueError) as err:
+            find([1, 3, 4, 6, 8, 9, 11], 7)
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "value not in array")
+
+    def test_a_value_smaller_than_the_array_s_smallest_value_is_not_found(self):
+
+        with self.assertRaises(ValueError) as err:
+            find([1, 3, 4, 6, 8, 9, 11], 0)
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "value not in array")
+
+    def test_a_value_larger_than_the_array_s_largest_value_is_not_found(self):
+
+        with self.assertRaises(ValueError) as err:
+            find([1, 3, 4, 6, 8, 9, 11], 13)
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "value not in array")
+
+    def test_nothing_is_found_in_an_empty_array(self):
+
+        with self.assertRaises(ValueError) as err:
+            find([], 1)
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "value not in array")
+
+    def test_nothing_is_found_when_the_left_and_right_bounds_cross(self):
+
+        with self.assertRaises(ValueError) as err:
+            find([1, 2], 0)
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "value not in array")
+
+
+=== Target Test Code ===
+//nolint:gosec // In the context of this exercise, it is fine to use math.Rand instead of crypto.Rand.
+package binarysearch
+
+import (
+	"fmt"
+	"math/rand"
+	"testing"
+)
+
+func TestSearchInts(t *testing.T) {
+	for _, test := range testCases {
+		t.Run(test.description, func(t *testing.T) {
+			if actual := SearchInts(test.inputList, test.inputKey); actual != test.expectedKey {
+				t.Errorf("SearchInts(%#v, %d) = %d, want %d", test.inputList, test.inputKey, actual, test.expectedKey)
+			}
+		})
+	}
+}
+
+// Benchmarks also test searching larger random slices
+type query struct {
+	slice []int
+	x     int
+}
+
+func newQuery(n int) (query, error) {
+	q := query{slice: make([]int, n)}
+	for i := 0; i < n; i++ {
+		q.slice[i] = i
+	}
+	q.x = rand.Intn(n)
+	if res := SearchInts(q.slice, q.x); res != q.x {
+		return q, fmt.Errorf("search of %d values gave different answer", n)
+	}
+	return q, nil
+}
+
+func runBenchmark(n int, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	q, err := newQuery(n)
+	if err != nil {
+		b.Error(err)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		SearchInts(q.slice, q.x)
+	}
+}
+
+func Benchmark1e2(b *testing.B) { runBenchmark(1e2, b) }
+func Benchmark1e4(b *testing.B) { runBenchmark(1e4, b) }
+func Benchmark1e6(b *testing.B) { runBenchmark(1e6, b) }
+func Benchmark1e8(b *testing.B) { runBenchmark(1e8, b) }
+
+
+=== Initial Translation ===
+// exercises/practice/binary-search/.meta/example.go
+package binarysearch
+
+import "fmt"
+
+// SearchInts implements a binary search algorithm for integers.
+// It returns the index of the key in the list, or -1 if the key is not found.
+// If the key is not in the list, it returns an error.
+func SearchInts(list []int, key int) int {
+	low := 0
+	high := len(list) - 1
+	
+	for low <= high {
+		middle := (low + high) / 2
+		if list[middle] > key {
+			high = middle - 1
+		} else if list[middle] < key {
+			low = middle + 1
+		} else {
+			return middle
+		}
+	}
+	
+	panic(fmt.Sprintf("value not in array"))
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestSearchInts (0.00s)
+    --- FAIL: TestSearchInts/identifies_that_a_value_is_not_included_in_the_array (0.00s)
+panic: value not in array [recovered]
+	panic: value not in array
+
+goroutine 25 [running]:
+testing.tRunner.func1.2({0x100681400, 0x140001045b0})
+	/usr/local/go/src/testing/testing.go:1396 +0x1c8
+testing.tRunner.func1()
+	/usr/local/go/src/testing/testing.go:1399 +0x378
+panic({0x100681400, 0x140001045b0})
+	/usr/local/go/src/runtime/panic.go:884 +0x204
+exercism/binary-search.SearchInts({0x10073a480?, 0x100757560?, 0x14000046f18?}, 0x1005b90a0?)
+	/private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpruywyb6a/sandbox/exercises/practice/binary-search/binary_search.go:24 +0xa8
+exercism/binary-search.TestSearchInts.func1(0x140001116c0)
+	/private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpruywyb6a/sandbox/exercises/practice/binary-search/binary_search_test.go:13 +0x40
+testing.tRunner(0x140001116c0, 0x140001045a0)
+	/usr/local/go/src/testing/testing.go:1446 +0x10c
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:1493 +0x300
+FAIL	exercism/binary-search	0.274s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/binary-search/.meta/example.go
+package binarysearch
+
+// SearchInts implements a binary search algorithm for integers.
+// It returns the index of the key in the list, or -1 if the key is not found.
+func SearchInts(list []int, key int) int {
+	low := 0
+	high := len(list) - 1
+	
+	for low <= high {
+		middle := (low + high) / 2
+		if list[middle] > key {
+			high = middle - 1
+		} else if list[middle] < key {
+			low = middle + 1
+		} else {
+			return middle
+		}
+	}
+	
+	// Return -1 instead of raising an error, as expected by the tests
+	return -1
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/binary-search	0.279s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,1231 @@
+=== Initial Source Code ===
+Source file: exercises/practice/protein-translation/.meta/example.py
+CODONS = {'AUG': 'Methionine', 'UUU': 'Phenylalanine',
+          'UUC': 'Phenylalanine', 'UUA': 'Leucine', 'UUG': 'Leucine',
+          'UCU': 'Serine', 'UCC': 'Serine', 'UCA': 'Serine',
+          'UCG': 'Serine', 'UAU': 'Tyrosine', 'UAC': 'Tyrosine',
+          'UGU': 'Cysteine', 'UGC': 'Cysteine', 'UGG': 'Tryptophan',
+          'UAA': 'STOP', 'UAG': 'STOP', 'UGA': 'STOP'}
+
+
+def of_codon(codon):
+    if codon not in CODONS:
+        raise ValueError(f'Invalid codon: {codon}')
+    return CODONS[codon]
+
+
+def proteins(strand):
+    protein_list = []
+    for codon in map(of_codon, _chunkstring(strand, 3)):
+        if codon == 'STOP':
+            break
+        protein_list.append(codon)
+    return protein_list
+
+
+def _chunkstring(string, number):
+    return (string[idx:number + idx] for idx in range(0, len(string), number))
+
+
+=== Source Interface ===
+def proteins(strand):
+    pass
+
+
+=== Target Interface ===
+package protein
+
+func FromRNA(rna string) ([]string, error) {
+	panic("Please implement the FromRNA function")
+}
+
+func FromCodon(codon string) (string, error) {
+	panic("Please implement the FromCodon function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/protein-translation/canonical-data.json
+# File last updated on 2024-07-08
+
+import unittest
+
+from protein_translation import (
+    proteins,
+)
+
+
+class ProteinTranslationTest(unittest.TestCase):
+    def test_methionine_rna_sequence(self):
+        value = "AUG"
+        expected = ["Methionine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_phenylalanine_rna_sequence_1(self):
+        value = "UUU"
+        expected = ["Phenylalanine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_phenylalanine_rna_sequence_2(self):
+        value = "UUC"
+        expected = ["Phenylalanine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_leucine_rna_sequence_1(self):
+        value = "UUA"
+        expected = ["Leucine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_leucine_rna_sequence_2(self):
+        value = "UUG"
+        expected = ["Leucine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_serine_rna_sequence_1(self):
+        value = "UCU"
+        expected = ["Serine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_serine_rna_sequence_2(self):
+        value = "UCC"
+        expected = ["Serine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_serine_rna_sequence_3(self):
+        value = "UCA"
+        expected = ["Serine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_serine_rna_sequence_4(self):
+        value = "UCG"
+        expected = ["Serine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_tyrosine_rna_sequence_1(self):
+        value = "UAU"
+        expected = ["Tyrosine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_tyrosine_rna_sequence_2(self):
+        value = "UAC"
+        expected = ["Tyrosine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_cysteine_rna_sequence_1(self):
+        value = "UGU"
+        expected = ["Cysteine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_cysteine_rna_sequence_2(self):
+        value = "UGC"
+        expected = ["Cysteine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_tryptophan_rna_sequence(self):
+        value = "UGG"
+        expected = ["Tryptophan"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_stop_codon_rna_sequence_1(self):
+        value = "UAA"
+        expected = []
+        self.assertEqual(proteins(value), expected)
+
+    def test_stop_codon_rna_sequence_2(self):
+        value = "UAG"
+        expected = []
+        self.assertEqual(proteins(value), expected)
+
+    def test_stop_codon_rna_sequence_3(self):
+        value = "UGA"
+        expected = []
+        self.assertEqual(proteins(value), expected)
+
+    def test_sequence_of_two_protein_codons_translates_into_proteins(self):
+        value = "UUUUUU"
+        expected = ["Phenylalanine", "Phenylalanine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_sequence_of_two_different_protein_codons_translates_into_proteins(self):
+        value = "UUAUUG"
+        expected = ["Leucine", "Leucine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_translate_rna_strand_into_correct_protein_list(self):
+        value = "AUGUUUUGG"
+        expected = ["Methionine", "Phenylalanine", "Tryptophan"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_translation_stops_if_stop_codon_at_beginning_of_sequence(self):
+        value = "UAGUGG"
+        expected = []
+        self.assertEqual(proteins(value), expected)
+
+    def test_translation_stops_if_stop_codon_at_end_of_two_codon_sequence(self):
+        value = "UGGUAG"
+        expected = ["Tryptophan"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_translation_stops_if_stop_codon_at_end_of_three_codon_sequence(self):
+        value = "AUGUUUUAA"
+        expected = ["Methionine", "Phenylalanine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_translation_stops_if_stop_codon_in_middle_of_three_codon_sequence(self):
+        value = "UGGUAGUGG"
+        expected = ["Tryptophan"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_translation_stops_if_stop_codon_in_middle_of_six_codon_sequence(self):
+        value = "UGGUGUUAUUAAUGGUUU"
+        expected = ["Tryptophan", "Cysteine", "Tyrosine"]
+        self.assertEqual(proteins(value), expected)
+
+    def test_sequence_of_two_non_stop_codons_does_not_translate_to_a_stop_codon(self):
+        value = "AUGAUG"
+        expected = ["Methionine", "Methionine"]
+        self.assertEqual(proteins(value), expected)
+
+
+=== Target Test Code ===
+package protein
+
+import (
+	"testing"
+)
+
+func TestErrorsNotNil(t *testing.T) {
+	if ErrStop == nil {
+		t.Fatalf("FAIL: ErrStop cannot be nil")
+	}
+	if ErrInvalidBase == nil {
+		t.Fatalf("FAIL: ErrInvalidBase cannot be nil")
+	}
+}
+
+type codonCase struct {
+	input         string
+	expected      string
+	expectedError error
+}
+
+var codonTestCases = []codonCase{
+	{
+		input:         "AUG",
+		expected:      "Methionine",
+		expectedError: nil,
+	},
+	{
+		input:         "UUU",
+		expected:      "Phenylalanine",
+		expectedError: nil,
+	},
+	{
+		input:         "UUC",
+		expected:      "Phenylalanine",
+		expectedError: nil,
+	},
+	{
+		input:         "UUA",
+		expected:      "Leucine",
+		expectedError: nil,
+	},
+	{
+		input:         "UUG",
+		expected:      "Leucine",
+		expectedError: nil,
+	},
+	{
+		input:         "UCG",
+		expected:      "Serine",
+		expectedError: nil,
+	},
+	{
+		input:         "UAU",
+		expected:      "Tyrosine",
+		expectedError: nil,
+	},
+	{
+		input:         "UAC",
+		expected:      "Tyrosine",
+		expectedError: nil,
+	},
+	{
+		input:         "UGU",
+		expected:      "Cysteine",
+		expectedError: nil,
+	},
+	{
+		input:         "UGG",
+		expected:      "Tryptophan",
+		expectedError: nil,
+	},
+	{
+		input:         "UAA",
+		expected:      "",
+		expectedError: ErrStop,
+	},
+	{
+		input:         "UAG",
+		expected:      "",
+		expectedError: ErrStop,
+	},
+	{
+		input:         "UGA",
+		expected:      "",
+		expectedError: ErrStop,
+	},
+	{
+		input:         "ABC",
+		expected:      "",
+		expectedError: ErrInvalidBase,
+	},
+}
+
+func TestCodon(t *testing.T) {
+	for _, tc := range codonTestCases {
+		t.Run(tc.input, func(t *testing.T) {
+			got, err := FromCodon(tc.input)
+			switch {
+			case tc.expectedError != nil:
+				if err != tc.expectedError {
+					t.Fatalf("FromCodon(%q) expected error: %v, got: %v", tc.input, tc.expectedError, err)
+				}
+			case err != nil:
+				t.Fatalf("FromCodon(%q) returned unexpected error: %v, want: %q", tc.input, err, tc.expected)
+			case got != tc.expected:
+				t.Fatalf("FromCodon(%q) = %q, want: %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+type rnaCase struct {
+	input         string
+	expected      []string
+	expectedError error
+}
+
+var rnaTestCases = []rnaCase{
+	{
+		input:         "AUGUUUUCUUAAAUG",
+		expected:      []string{"Methionine", "Phenylalanine", "Serine"},
+		expectedError: nil,
+	},
+	{
+		input:         "AUGUUUUGG",
+		expected:      []string{"Methionine", "Phenylalanine", "Tryptophan"},
+		expectedError: nil,
+	},
+	{
+		input:         "AUGUUUUAA",
+		expected:      []string{"Methionine", "Phenylalanine"},
+		expectedError: nil,
+	},
+	{
+		input:         "UGGUGUUAUUAAUGGUUU",
+		expected:      []string{"Tryptophan", "Cysteine", "Tyrosine"},
+		expectedError: nil,
+	},
+	{
+		input:         "UGGAGAAUUAAUGGUUU",
+		expected:      nil,
+		expectedError: ErrInvalidBase,
+	},
+}
+
+func TestProtein(t *testing.T) {
+	for _, tc := range rnaTestCases {
+		t.Run(tc.input, func(t *testing.T) {
+			got, err := FromRNA(tc.input)
+			switch {
+			case tc.expectedError != nil:
+				if err != tc.expectedError {
+					t.Fatalf("FromRNA(%q) expected error: %v, got: %v", tc.input, tc.expectedError, err)
+				}
+			case err != nil:
+				t.Fatalf("FromRNA(%q) returned unexpected error: %v, want: %q", tc.input, err, tc.expected)
+			case !slicesEqual(got, tc.expected):
+				t.Fatalf("FromRNA(%q)\n got: %v\nwant: %v", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	if len(a) == 0 {
+		return true
+	}
+
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func BenchmarkCodon(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for _, test := range codonTestCases {
+		for i := 0; i < b.N; i++ {
+			FromCodon(test.input)
+		}
+	}
+}
+
+func BenchmarkProtein(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for _, test := range rnaTestCases {
+		for i := 0; i < b.N; i++ {
+			FromRNA(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/protein-translation/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// codons maps RNA codons to their corresponding proteins.
+var codons = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
+}
+
+// FromCodon returns the protein corresponding to the given codon.
+// It returns an error if the codon is invalid.
+func FromCodon(codon string) (string, error) {
+	if protein, ok := codons[codon]; ok {
+		return protein, nil
+	}
+	return "", fmt.Errorf("Invalid codon: %s", codon)
+}
+
+// FromRNA translates an RNA strand into a slice of proteins.
+// It processes the strand in chunks of three characters (codon) and stops translation
+// when a STOP codon is encountered. If an invalid codon is found, an error is returned.
+func FromRNA(rna string) ([]string, error) {
+	proteins := []string{}
+	chunks := chunkString(rna, 3)
+	for _, codon := range chunks {
+		protein, err := FromCodon(codon)
+		if err != nil {
+			return nil, err
+		}
+		if protein == "STOP" {
+			break
+		}
+		proteins = append(proteins, protein)
+	}
+	return proteins, nil
+}
+
+// chunkString splits a string into chunks of the specified size.
+func chunkString(s string, chunkSize int) []string {
+	var chunks []string
+	n := len(s)
+	for i := 0; i < n; i += chunkSize {
+		end := i + chunkSize
+		if end > n {
+			end = n
+		}
+		chunks = append(chunks, s[i:end])
+	}
+	return chunks
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (protein_translation.go) and protein (protein_translation_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/protein-translation
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/protein-translation/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrStop is returned when a STOP codon is encountered.
+var ErrStop = errors.New("STOP")
+
+// ErrInvalidBase is returned when an invalid codon is encountered.
+var ErrInvalidBase = errors.New("invalid base")
+
+// codons maps RNA codons to their corresponding proteins.
+var codons = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
+}
+
+// FromCodon returns the protein corresponding to the given codon.
+// It returns ErrStop if the codon translates to STOP.
+// It returns ErrInvalidBase if the codon is not valid.
+func FromCodon(codon string) (string, error) {
+	if protein, ok := codons[codon]; ok {
+		if protein == "STOP" {
+			return "", ErrStop
+		}
+		return protein, nil
+	}
+	return "", ErrInvalidBase
+}
+
+// FromRNA translates an RNA strand into a slice of proteins.
+// It processes the strand in chunks of three characters (codon) and stops translation
+// when a STOP codon is encountered. If an invalid codon is found, an error is returned.
+func FromRNA(rna string) ([]string, error) {
+	proteins := []string{}
+	chunks := chunkString(rna, 3)
+	for _, codon := range chunks {
+		// Only process complete codons of length 3
+		if len(codon) != 3 {
+			break
+		}
+		protein, err := FromCodon(codon)
+		if err != nil {
+			if err == ErrStop {
+				break
+			}
+			return nil, err
+		}
+		proteins = append(proteins, protein)
+	}
+	return proteins, nil
+}
+
+// chunkString splits a string into chunks of the specified size.
+func chunkString(s string, chunkSize int) []string {
+	var chunks []string
+	for i := 0; i < len(s); i += chunkSize {
+		end := i + chunkSize
+		if end > len(s) {
+			end = len(s)
+		}
+		chunks = append(chunks, s[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (protein_translation.go) and protein (protein_translation_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/protein-translation
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/protein-translation/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrStop is returned when a STOP codon is encountered.
+var ErrStop = errors.New("STOP")
+
+// ErrInvalidBase is returned when an invalid codon is encountered.
+var ErrInvalidBase = errors.New("invalid base")
+
+// codons maps RNA codons to their corresponding proteins.
+var codons = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
+}
+
+// FromCodon returns the protein corresponding to the given codon.
+// It returns ErrStop if the codon translates to STOP.
+// It returns ErrInvalidBase if the codon is not valid.
+func FromCodon(codon string) (string, error) {
+	if protein, ok := codons[codon]; ok {
+		if protein == "STOP" {
+			return "", ErrStop
+		}
+		return protein, nil
+	}
+	return "", ErrInvalidBase
+}
+
+// FromRNA translates an RNA strand into a slice of proteins.
+// It processes the strand in chunks of three characters (codon) and stops translation
+// when a STOP codon is encountered. If an invalid codon is found, an error is returned.
+func FromRNA(rna string) ([]string, error) {
+	proteins := []string{}
+	chunks := chunkString(rna, 3)
+	for _, codon := range chunks {
+		// Only process complete codons of length 3
+		if len(codon) != 3 {
+			break
+		}
+		protein, err := FromCodon(codon)
+		if err != nil {
+			if err == ErrStop {
+				break
+			}
+			return nil, err
+		}
+		proteins = append(proteins, protein)
+	}
+	return proteins, nil
+}
+
+// chunkString splits a string into chunks of the specified size.
+func chunkString(s string, chunkSize int) []string {
+	var chunks []string
+	for i := 0; i < len(s); i += chunkSize {
+		end := i + chunkSize
+		if end > len(s) {
+			end = len(s)
+		}
+		chunks = append(chunks, s[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (protein_translation.go) and protein (protein_translation_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/protein-translation
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/protein-translation/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrStop is returned when a STOP codon is encountered.
+var ErrStop = errors.New("STOP")
+
+// ErrInvalidBase is returned when an invalid codon is encountered.
+var ErrInvalidBase = errors.New("invalid base")
+
+// codons maps RNA codons to their corresponding proteins.
+var codons = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
+}
+
+// FromCodon returns the protein corresponding to the given codon.
+// It returns ErrStop if the codon translates to STOP.
+// It returns ErrInvalidBase if the codon is not valid.
+func FromCodon(codon string) (string, error) {
+	if protein, ok := codons[codon]; ok {
+		if protein == "STOP" {
+			return "", ErrStop
+		}
+		return protein, nil
+	}
+	return "", ErrInvalidBase
+}
+
+// FromRNA translates an RNA strand into a slice of proteins.
+// It processes the strand in chunks of three characters (codon) and stops translation
+// when a STOP codon is encountered. If an invalid codon is found, an error is returned.
+func FromRNA(rna string) ([]string, error) {
+	proteins := []string{}
+	chunks := chunkString(rna, 3)
+	for _, codon := range chunks {
+		// Only process complete codons of length 3
+		if len(codon) != 3 {
+			break
+		}
+		protein, err := FromCodon(codon)
+		if err != nil {
+			if err == ErrStop {
+				break
+			}
+			return nil, err
+		}
+		proteins = append(proteins, protein)
+	}
+	return proteins, nil
+}
+
+// chunkString splits a string into chunks of the specified size.
+func chunkString(s string, chunkSize int) []string {
+	var chunks []string
+	for i := 0; i < len(s); i += chunkSize {
+		end := i + chunkSize
+		if end > len(s) {
+			end = len(s)
+		}
+		chunks = append(chunks, s[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (protein_translation.go) and protein (protein_translation_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/protein-translation
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/protein-translation/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrStop is returned when a STOP codon is encountered.
+var ErrStop = errors.New("STOP")
+
+// ErrInvalidBase is returned when an invalid codon is encountered.
+var ErrInvalidBase = errors.New("invalid base")
+
+// codons maps RNA codons to their corresponding proteins.
+var codons = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
+}
+
+// FromCodon returns the protein corresponding to the given codon.
+// It returns ErrStop if the codon translates to STOP.
+// It returns ErrInvalidBase if the codon is not valid.
+func FromCodon(codon string) (string, error) {
+	if protein, ok := codons[codon]; ok {
+		if protein == "STOP" {
+			return "", ErrStop
+		}
+		return protein, nil
+	}
+	return "", ErrInvalidBase
+}
+
+// FromRNA translates an RNA strand into a slice of proteins.
+// It processes the strand in chunks of three characters (codon) and stops translation
+// when a STOP codon is encountered. If an invalid codon is found, an error is returned.
+func FromRNA(rna string) ([]string, error) {
+	proteins := []string{}
+	chunks := chunkString(rna, 3)
+	for _, codon := range chunks {
+		// Only process complete codons of length 3
+		if len(codon) != 3 {
+			break
+		}
+		protein, err := FromCodon(codon)
+		if err != nil {
+			if err == ErrStop {
+				break
+			}
+			return nil, err
+		}
+		proteins = append(proteins, protein)
+	}
+	return proteins, nil
+}
+
+// chunkString splits a string into chunks of the specified size.
+func chunkString(s string, chunkSize int) []string {
+	var chunks []string
+	for i := 0; i < len(s); i += chunkSize {
+		end := i + chunkSize
+		if end > len(s) {
+			end = len(s)
+		}
+		chunks = append(chunks, s[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (protein_translation.go) and protein (protein_translation_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/protein-translation
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/protein-translation/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrStop is returned when a STOP codon is encountered.
+var ErrStop = errors.New("STOP")
+
+// ErrInvalidBase is returned when an invalid codon is encountered.
+var ErrInvalidBase = errors.New("invalid base")
+
+// codons maps RNA codons to their corresponding proteins.
+var codons = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
+}
+
+// FromCodon returns the protein corresponding to the given codon.
+// It returns ErrStop if the codon translates to STOP.
+// It returns ErrInvalidBase if the codon is not valid.
+func FromCodon(codon string) (string, error) {
+	if protein, ok := codons[codon]; ok {
+		if protein == "STOP" {
+			return "", ErrStop
+		}
+		return protein, nil
+	}
+	return "", ErrInvalidBase
+}
+
+// FromRNA translates an RNA strand into a slice of proteins.
+// It processes the strand in chunks of three characters (codon) and stops translation
+// when a STOP codon is encountered. If an invalid codon is found, an error is returned.
+func FromRNA(rna string) ([]string, error) {
+	proteins := []string{}
+	chunks := chunkString(rna, 3)
+	for _, codon := range chunks {
+		// Only process complete codons of length 3
+		if len(codon) != 3 {
+			break
+		}
+		protein, err := FromCodon(codon)
+		if err != nil {
+			if err == ErrStop {
+				break
+			}
+			return nil, err
+		}
+		proteins = append(proteins, protein)
+	}
+	return proteins, nil
+}
+
+// chunkString splits a string into chunks of the specified size.
+func chunkString(s string, chunkSize int) []string {
+	var chunks []string
+	for i := 0; i < len(s); i += chunkSize {
+		end := i + chunkSize
+		if end > len(s) {
+			end = len(s)
+		}
+		chunks = append(chunks, s[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (protein_translation.go) and protein (protein_translation_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/protein-translation
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/protein-translation/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrStop is returned when a STOP codon is encountered.
+var ErrStop = errors.New("STOP")
+
+// ErrInvalidBase is returned when an invalid codon is encountered.
+var ErrInvalidBase = errors.New("invalid base")
+
+// codons maps RNA codons to their corresponding proteins.
+var codons = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
+}
+
+// FromCodon returns the protein corresponding to the given codon.
+// It returns ErrStop if the codon translates to STOP.
+// It returns ErrInvalidBase if the codon is not valid.
+func FromCodon(codon string) (string, error) {
+	if protein, ok := codons[codon]; ok {
+		if protein == "STOP" {
+			return "", ErrStop
+		}
+		return protein, nil
+	}
+	return "", ErrInvalidBase
+}
+
+// FromRNA translates an RNA strand into a slice of proteins.
+// It processes the strand in chunks of three characters (codon) and stops translation
+// when a STOP codon is encountered. If an invalid codon is found, an error is returned.
+func FromRNA(rna string) ([]string, error) {
+	proteins := []string{}
+	chunks := chunkString(rna, 3)
+	for _, codon := range chunks {
+		// Only process complete codons of length 3
+		if len(codon) != 3 {
+			break
+		}
+		protein, err := FromCodon(codon)
+		if err != nil {
+			if err == ErrStop {
+				break
+			}
+			return nil, err
+		}
+		proteins = append(proteins, protein)
+	}
+	return proteins, nil
+}
+
+// chunkString splits a string into chunks of the specified size.
+func chunkString(s string, chunkSize int) []string {
+	var chunks []string
+	for i := 0; i < len(s); i += chunkSize {
+		end := i + chunkSize
+		if end > len(s) {
+			end = len(s)
+		}
+		chunks = append(chunks, s[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (protein_translation.go) and protein (protein_translation_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/protein-translation
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/protein-translation/.meta/example.go
+package protein
+
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrStop is returned when a STOP codon is encountered.
+var ErrStop = errors.New("STOP")
+
+// ErrInvalidBase is returned when an invalid codon is encountered.
+var ErrInvalidBase = errors.New("invalid base")
+
+// codons maps RNA codons to their corresponding proteins.
+var codons = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
+}
+
+// FromCodon returns the protein corresponding to the given codon.
+// It returns ErrStop if the codon translates to STOP.
+// It returns ErrInvalidBase if the codon is not valid.
+func FromCodon(codon string) (string, error) {
+	if protein, ok := codons[codon]; ok {
+		if protein == "STOP" {
+			return "", ErrStop
+		}
+		return protein, nil
+	}
+	return "", ErrInvalidBase
+}
+
+// FromRNA translates an RNA strand into a slice of proteins.
+// It processes the strand in chunks of three characters (codon) and stops translation
+// when a STOP codon is encountered. If an invalid codon is found, an error is returned.
+func FromRNA(rna string) ([]string, error) {
+	proteins := []string{}
+	chunks := chunkString(rna, 3)
+	for _, codon := range chunks {
+		// Only process complete codons of length 3
+		if len(codon) != 3 {
+			break
+		}
+		protein, err := FromCodon(codon)
+		if err != nil {
+			if err == ErrStop {
+				break
+			}
+			return nil, err
+		}
+		proteins = append(proteins, protein)
+	}
+	return proteins, nil
+}
+
+// chunkString splits a string into chunks of the specified size.
+func chunkString(s string, chunkSize int) []string {
+	var chunks []string
+	for i := 0; i < len(s); i += chunkSize {
+		end := i + chunkSize
+		if end > len(s) {
+			end = len(s)
+		}
+		chunks = append(chunks, s[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/protein-translation [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/protein-translation [exercism/protein-translation.test]
+./protein_translation.go:6:2: imported and not used: "fmt"
+
+
+=== Retry Attempt 8 ===
+// exercism/protein-translation/protein_translation.go
+package protein
+
+import (
+	"errors"
+)
+
+// ErrStop is returned when a STOP codon is encountered.
+var ErrStop = errors.New("STOP")
+
+// ErrInvalidBase is returned when an invalid codon is encountered.
+var ErrInvalidBase = errors.New("invalid base")
+
+// codons maps RNA codons to their corresponding proteins.
+var codons = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
+}
+
+// FromCodon returns the protein corresponding to the given codon.
+// It returns ErrStop if the codon translates to STOP.
+// It returns ErrInvalidBase if the codon is not valid.
+func FromCodon(codon string) (string, error) {
+	if protein, ok := codons[codon]; ok {
+		if protein == "STOP" {
+			return "", ErrStop
+		}
+		return protein, nil
+	}
+	return "", ErrInvalidBase
+}
+
+// FromRNA translates an RNA strand into a slice of proteins.
+// It processes the strand in chunks of three characters (codon) and stops translation
+// when a STOP codon is encountered. If an invalid codon is found, an error is returned.
+func FromRNA(rna string) ([]string, error) {
+	proteins := []string{}
+	chunks := chunkString(rna, 3)
+	for _, codon := range chunks {
+		// Only process complete codons of length 3
+		if len(codon) != 3 {
+			break
+		}
+		protein, err := FromCodon(codon)
+		if err != nil {
+			if err == ErrStop {
+				break
+			}
+			return nil, err
+		}
+		proteins = append(proteins, protein)
+	}
+	return proteins, nil
+}
+
+// chunkString splits a string into chunks of the specified size.
+func chunkString(s string, chunkSize int) []string {
+	var chunks []string
+	for i := 0; i < len(s); i += chunkSize {
+		end := i + chunkSize
+		if end > len(s) {
+			end = len(s)
+		}
+		chunks = append(chunks, s[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/protein-translation	0.307s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

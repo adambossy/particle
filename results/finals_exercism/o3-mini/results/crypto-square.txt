@@ -1,0 +1,1 @@
+crypto-square,8,0

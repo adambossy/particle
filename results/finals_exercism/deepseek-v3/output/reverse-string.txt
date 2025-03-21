@@ -1,0 +1,391 @@
+=== Initial Source Code ===
+Source file: exercises/practice/reverse-string/.meta/example.py
+def reverse(text=''):
+    return text[::-1]
+
+
+=== Source Interface ===
+def reverse(text):
+    pass
+
+
+=== Target Interface ===
+package reverse
+
+func Reverse(input string) string {
+	panic("Please implement the Reverse function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/reverse-string/canonical-data.json
+# File last updated on 2024-02-28
+
+import unittest
+
+from reverse_string import (
+    reverse,
+)
+
+
+class ReverseStringTest(unittest.TestCase):
+    def test_an_empty_string(self):
+        self.assertEqual(reverse(""), "")
+
+    def test_a_word(self):
+        self.assertEqual(reverse("robot"), "tobor")
+
+    def test_a_capitalized_word(self):
+        self.assertEqual(reverse("Ramen"), "nemaR")
+
+    def test_a_sentence_with_punctuation(self):
+        self.assertEqual(reverse("I'm hungry!"), "!yrgnuh m'I")
+
+    def test_a_palindrome(self):
+        self.assertEqual(reverse("racecar"), "racecar")
+
+    def test_an_even_sized_word(self):
+        self.assertEqual(reverse("drawer"), "reward")
+
+    def test_wide_characters(self):
+        self.assertEqual(reverse("子猫"), "猫子")
+
+
+=== Target Test Code ===
+package reverse
+
+import (
+	"testing"
+	"testing/quick"
+)
+
+func TestReverse(t *testing.T) {
+	for _, tc := range append(testCases, multiByteCases...) {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Reverse(tc.input); actual != tc.expected {
+				t.Fatalf("Reverse(%q) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestReverseOfReverse(t *testing.T) {
+	assertion := func(s string) bool {
+		return s == Reverse(Reverse(s))
+	}
+	if err := quick.Check(assertion, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func BenchmarkReverse(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Reverse(tc.input)
+		}
+	}
+}
+
+// mutiByteCases adds UTF-8 multi-byte case,
+// since the canonical-data.json (generator data source for cases_test.go)
+// doesn't have any such cases.
+var multiByteCases = []reverseTestCase{
+	{
+		description: "a multi-byte test case",
+		input:       "Hello, 世界",
+		expected:    "界世 ,olleH",
+	},
+}
+
+
+=== Initial Translation ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/reverse-string/.meta/example.go
+package reverse
+
+// Reverse returns the reverse of the input string.
+func Reverse(input string) string {
+    runes := []rune(input)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/reverse-string [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/reverse-string [exercism/reverse-string.test]
+./reverse_string_test.go:9:28: undefined: testCases
+./reverse_string_test.go:32:22: undefined: testCases
+./reverse_string_test.go:41:24: undefined: reverseTestCase
+
+
+=== FINAL STATUS: FAILED ===

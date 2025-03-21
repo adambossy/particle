@@ -1,0 +1,198 @@
+=== Initial Source Code ===
+Source file: exercises/practice/trinary/.meta/example.py
+from functools import reduce
+
+
+def trinary(string):
+    if set(string) - set('012'):
+        return 0
+    return reduce(lambda idx, edx: idx * 3 + int(edx), string, 0)
+
+
+=== Source Interface ===
+def trinary(string):
+    pass
+
+
+=== Target Interface ===
+package trinary
+
+func ParseTrinary(arg string, want int64, ok bool) {
+	panic("Please implement the ParseTrinary function")
+}
+
+
+=== Source Test Code ===
+import unittest
+
+from trinary import trinary
+
+
+class TrinaryTest(unittest.TestCase):
+    def test_valid_trinary1(self):
+        self.assertEqual(trinary('0'), 0)
+
+    def test_valid_trinary2(self):
+        self.assertEqual(trinary('1'), 1)
+
+    def test_valid_trinary3(self):
+        self.assertEqual(trinary('10'), 3)
+
+    def test_valid_trinary4(self):
+        self.assertEqual(trinary('102101'), 307)
+
+    def test_valid_trinary5(self):
+        self.assertEqual(trinary('22222'), 242)
+
+    def test_valid_trinary6(self):
+        self.assertEqual(trinary('10000'), 81)
+
+    def test_invalid_trinary(self):
+        self.assertEqual(trinary('13201'), 0)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+=== Target Test Code ===
+package trinary
+
+import "testing"
+
+var tests = []struct {
+	arg  string
+	want int64
+	ok   bool
+}{
+	{"0", 0, true},
+	{"1", 1, true},
+	{"2", 2, true},
+	{"10", 3, true},
+	{"201", 19, true},
+	{"0201", 19, true},
+	{"0000000000000000000000000000000000000000201", 19, true},
+	{"2021110011022210012102010021220101220221", 9223372036854775807, true},
+	{"2021110011022210012102010021220101220222", 0, false},
+}
+
+func TestParseTrinary(t *testing.T) {
+	for _, test := range tests {
+		switch res, err := ParseTrinary(test.arg); {
+		case err != nil:
+			var _ error = err
+			if test.ok {
+				t.Errorf("ParseTrinary(%q) returned error %q, Error not expected",
+					test.arg, err)
+			}
+		case !test.ok:
+			t.Errorf("ParseTrinary(%q) = %d, %v, expected error", test.arg, res, err)
+		case res != test.want:
+			t.Errorf("ParseTrinary(%q) = %d, want %d", test.arg, res, test.want)
+		}
+	}
+}
+
+func BenchmarkParseTrinary(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			ParseTrinary(test.arg)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ParseTrinary converts a trinary string to its decimal equivalent
+func ParseTrinary(input string, want int64, ok bool) {
+	// This is just a signature definition based on the provided interface
+	// The actual implementation is below
+	panic("Use the Parse function instead")
+}
+
+// Parse converts a trinary string to its decimal equivalent
+func Parse(input string) int64 {
+	// Check if the input contains any invalid characters
+	for _, char := range input {
+		if !unicode.IsDigit(char) || char > '2' {
+			return 0
+		}
+	}
+
+	// Implementation similar to the Python version
+	var result int64 = 0
+	for _, digit := range input {
+		result = result*3 + int64(digit-'0')
+	}
+	return result
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary_test.go:23:22: ParseTrinary(test.arg) (no value) used as value
+./trinary_test.go:23:35: not enough arguments in call to ParseTrinary
+	have (string)
+	want (string, int64, bool)
+./trinary_test.go:44:17: not enough arguments in call to ParseTrinary
+	have (string)
+	want (string, int64, bool)
+./trinary.go:5:2: imported and not used: "strings"
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"errors"
+	"unicode"
+)
+
+// ParseTrinary converts a trinary string to its decimal equivalent
+func ParseTrinary(input string) (int64, error) {
+	// Check if the input contains any invalid characters
+	for _, char := range input {
+		if !unicode.IsDigit(char) || char > '2' {
+			return 0, errors.New("invalid trinary digit")
+		}
+	}
+
+	// Implementation similar to the Python version
+	var result int64 = 0
+	for _, digit := range input {
+		result = result*3 + int64(digit-'0')
+		
+		// Check for overflow
+		if result < 0 {
+			return 0, errors.New("trinary number too large")
+		}
+	}
+	return result, nil
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/trinary	0.264s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,247 @@
+=== Initial Source Code ===
+Source file: exercises/practice/bob/.meta/example.py
+def response(hey_bob):
+    hey_bob = hey_bob.strip()
+
+    if _is_silence(hey_bob):
+        return 'Fine. Be that way!'
+    if _is_shouting(hey_bob):
+        if _is_question(hey_bob):
+            return "Calm down, I know what I'm doing!"
+        else:
+            return 'Whoa, chill out!'
+    elif _is_question(hey_bob):
+        return 'Sure.'
+    else:
+        return 'Whatever.'
+
+
+def _is_silence(hey_bob):
+    return hey_bob == ''
+
+
+def _is_shouting(hey_bob):
+    return hey_bob.isupper()
+
+
+def _is_question(hey_bob):
+    return hey_bob.endswith('?')
+
+
+=== Source Interface ===
+def response(hey_bob):
+    pass
+
+
+=== Target Interface ===
+// This is a "stub" file.  It's a little start on your solution.
+// It's not a complete solution though; you have to write some code.
+
+// Package bob should have a package comment that summarizes what it's about.
+// https://golang.org/doc/effective_go.html#commentary
+package bob
+
+// Hey should have a comment documenting it.
+func Hey(remark string) string {
+	// Write some code here to pass the test suite.
+	// Then remove all the stock comments.
+	// They're here to help you get started but they only clutter a finished solution.
+	// If you leave them in, reviewers may protest!
+	return ""
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/bob/canonical-data.json
+# File last updated on 2025-01-10
+
+import unittest
+
+from bob import (
+    response,
+)
+
+
+class BobTest(unittest.TestCase):
+    def test_stating_something(self):
+        self.assertEqual(response("Tom-ay-to, tom-aaaah-to."), "Whatever.")
+
+    def test_shouting(self):
+        self.assertEqual(response("WATCH OUT!"), "Whoa, chill out!")
+
+    def test_shouting_gibberish(self):
+        self.assertEqual(response("FCECDFCAAB"), "Whoa, chill out!")
+
+    def test_asking_a_question(self):
+        self.assertEqual(
+            response("Does this cryogenic chamber make me look fat?"), "Sure."
+        )
+
+    def test_asking_a_numeric_question(self):
+        self.assertEqual(response("You are, what, like 15?"), "Sure.")
+
+    def test_asking_gibberish(self):
+        self.assertEqual(response("fffbbcbeab?"), "Sure.")
+
+    def test_talking_forcefully(self):
+        self.assertEqual(response("Hi there!"), "Whatever.")
+
+    def test_using_acronyms_in_regular_speech(self):
+        self.assertEqual(
+            response("It's OK if you don't want to go work for NASA."), "Whatever."
+        )
+
+    def test_forceful_question(self):
+        self.assertEqual(
+            response("WHAT'S GOING ON?"), "Calm down, I know what I'm doing!"
+        )
+
+    def test_shouting_numbers(self):
+        self.assertEqual(response("1, 2, 3 GO!"), "Whoa, chill out!")
+
+    def test_no_letters(self):
+        self.assertEqual(response("1, 2, 3"), "Whatever.")
+
+    def test_question_with_no_letters(self):
+        self.assertEqual(response("4?"), "Sure.")
+
+    def test_shouting_with_special_characters(self):
+        self.assertEqual(
+            response("ZOMG THE %^*@#$(*^ ZOMBIES ARE COMING!!11!!1!"),
+            "Whoa, chill out!",
+        )
+
+    def test_shouting_with_no_exclamation_mark(self):
+        self.assertEqual(response("I HATE THE DENTIST"), "Whoa, chill out!")
+
+    def test_statement_containing_question_mark(self):
+        self.assertEqual(response("Ending with ? means a question."), "Whatever.")
+
+    def test_non_letters_with_question(self):
+        self.assertEqual(response(":) ?"), "Sure.")
+
+    def test_prattling_on(self):
+        self.assertEqual(response("Wait! Hang on. Are you going to be OK?"), "Sure.")
+
+    def test_silence(self):
+        self.assertEqual(response(""), "Fine. Be that way!")
+
+    def test_prolonged_silence(self):
+        self.assertEqual(response("          "), "Fine. Be that way!")
+
+    def test_alternate_silence(self):
+        self.assertEqual(response("\t\t\t\t\t\t\t\t\t\t"), "Fine. Be that way!")
+
+    def test_starting_with_whitespace(self):
+        self.assertEqual(response("         hmmmmmmm..."), "Whatever.")
+
+    def test_ending_with_whitespace(self):
+        self.assertEqual(
+            response("Okay if like my  spacebar  quite a bit?   "), "Sure."
+        )
+
+    def test_other_whitespace(self):
+        self.assertEqual(response("\n\r \t"), "Fine. Be that way!")
+
+    def test_non_question_ending_with_whitespace(self):
+        self.assertEqual(
+            response("This is a statement ending with whitespace      "), "Whatever."
+        )
+
+    def test_multiple_line_question(self):
+        self.assertEqual(
+            response("\nDoes this cryogenic chamber make\n me look fat?"), "Sure."
+        )
+
+
+=== Target Test Code ===
+package bob
+
+import "testing"
+
+func TestHey(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Hey(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Hey(%q) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkHey(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Hey(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/bob/.meta/example.go
+package bob
+
+import (
+	"strings"
+	"unicode"
+)
+
+// Hey responds to different types of remarks with specific phrases.
+func Hey(remark string) string {
+	remark = strings.TrimSpace(remark)
+
+	if isSilence(remark) {
+		return "Fine. Be that way!"
+	}
+	if isShouting(remark) {
+		if isQuestion(remark) {
+			return "Calm down, I know what I'm doing!"
+		} else {
+			return "Whoa, chill out!"
+		}
+	} else if isQuestion(remark) {
+		return "Sure."
+	} else {
+		return "Whatever."
+	}
+}
+
+// isSilence checks if the input is empty.
+func isSilence(remark string) bool {
+	return remark == ""
+}
+
+// isShouting checks if the input contains at least one letter and all letters are uppercase.
+func isShouting(remark string) bool {
+	hasLetters := false
+	for _, r := range remark {
+		if unicode.IsLetter(r) {
+			hasLetters = true
+			if unicode.IsLower(r) {
+				return false
+			}
+		}
+	}
+	return hasLetters
+}
+
+// isQuestion checks if the input ends with a question mark.
+func isQuestion(remark string) bool {
+	return strings.HasSuffix(remark, "?")
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/bob	0.269s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

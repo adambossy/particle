@@ -1,0 +1,690 @@
+=== Initial Source Code ===
+Source file: exercises/practice/markdown/.meta/example.py
+import re
+
+
+def parse(markdown):
+    lines = markdown.split('\n')
+    html = ''
+    in_list = False
+    in_list_append = False
+    for line in lines:
+        result = parse_line(line, in_list, in_list_append)
+        html += result['line']
+        in_list = result['in_list']
+        in_list_append = result['in_list_append']
+    if in_list:
+        html += '</ul>'
+    return html
+
+
+def wrap(line, tag):
+    return '<{tag}>{line}</{tag}>'.format(line=line, tag=tag)
+
+
+def check_headers(line):
+    pattern = '# (.*)'
+    for index in range(6):
+        if re.match(pattern, line):
+            return wrap(line[(index + 2):], 'h' + str(index + 1))
+        pattern = '#' + pattern
+    return line
+
+
+def check_bold(line):
+    bold_pattern = '(.*)__(.*)__(.*)'
+    bold_match = re.match(bold_pattern, line)
+    if bold_match:
+        return bold_match.group(1) + wrap(bold_match.group(2), 'strong')\
+            + bold_match.group(3)
+    else:
+        return None
+
+
+def check_italic(line):
+    italic_pattern = '(.*)_(.*)_(.*)'
+    italic_match = re.match(italic_pattern, line)
+    if italic_match:
+        return italic_match.group(1) + wrap(italic_match.group(2), 'em')\
+            + italic_match.group(3)
+    else:
+        return None
+
+
+def parse_line(line, in_list, in_list_append):
+    result = check_headers(line)
+
+    list_match = re.match(r'\* (.*)', result)
+
+    if list_match:
+        if not in_list:
+            result = '<ul>' + wrap(list_match.group(1), 'li')
+            in_list = True
+        else:
+            result = wrap(list_match.group(1), 'li')
+    else:
+        if in_list:
+            in_list_append = True
+            in_list = False
+
+    if not re.match('<h|<ul|<li', result):
+        result = wrap(result, 'p')
+
+    if list_match is None:
+        result = re.sub('(.*)(<li>)(.*)(</li>)(.*)',
+                        r'\1\2<p>\3</p>\4\5', result)
+
+    while check_bold(result):
+        result = check_bold(result)
+    while check_italic(result):
+        result = check_italic(result)
+
+    if in_list_append:
+        result = '</ul>' + result
+        in_list_append = False
+
+    return {
+        'line': result,
+        'in_list': in_list,
+        'in_list_append': in_list_append
+    }
+
+
+=== Source Interface ===
+import re
+
+
+def parse(markdown):
+    lines = markdown.split('\n')
+    res = ''
+    in_list = False
+    in_list_append = False
+    for i in lines:
+        if re.match('###### (.*)', i) is not None:
+            i = '<h6>' + i[7:] + '</h6>'
+        elif re.match('##### (.*)', i) is not None:
+            i = '<h5>' + i[6:] + '</h5>'
+        elif re.match('#### (.*)', i) is not None:
+            i = '<h4>' + i[5:] + '</h4>'
+        elif re.match('### (.*)', i) is not None:
+            i = '<h3>' + i[4:] + '</h3>'
+        elif re.match('## (.*)', i) is not None:
+            i = '<h2>' + i[3:] + '</h2>'
+        elif re.match('# (.*)', i) is not None:
+            i = '<h1>' + i[2:] + '</h1>'
+        m = re.match(r'\* (.*)', i)
+        if m:
+            if not in_list:
+                in_list = True
+                is_bold = False
+                is_italic = False
+                curr = m.group(1)
+                m1 = re.match('(.*)__(.*)__(.*)', curr)
+                if m1:
+                    curr = m1.group(1) + '<strong>' + \
+                        m1.group(2) + '</strong>' + m1.group(3)
+                    is_bold = True
+                m1 = re.match('(.*)_(.*)_(.*)', curr)
+                if m1:
+                    curr = m1.group(1) + '<em>' + m1.group(2) + \
+                        '</em>' + m1.group(3)
+                    is_italic = True
+                i = '<ul><li>' + curr + '</li>'
+            else:
+                is_bold = False
+                is_italic = False
+                curr = m.group(1)
+                m1 = re.match('(.*)__(.*)__(.*)', curr)
+                if m1:
+                    is_bold = True
+                m1 = re.match('(.*)_(.*)_(.*)', curr)
+                if m1:
+                    is_italic = True
+                if is_bold:
+                    curr = m1.group(1) + '<strong>' + \
+                        m1.group(2) + '</strong>' + m1.group(3)
+                if is_italic:
+                    curr = m1.group(1) + '<em>' + m1.group(2) + \
+                        '</em>' + m1.group(3)
+                i = '<li>' + curr + '</li>'
+        else:
+            if in_list:
+                in_list_append = True
+                in_list = False
+
+        m = re.match('<h|<ul|<p|<li', i)
+        if not m:
+            i = '<p>' + i + '</p>'
+        m = re.match('(.*)__(.*)__(.*)', i)
+        if m:
+            i = m.group(1) + '<strong>' + m.group(2) + '</strong>' + m.group(3)
+        m = re.match('(.*)_(.*)_(.*)', i)
+        if m:
+            i = m.group(1) + '<em>' + m.group(2) + '</em>' + m.group(3)
+        if in_list_append:
+            i = '</ul>' + i
+            in_list_append = False
+        res += i
+    if in_list:
+        res += '</ul>'
+    return res
+
+
+=== Target Interface ===
+package markdown
+
+// implementation to refactor
+
+import (
+	"fmt"
+	"strings"
+)
+
+// Render translates markdown to HTML
+func Render(markdown string) string {
+	header := 0
+	markdown = strings.Replace(markdown, "__", "<strong>", 1)
+	markdown = strings.Replace(markdown, "__", "</strong>", 1)
+	markdown = strings.Replace(markdown, "_", "<em>", 1)
+	markdown = strings.Replace(markdown, "_", "</em>", 1)
+	pos := 0
+	list := 0
+	listOpened := false
+	html := ""
+	he := false
+	for {
+		char := markdown[pos]
+		if char == '#' {
+			for char == '#' {
+				header++
+				pos++
+				char = markdown[pos]
+			}
+			if header == 7 {
+				html += fmt.Sprintf("<p>%s ", strings.Repeat("#", header))
+			} else if he {
+				html += "# "
+				header--
+			} else {
+				html += fmt.Sprintf("<h%d>", header)
+			}
+			pos++
+			continue
+		}
+		he = true
+		if char == '*' && header == 0 && strings.Contains(markdown, "\n") {
+			if list == 0 {
+				html += "<ul>"
+			}
+			list++
+			if !listOpened {
+				html += "<li>"
+				listOpened = true
+			} else {
+				html += string(char) + " "
+			}
+			pos += 2
+			continue
+		}
+		if char == '\n' {
+			if listOpened && strings.LastIndex(markdown, "\n") == pos && strings.LastIndex(markdown, "\n") > strings.LastIndex(markdown, "*") {
+				html += "</li></ul><p>"
+				listOpened = false
+				list = 0
+			}
+			if list > 0 && listOpened {
+				html += "</li>"
+				listOpened = false
+			}
+			if header > 0 {
+				html += fmt.Sprintf("</h%d>", header)
+				header = 0
+			}
+			pos++
+			continue
+		}
+		html += string(char)
+		pos++
+		if pos >= len(markdown) {
+			break
+		}
+	}
+	switch {
+	case header == 7:
+		return html + "</p>"
+	case header > 0:
+		return html + fmt.Sprintf("</h%d>", header)
+	}
+	if list > 0 {
+		return html + "</li></ul>"
+	}
+	if strings.Contains(html, "<p>") {
+		return html + "</p>"
+	}
+	return "<p>" + html + "</p>"
+
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/markdown/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from markdown import (
+    parse,
+)
+
+
+class MarkdownTest(unittest.TestCase):
+    def test_parses_normal_text_as_a_paragraph(self):
+        self.assertEqual(
+            parse("This will be a paragraph"), "<p>This will be a paragraph</p>"
+        )
+
+    def test_parsing_italics(self):
+        self.assertEqual(
+            parse("_This will be italic_"), "<p><em>This will be italic</em></p>"
+        )
+
+    def test_parsing_bold_text(self):
+        self.assertEqual(
+            parse("__This will be bold__"), "<p><strong>This will be bold</strong></p>"
+        )
+
+    def test_mixed_normal_italics_and_bold_text(self):
+        self.assertEqual(
+            parse("This will _be_ __mixed__"),
+            "<p>This will <em>be</em> <strong>mixed</strong></p>",
+        )
+
+    def test_with_h1_header_level(self):
+        self.assertEqual(parse("# This will be an h1"), "<h1>This will be an h1</h1>")
+
+    def test_with_h2_header_level(self):
+        self.assertEqual(parse("## This will be an h2"), "<h2>This will be an h2</h2>")
+
+    def test_with_h3_header_level(self):
+        self.assertEqual(parse("### This will be an h3"), "<h3>This will be an h3</h3>")
+
+    def test_with_h4_header_level(self):
+        self.assertEqual(
+            parse("#### This will be an h4"), "<h4>This will be an h4</h4>"
+        )
+
+    def test_with_h5_header_level(self):
+        self.assertEqual(
+            parse("##### This will be an h5"), "<h5>This will be an h5</h5>"
+        )
+
+    def test_with_h6_header_level(self):
+        self.assertEqual(
+            parse("###### This will be an h6"), "<h6>This will be an h6</h6>"
+        )
+
+    def test_h7_header_level_is_a_paragraph(self):
+        self.assertEqual(
+            parse("####### This will not be an h7"),
+            "<p>####### This will not be an h7</p>",
+        )
+
+    def test_unordered_lists(self):
+        self.assertEqual(
+            parse("* Item 1\n* Item 2"), "<ul><li>Item 1</li><li>Item 2</li></ul>"
+        )
+
+    def test_with_a_little_bit_of_everything(self):
+        self.assertEqual(
+            parse("# Header!\n* __Bold Item__\n* _Italic Item_"),
+            "<h1>Header!</h1><ul><li><strong>Bold Item</strong></li><li><em>Italic Item</em></li></ul>",
+        )
+
+    def test_with_markdown_symbols_in_the_header_text_that_should_not_be_interpreted(
+        self,
+    ):
+        self.assertEqual(
+            parse("# This is a header with # and * in the text"),
+            "<h1>This is a header with # and * in the text</h1>",
+        )
+
+    def test_with_markdown_symbols_in_the_list_item_text_that_should_not_be_interpreted(
+        self,
+    ):
+        self.assertEqual(
+            parse("* Item 1 with a # in the text\n* Item 2 with * in the text"),
+            "<ul><li>Item 1 with a # in the text</li><li>Item 2 with * in the text</li></ul>",
+        )
+
+    def test_with_markdown_symbols_in_the_paragraph_text_that_should_not_be_interpreted(
+        self,
+    ):
+        self.assertEqual(
+            parse("This is a paragraph with # and * in the text"),
+            "<p>This is a paragraph with # and * in the text</p>",
+        )
+
+    def test_unordered_lists_close_properly_with_preceding_and_following_lines(self):
+        self.assertEqual(
+            parse("# Start a list\n* Item 1\n* Item 2\nEnd a list"),
+            "<h1>Start a list</h1><ul><li>Item 1</li><li>Item 2</li></ul><p>End a list</p>",
+        )
+
+
+=== Target Test Code ===
+package markdown
+
+import "testing"
+
+func TestMarkdown(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Render(tc.input); actual != tc.expected {
+				t.Fatalf("Render(%q)\n got:%q\nwant:%q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkMarkdown(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Render(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/markdown/.meta/example.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+)
+
+// Parse translates markdown to HTML
+func Parse(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+	
+	for _, line := range lines {
+		result := parseLine(line, inList, inListAppend)
+		html += result["line"]
+		inList = result["in_list"]
+		inListAppend = result["in_list_append"]
+	}
+	
+	if inList {
+		html += "</ul>"
+	}
+	
+	return html
+}
+
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+func checkHeaders(line string) string {
+	pattern := "# (.*)"
+	for i := 0; i < 6; i++ {
+		re := regexp.MustCompile("^" + pattern + "$")
+		if matches := re.FindStringSubmatch(line); matches != nil {
+			return wrap(matches[1], fmt.Sprintf("h%d", i+1))
+		}
+		pattern = "#" + pattern
+	}
+	return line
+}
+
+func checkBold(line string) (string, bool) {
+	boldPattern := "(.*)__(.*)__(.*)"
+	re := regexp.MustCompile(boldPattern)
+	boldMatch := re.FindStringSubmatch(line)
+	
+	if boldMatch != nil {
+		return boldMatch[1] + wrap(boldMatch[2], "strong") + boldMatch[3], true
+	}
+	
+	return "", false
+}
+
+func checkItalic(line string) (string, bool) {
+	italicPattern := "(.*)_(.*)_(.*)"
+	re := regexp.MustCompile(italicPattern)
+	italicMatch := re.FindStringSubmatch(line)
+	
+	if italicMatch != nil {
+		return italicMatch[1] + wrap(italicMatch[2], "em") + italicMatch[3], true
+	}
+	
+	return "", false
+}
+
+func parseLine(line string, inList bool, inListAppend bool) map[string]bool {
+	result := checkHeaders(line)
+	
+	listPattern := regexp.MustCompile(`^\* (.*)$`)
+	listMatch := listPattern.FindStringSubmatch(result)
+	
+	if listMatch != nil {
+		if !inList {
+			result = "<ul>" + wrap(listMatch[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatch[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+	
+	headerOrListPattern := regexp.MustCompile(`^<h|<ul|<li`)
+	if !headerOrListPattern.MatchString(result) {
+		result = wrap(result, "p")
+	}
+	
+	if listMatch == nil {
+		listItemPattern := regexp.MustCompile(`(.*)(<li>)(.*)(</li>)(.*)`)
+		result = listItemPattern.ReplaceAllString(result, "${1}${2}<p>${3}</p>${4}${5}")
+	}
+	
+	for {
+		if boldResult, found := checkBold(result); found {
+			result = boldResult
+		} else {
+			break
+		}
+	}
+	
+	for {
+		if italicResult, found := checkItalic(result); found {
+			result = italicResult
+		} else {
+			break
+		}
+	}
+	
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+	
+	return map[string]bool{
+		"line":          result,
+		"in_list":       inList,
+		"in_list_append": inListAppend,
+	}
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/markdown [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/markdown [exercism/markdown.test]
+./markdown.go:19:3: invalid operation: html += result["line"] (mismatched types string and bool)
+./markdown.go:123:20: cannot use result (variable of type string) as type bool in map literal
+./markdown_test.go:8:17: undefined: Render
+./markdown_test.go:22:4: undefined: Render
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/markdown/.meta/example.go
+package markdown
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+)
+
+// Parse translates markdown to HTML
+func Render(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	html := ""
+	inList := false
+	inListAppend := false
+	
+	for _, line := range lines {
+		result := parseLine(line, inList, inListAppend)
+		html += result.line
+		inList = result.inList
+		inListAppend = result.inListAppend
+	}
+	
+	if inList {
+		html += "</ul>"
+	}
+	
+	return html
+}
+
+func wrap(line, tag string) string {
+	return fmt.Sprintf("<%s>%s</%s>", tag, line, tag)
+}
+
+func checkHeaders(line string) string {
+	pattern := "# (.*)"
+	for i := 0; i < 6; i++ {
+		re := regexp.MustCompile("^" + pattern + "$")
+		if matches := re.FindStringSubmatch(line); matches != nil {
+			return wrap(matches[1], fmt.Sprintf("h%d", i+1))
+		}
+		pattern = "#" + pattern
+	}
+	return line
+}
+
+func checkBold(line string) (string, bool) {
+	boldPattern := "(.*)__(.*)__(.*)"
+	re := regexp.MustCompile(boldPattern)
+	boldMatch := re.FindStringSubmatch(line)
+	
+	if boldMatch != nil {
+		return boldMatch[1] + wrap(boldMatch[2], "strong") + boldMatch[3], true
+	}
+	
+	return "", false
+}
+
+func checkItalic(line string) (string, bool) {
+	italicPattern := "(.*)_(.*)_(.*)"
+	re := regexp.MustCompile(italicPattern)
+	italicMatch := re.FindStringSubmatch(line)
+	
+	if italicMatch != nil {
+		return italicMatch[1] + wrap(italicMatch[2], "em") + italicMatch[3], true
+	}
+	
+	return "", false
+}
+
+// lineResult represents the result of parsing a line
+type lineResult struct {
+	line         string
+	inList       bool
+	inListAppend bool
+}
+
+func parseLine(line string, inList bool, inListAppend bool) lineResult {
+	result := checkHeaders(line)
+	
+	listPattern := regexp.MustCompile(`^\* (.*)$`)
+	listMatch := listPattern.FindStringSubmatch(result)
+	
+	if listMatch != nil {
+		if !inList {
+			result = "<ul>" + wrap(listMatch[1], "li")
+			inList = true
+		} else {
+			result = wrap(listMatch[1], "li")
+		}
+	} else {
+		if inList {
+			inListAppend = true
+			inList = false
+		}
+	}
+	
+	headerOrListPattern := regexp.MustCompile(`^<h|<ul|<li`)
+	if !headerOrListPattern.MatchString(result) {
+		result = wrap(result, "p")
+	}
+	
+	if listMatch == nil {
+		listItemPattern := regexp.MustCompile(`(.*)(<li>)(.*)(</li>)(.*)`)
+		result = listItemPattern.ReplaceAllString(result, "${1}${2}<p>${3}</p>${4}${5}")
+	}
+	
+	for {
+		if boldResult, found := checkBold(result); found {
+			result = boldResult
+		} else {
+			break
+		}
+	}
+	
+	for {
+		if italicResult, found := checkItalic(result); found {
+			result = italicResult
+		} else {
+			break
+		}
+	}
+	
+	if inListAppend {
+		result = "</ul>" + result
+		inListAppend = false
+	}
+	
+	return lineResult{
+		line:         result,
+		inList:       inList,
+		inListAppend: inListAppend,
+	}
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/markdown	0.275s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

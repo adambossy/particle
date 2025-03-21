@@ -1,0 +1,142 @@
+=== Initial Source Code ===
+Source file: exercises/practice/resistor-color-duo/.meta/example.py
+COLORS = [
+    'black',
+    'brown',
+    'red',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'violet',
+    'grey',
+    'white'
+]
+
+
+def value(colors):
+    return 10 * COLORS.index(colors[0]) + COLORS.index(colors[1])
+
+
+=== Source Interface ===
+def value(colors):
+    pass
+
+
+=== Target Interface ===
+package resistorcolorduo
+
+// Value should return the resistance value of a resistor with a given colors.
+func Value(colors []string) int {
+	panic("Implement the Value function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/resistor-color-duo/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from resistor_color_duo import (
+    value,
+)
+
+
+class ResistorColorDuoTest(unittest.TestCase):
+    def test_brown_and_black(self):
+        self.assertEqual(value(["brown", "black"]), 10)
+
+    def test_blue_and_grey(self):
+        self.assertEqual(value(["blue", "grey"]), 68)
+
+    def test_yellow_and_violet(self):
+        self.assertEqual(value(["yellow", "violet"]), 47)
+
+    def test_white_and_red(self):
+        self.assertEqual(value(["white", "red"]), 92)
+
+    def test_orange_and_orange(self):
+        self.assertEqual(value(["orange", "orange"]), 33)
+
+    def test_ignore_additional_colors(self):
+        self.assertEqual(value(["green", "brown", "orange"]), 51)
+
+    def test_black_and_brown_one_digit(self):
+        self.assertEqual(value(["black", "brown"]), 1)
+
+
+=== Target Test Code ===
+package resistorcolorduo
+
+import "testing"
+
+func TestValue(t *testing.T) {
+	for _, tc := range valueTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Value(tc.input)
+
+			if actual != tc.expected {
+				t.Fatalf("Value(%+q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// valueBench is intended to be used in BenchmarkValue to avoid compiler optimizations.
+var valueBench int
+
+func BenchmarkValue(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range valueTestCases {
+			valueBench = Value(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is a slice containing the string representation of colors and their position
+// represents their numerical value
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with given colors
+func Value(colors []string) int {
+	// Calculate the value: 10 * first color index + second color index
+	return 10*indexOf(colors[0], COLORS) + indexOf(colors[1], COLORS)
+}
+
+// indexOf returns the index of an element in a slice, or -1 if not found
+func indexOf(element string, data []string) int {
+	for k, v := range data {
+		if element == v {
+			return k
+		}
+	}
+	return -1 // This should never happen with valid input based on the problem description
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/resistor-color-duo	0.275s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

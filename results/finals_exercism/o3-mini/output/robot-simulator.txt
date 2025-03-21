@@ -1,0 +1,1473 @@
+=== Initial Source Code ===
+Source file: exercises/practice/robot-simulator/.meta/example.py
+NORTH, EAST, SOUTH, WEST = range(4)
+
+
+class Compass:
+    compass = [NORTH, EAST, SOUTH, WEST]
+
+    def __init__(self, direction=NORTH):
+        self.direction = direction
+
+    def left(self):
+        self.direction = self.compass[self.direction - 1]
+
+    def right(self):
+        self.direction = self.compass[(self.direction + 1) % 4]
+
+
+class Robot:
+    def __init__(self, direction=NORTH, x_pos=0, y_pos=0):
+        self.compass = Compass(direction)
+        self.x_pos = x_pos
+        self.y_pos = y_pos
+
+    def advance(self):
+        if self.direction == NORTH:
+            self.y_pos += 1
+        elif self.direction == SOUTH:
+            self.y_pos -= 1
+        elif self.direction == EAST:
+            self.x_pos += 1
+        elif self.direction == WEST:
+            self.x_pos -= 1
+
+    def turn_left(self):
+        self.compass.left()
+
+    def turn_right(self):
+        self.compass.right()
+
+    def move(self, commands):
+        instructions = {'A': self.advance,
+                        'R': self.turn_right,
+                        'L': self.turn_left}
+        for cmd in commands:
+            if cmd in instructions:
+                instructions[cmd]()
+
+    @property
+    def direction(self):
+        return self.compass.direction
+
+    @property
+    def coordinates(self):
+        return (self.x_pos, self.y_pos)
+
+
+=== Source Interface ===
+# Globals for the directions
+# Change the values as you see fit
+EAST = None
+NORTH = None
+WEST = None
+SOUTH = None
+
+
+class Robot:
+    def __init__(self, direction=NORTH, x_pos=0, y_pos=0):
+        pass
+
+
+=== Target Interface ===
+package robot
+
+// See defs.go for other definitions
+
+// Step 1
+// Define N, E, S, W here.
+
+func Right() {
+	panic("Please implement the Right function")
+}
+
+func Left() {
+	panic("Please implement the Left function")
+}
+
+func Advance() {
+	panic("Please implement the Advance function")
+}
+
+func (d Dir) String() string {
+	panic("Please implement the String function")
+}
+
+// Step 2
+// Define Action type here.
+
+func StartRobot(command chan Command, action chan Action) {
+	panic("Please implement the StartRobot function")
+}
+
+func Room(extent Rect, robot Step2Robot, action chan Action, report chan Step2Robot) {
+	panic("Please implement the Room function")
+}
+
+// Step 3
+// Define Action3 type here.
+
+func StartRobot3(name, script string, action chan Action3, log chan string) {
+	panic("Please implement the StartRobot3 function")
+}
+
+func Room3(extent Rect, robots []Step3Robot, action chan Action3, rep chan []Step3Robot, log chan string) {
+	panic("Please implement the Room3 function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/robot-simulator/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from robot_simulator import (
+    Robot,
+    NORTH,
+    EAST,
+    SOUTH,
+    WEST,
+)
+
+
+class RobotSimulatorTest(unittest.TestCase):
+
+    # Test create robot
+    def test_at_origin_facing_north(self):
+        robot = Robot(NORTH, 0, 0)
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, NORTH)
+
+    def test_at_negative_position_facing_south(self):
+        robot = Robot(SOUTH, -1, -1)
+
+        self.assertEqual(robot.coordinates, (-1, -1))
+        self.assertEqual(robot.direction, SOUTH)
+
+    # Test rotating clockwise
+    def test_changes_north_to_east(self):
+        robot = Robot(NORTH, 0, 0)
+        robot.move("R")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, EAST)
+
+    def test_changes_east_to_south(self):
+        robot = Robot(EAST, 0, 0)
+        robot.move("R")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, SOUTH)
+
+    def test_changes_south_to_west(self):
+        robot = Robot(SOUTH, 0, 0)
+        robot.move("R")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, WEST)
+
+    def test_changes_west_to_north(self):
+        robot = Robot(WEST, 0, 0)
+        robot.move("R")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, NORTH)
+
+    # Test rotating counter-clockwise
+    def test_changes_north_to_west(self):
+        robot = Robot(NORTH, 0, 0)
+        robot.move("L")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, WEST)
+
+    def test_changes_west_to_south(self):
+        robot = Robot(WEST, 0, 0)
+        robot.move("L")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, SOUTH)
+
+    def test_changes_south_to_east(self):
+        robot = Robot(SOUTH, 0, 0)
+        robot.move("L")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, EAST)
+
+    def test_changes_east_to_north(self):
+        robot = Robot(EAST, 0, 0)
+        robot.move("L")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, NORTH)
+
+    # Test moving forward one
+    def test_facing_north_increments_y(self):
+        robot = Robot(NORTH, 0, 0)
+        robot.move("A")
+
+        self.assertEqual(robot.coordinates, (0, 1))
+        self.assertEqual(robot.direction, NORTH)
+
+    def test_facing_south_decrements_y(self):
+        robot = Robot(SOUTH, 0, 0)
+        robot.move("A")
+
+        self.assertEqual(robot.coordinates, (0, -1))
+        self.assertEqual(robot.direction, SOUTH)
+
+    def test_facing_east_increments_x(self):
+        robot = Robot(EAST, 0, 0)
+        robot.move("A")
+
+        self.assertEqual(robot.coordinates, (1, 0))
+        self.assertEqual(robot.direction, EAST)
+
+    def test_facing_west_decrements_x(self):
+        robot = Robot(WEST, 0, 0)
+        robot.move("A")
+
+        self.assertEqual(robot.coordinates, (-1, 0))
+        self.assertEqual(robot.direction, WEST)
+
+    # Test follow series of instructions
+    def test_moving_east_and_north_from_readme(self):
+        robot = Robot(NORTH, 7, 3)
+        robot.move("RAALAL")
+
+        self.assertEqual(robot.coordinates, (9, 4))
+        self.assertEqual(robot.direction, WEST)
+
+    def test_moving_west_and_north(self):
+        robot = Robot(NORTH, 0, 0)
+        robot.move("LAAARALA")
+
+        self.assertEqual(robot.coordinates, (-4, 1))
+        self.assertEqual(robot.direction, WEST)
+
+    def test_moving_west_and_south(self):
+        robot = Robot(EAST, 2, -7)
+        robot.move("RRAAAAALA")
+
+        self.assertEqual(robot.coordinates, (-3, -8))
+        self.assertEqual(robot.direction, SOUTH)
+
+    def test_moving_east_and_north(self):
+        robot = Robot(SOUTH, 8, 4)
+        robot.move("LAAARRRALLLL")
+
+        self.assertEqual(robot.coordinates, (11, 5))
+        self.assertEqual(robot.direction, NORTH)
+
+
+=== Target Test Code ===
+//go:build step1 || (!step2 && !step3)
+
+package robot
+
+// This source file contains step 1 tests only.  For other tests see
+// robot_simulator_step2_test.go and robot_simulator_step3_test.go.
+
+import (
+	"runtime"
+	"testing"
+)
+
+func TestStep1(t *testing.T) {
+
+	want := func(x, y int, dir Dir) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+	want(0, 0, N)
+
+	Advance()
+	want(0, 1, N)
+
+	Right()
+	want(0, 1, E)
+
+	Advance()
+	want(1, 1, E)
+
+	Left()
+	want(1, 1, N)
+
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Initial Translation ===
+// exercises/practice/robot-simulator/.meta/example.go
+package meta
+
+import "fmt"
+
+// Direction constants for the robot.
+const (
+	NORTH = 0
+	EAST  = 1
+	SOUTH = 2
+	WEST  = 3
+)
+
+// Compass represents a directional compass for the robot.
+// It maintains the current direction of the robot.
+// The compass directions are defined by the constants: NORTH, EAST, SOUTH, WEST.
+
+// Compass struct holds the current direction.
+// The rotation logic is implemented using modular arithmetic.
+
+// Compass struct represents the orientation of the robot.
+
+type Compass struct {
+	direction int
+}
+
+// NewCompass creates a new Compass with the specified starting direction.
+func NewCompass(direction int) *Compass {
+	return &Compass{direction: direction}
+}
+
+// Left rotates the compass 90 degrees to the left (counterclockwise).
+// In modular arithmetic, turning left means (current + 3) modulo 4.
+func (c *Compass) Left() {
+	c.direction = (c.direction + 3) % 4
+}
+
+// Right rotates the compass 90 degrees to the right (clockwise).
+// In modular arithmetic, turning right means (current + 1) modulo 4.
+func (c *Compass) Right() {
+	c.direction = (c.direction + 1) % 4
+}
+
+// Direction returns the current direction of the compass.
+func (c *Compass) Direction() int {
+	return c.direction
+}
+
+// Robot represents a robot with a position and orientation.
+// It contains a Compass for its current direction and x, y coordinates for its position.
+
+// Robot struct represents the state of the robot.
+
+type Robot struct {
+	compass *Compass
+	xPos    int
+	yPos    int
+}
+
+// NewRobot initializes a new Robot with the given starting direction and coordinates.
+// If no values are provided, default is NORTH for direction and (0,0) for coordinates.
+func NewRobot(direction int, xPos, yPos int) *Robot {
+	return &Robot{
+		compass: NewCompass(direction),
+		xPos:    xPos,
+		yPos:    yPos,
+	}
+}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func (r *Robot) Advance() {
+	switch r.compass.direction {
+	case NORTH:
+		r.yPos++
+	case SOUTH:
+		r.yPos--
+	case EAST:
+		r.xPos++
+	case WEST:
+		r.xPos--
+	default:
+		fmt.Printf("Unknown direction: %d\n", r.compass.direction)
+	}
+}
+
+// TurnLeft rotates the robot's orientation 90 degrees to the left.
+func (r *Robot) TurnLeft() {
+	r.compass.Left()
+}
+
+// TurnRight rotates the robot's orientation 90 degrees to the right.
+func (r *Robot) TurnRight() {
+	r.compass.Right()
+}
+
+// Move processes a sequence of commands to control the robot.
+// 'A' advances the robot one unit,
+// 'R' rotates the robot 90 degrees to the right,
+// 'L' rotates the robot 90 degrees to the left.
+func (r *Robot) Move(commands string) {
+	for _, cmd := range commands {
+		switch cmd {
+		case 'A':
+			r.Advance()
+		case 'R':
+			r.TurnRight()
+		case 'L':
+			r.TurnLeft()
+		}
+	}
+}
+
+// Direction returns the current facing direction of the robot.
+func (r *Robot) Direction() int {
+	return r.compass.Direction()
+}
+
+// Coordinates returns the current (x, y) coordinates of the robot.
+func (r *Robot) Coordinates() (int, int) {
+	return r.xPos, r.yPos
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (robot_simulator.go) and robot (robot_simulator_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/robot-simulator
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/robot-simulator/.meta/example.go
+package robot
+
+// Direction constants for the robot simulator.
+const (
+	N = 0
+	E = 1
+	S = 2
+	W = 3
+)
+
+// Robot represents the state of the robot for Step 1.
+// It has X, Y coordinates and a directional value (one of N, E, S, W).
+// The robot's initial position is at (0, 0) facing North (N).
+
+type Robot struct {
+	X   int
+	Y   int
+	Dir int
+}
+
+// Step1Robot is the global robot instance used for Step 1 tests.
+var Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func Advance() {
+	switch Step1Robot.Dir {
+	case N:
+		Step1Robot.Y++
+	case E:
+		Step1Robot.X++
+	case S:
+		Step1Robot.Y--
+	case W:
+		Step1Robot.X--
+	}
+}
+
+// Right rotates the robot 90 degrees to the right (clockwise).
+func Right() {
+	Step1Robot.Dir = (Step1Robot.Dir + 1) % 4
+}
+
+// Left rotates the robot 90 degrees to the left (counterclockwise).
+func Left() {
+	Step1Robot.Dir = (Step1Robot.Dir + 3) % 4
+}
+
+// exercises/practice/robot-simulator/robot_simulator_test.go
+package robot
+
+import (
+	"runtime"
+	"testing"
+)
+
+// TestStep1 verifies that the robot correctly advances and rotates as per Step 1 requirements.
+func TestStep1(t *testing.T) {
+	// Helper function to check the robot's state.
+	want := func(x, y int, dir int) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+
+	// Initial state should be at (0,0) facing North (N).
+	// Reset Step1Robot to initial state in case of previous tests.
+	Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+	want(0, 0, N)
+
+	// Advance: robot should move one unit forward (North).
+	Advance()
+	want(0, 1, N)
+
+	// Turn right: robot should now face East.
+	Right()
+	want(0, 1, E)
+
+	// Advance: robot moves one unit to the East.
+	Advance()
+	want(1, 1, E)
+
+	// Turn left: robot should now face North again.
+	Left()
+	want(1, 1, N)
+
+	// Two left turns and then advance: from North, two left turns yield South.
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	// Turn right and advance: from South, right turn yields West and advancing moves West.
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/robot-simulator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/robot-simulator [exercism/robot-simulator.test]
+./robot_simulator.go:50:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/robot-simulator/.meta/example.go
+package robot
+
+// Dir represents the direction the robot is facing.
+type Dir int
+
+// Direction constants.
+const (
+	N Dir = 0
+	E Dir = 1
+	S Dir = 2
+	W Dir = 3
+)
+
+// Robot represents the robot's state for Step 1.
+// It holds the X, Y coordinates and the current facing direction (Dir).
+// The robot starts at (0, 0) facing North.
+
+type Robot struct {
+	X   int
+	Y   int
+	Dir Dir
+}
+
+// Step1Robot is the global robot instance used in Step 1 tests.
+var Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func Advance() {
+	switch Step1Robot.Dir {
+	case N:
+		Step1Robot.Y++
+	case E:
+		Step1Robot.X++
+	case S:
+		Step1Robot.Y--
+	case W:
+		Step1Robot.X--
+	}
+}
+
+// Right rotates the robot 90 degrees clockwise.
+func Right() {
+	Step1Robot.Dir = (Step1Robot.Dir + 1) % 4
+}
+
+// Left rotates the robot 90 degrees counterclockwise.
+func Left() {
+	Step1Robot.Dir = (Step1Robot.Dir + 3) % 4
+}
+
+// exercises/practice/robot-simulator/robot_simulator_test.go
+//go:build step1 || (!step2 && !step3)
+
+package robot
+
+import (
+	"runtime"
+	"testing"
+)
+
+// TestStep1 tests the basic movements and rotations of the robot in Step 1.
+func TestStep1(t *testing.T) {
+	// Helper function to verify the robot's state.
+	want := func(x, y int, dir Dir) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+
+	// Ensure the robot starts at (0, 0) facing North (N).
+	// Reset the global robot to its initial state for test isolation.
+	Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+	want(0, 0, N)
+
+	// Move forward: should advance by 1 unit in the current direction (North).
+	Advance()
+	want(0, 1, N)
+
+	// Turn right: now facing East.
+	Right()
+	want(0, 1, E)
+
+	// Move forward: should advance by 1 unit to the East.
+	Advance()
+	want(1, 1, E)
+
+	// Turn left: now facing North again.
+	Left()
+	want(1, 1, N)
+
+	// Two left turns from North yield South; then advance: move South by 1 unit.
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	// Turn right: from South, turning right yields West; then advance: move West by 1 unit.
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/robot-simulator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/robot-simulator [exercism/robot-simulator.test]
+./robot_simulator.go:55:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/robot-simulator/.meta/example.go
+package robot
+
+// Dir represents the direction the robot is facing.
+type Dir int
+
+// Direction constants for the robot simulator.
+const (
+	N Dir = 0
+	E Dir = 1
+	S Dir = 2
+	W Dir = 3
+)
+
+// Robot represents the state of the robot for Step 1.
+// It holds the X, Y coordinates and the current facing direction (Dir).
+// The robot starts at (0, 0) facing North (N).
+
+type Robot struct {
+	X   int
+	Y   int
+	Dir Dir
+}
+
+// Step1Robot is the global robot instance used in Step 1 tests.
+var Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func Advance() {
+	switch Step1Robot.Dir {
+	case N:
+		Step1Robot.Y++
+	case E:
+		Step1Robot.X++
+	case S:
+		Step1Robot.Y--
+	case W:
+		Step1Robot.X--
+	}
+}
+
+// Right rotates the robot 90 degrees clockwise.
+func Right() {
+	Step1Robot.Dir = (Step1Robot.Dir + 1) % 4
+}
+
+// Left rotates the robot 90 degrees counterclockwise.
+func Left() {
+	Step1Robot.Dir = (Step1Robot.Dir + 3) % 4
+}
+
+// exercises/practice/robot-simulator/robot_simulator_test.go
+package robot
+
+import (
+	"runtime"
+	"testing"
+)
+
+// TestStep1 verifies that the robot correctly advances and rotates as per Step 1 requirements.
+func TestStep1(t *testing.T) {
+	// Helper function to check the robot's state.
+	want := func(x, y int, dir Dir) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+
+	// Reset the global robot to its initial state for test isolation.
+	Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+	want(0, 0, N)
+
+	// Advance: robot should move one unit forward (North).
+	Advance()
+	want(0, 1, N)
+
+	// Turn right: robot should now face East.
+	Right()
+	want(0, 1, E)
+
+	// Advance: robot moves one unit to the East.
+	Advance()
+	want(1, 1, E)
+
+	// Turn left: robot should now face North again.
+	Left()
+	want(1, 1, N)
+
+	// Two left turns from North yield South; then advance: move South by 1 unit.
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	// Turn right: from South, turning right yields West; then advance: move West by 1 unit.
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/robot-simulator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/robot-simulator [exercism/robot-simulator.test]
+./robot_simulator.go:53:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/robot-simulator/.meta/example.go
+package robot
+
+// Dir represents the direction the robot is facing.
+type Dir int
+
+// Direction constants for the robot simulator.
+const (
+	N Dir = 0
+	E Dir = 1
+	S Dir = 2
+	W Dir = 3
+)
+
+// Robot represents the state of the robot for Step 1.
+// It holds the X and Y coordinates and the current facing direction (Dir).
+// The robot starts at (0, 0) facing North (N).
+
+type Robot struct {
+	X   int
+	Y   int
+	Dir Dir
+}
+
+// Step1Robot is the global robot instance used in Step 1 tests.
+var Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func Advance() {
+	switch Step1Robot.Dir {
+	case N:
+		Step1Robot.Y++
+	case E:
+		Step1Robot.X++
+	case S:
+		Step1Robot.Y--
+	case W:
+		Step1Robot.X--
+	}
+}
+
+// Right rotates the robot 90 degrees clockwise.
+func Right() {
+	Step1Robot.Dir = (Step1Robot.Dir + 1) % 4
+}
+
+// Left rotates the robot 90 degrees counterclockwise.
+func Left() {
+	Step1Robot.Dir = (Step1Robot.Dir + 3) % 4
+}
+
+
+// exercises/practice/robot-simulator/robot_simulator_test.go
+package robot
+
+import (
+	"runtime"
+	"testing"
+)
+
+// TestStep1 verifies that the robot correctly advances and rotates as per Step 1 requirements.
+func TestStep1(t *testing.T) {
+	// Helper function to check the robot's state.
+	want := func(x, y int, dir Dir) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+
+	// Reset the global robot to its initial state for test isolation.
+	Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+	want(0, 0, N)
+
+	// Advance: robot should move one unit forward (North).
+	Advance()
+	want(0, 1, N)
+
+	// Turn right: robot should now face East.
+	Right()
+	want(0, 1, E)
+
+	// Advance: robot moves one unit to the East.
+	Advance()
+	want(1, 1, E)
+
+	// Turn left: robot should now face North again.
+	Left()
+	want(1, 1, N)
+
+	// Two left turns from North yield South; then advance: move South by 1 unit.
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	// Turn right: from South, turning right yields West; then advance: move West by 1 unit.
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/robot-simulator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/robot-simulator [exercism/robot-simulator.test]
+./robot_simulator.go:54:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/robot-simulator/.meta/example.go
+package robot
+
+// Dir represents the direction the robot is facing.
+type Dir int
+
+// Direction constants for the robot simulator.
+const (
+	N Dir = 0
+	E Dir = 1
+	S Dir = 2
+	W Dir = 3
+)
+
+// Robot represents the state of the robot for Step 1.
+// It holds the X, Y coordinates and the current facing direction (Dir).
+// The robot starts at (0, 0) facing North (N).
+
+type Robot struct {
+	X   int
+	Y   int
+	Dir Dir
+}
+
+// Step1Robot is the global robot instance used in Step 1 tests.
+var Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func Advance() {
+	switch Step1Robot.Dir {
+	case N:
+		Step1Robot.Y++
+	case E:
+		Step1Robot.X++
+	case S:
+		Step1Robot.Y--
+	case W:
+		Step1Robot.X--
+	}
+}
+
+// Right rotates the robot 90 degrees clockwise.
+func Right() {
+	Step1Robot.Dir = (Step1Robot.Dir + 1) % 4
+}
+
+// Left rotates the robot 90 degrees counterclockwise.
+func Left() {
+	Step1Robot.Dir = (Step1Robot.Dir + 3) % 4
+}
+
+// exercises/practice/robot-simulator/robot_simulator_test.go
+package robot
+
+import (
+	"runtime"
+	"testing"
+)
+
+// TestStep1 verifies that the robot correctly advances and rotates as per Step 1 requirements.
+func TestStep1(t *testing.T) {
+	// Helper function to check the robot's state.
+	want := func(x, y int, dir Dir) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+
+	// Reset the global robot to its initial state for test isolation.
+	Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+	want(0, 0, N)
+
+	// Advance: robot should move one unit forward (North).
+	Advance()
+	want(0, 1, N)
+
+	// Turn right: robot should now face East.
+	Right()
+	want(0, 1, E)
+
+	// Advance: robot moves one unit to the East.
+	Advance()
+	want(1, 1, E)
+
+	// Turn left: robot should now face North again.
+	Left()
+	want(1, 1, N)
+
+	// Two left turns from North yield South; then advance: move South by 1 unit.
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	// Turn right: from South, turning right yields West; then advance: move West by 1 unit.
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/robot-simulator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/robot-simulator [exercism/robot-simulator.test]
+./robot_simulator.go:53:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/robot-simulator/.meta/example.go
+package robot
+
+// Dir represents the direction the robot is facing.
+type Dir int
+
+// Direction constants for the robot simulator.
+const (
+	N Dir = 0
+	E Dir = 1
+	S Dir = 2
+	W Dir = 3
+)
+
+// Robot represents the state of the robot for Step 1.
+// It holds the X, Y coordinates and the current facing direction (Dir).
+// The robot starts at (0, 0) facing North (N).
+
+type Robot struct {
+	X   int
+	Y   int
+	Dir Dir
+}
+
+// Step1Robot is the global robot instance used in Step 1 tests.
+var Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func Advance() {
+	switch Step1Robot.Dir {
+	case N:
+		Step1Robot.Y++
+	case E:
+		Step1Robot.X++
+	case S:
+		Step1Robot.Y--
+	case W:
+		Step1Robot.X--
+	}
+}
+
+// Right rotates the robot 90 degrees clockwise.
+func Right() {
+	Step1Robot.Dir = (Step1Robot.Dir + 1) % 4
+}
+
+// Left rotates the robot 90 degrees counterclockwise.
+func Left() {
+	Step1Robot.Dir = (Step1Robot.Dir + 3) % 4
+}
+
+// ----------------------------------------------------------------------
+// exercises/practice/robot-simulator/robot_simulator_test.go
+//go:build step1 || (!step2 && !step3)
+
+package robot
+
+import (
+	"runtime"
+	"testing"
+)
+
+// TestStep1 verifies that the robot correctly advances and rotates as per Step 1 requirements.
+func TestStep1(t *testing.T) {
+	// Helper function to check the robot's state.
+	want := func(x, y int, dir Dir) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+
+	// Reset the global robot to its initial state for test isolation.
+	Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+	want(0, 0, N)
+
+	// Advance: robot should move one unit forward (North).
+	Advance()
+	want(0, 1, N)
+
+	// Turn right: robot should now face East.
+	Right()
+	want(0, 1, E)
+
+	// Advance: robot moves one unit to the East.
+	Advance()
+	want(1, 1, E)
+
+	// Turn left: robot should now face North again.
+	Left()
+	want(1, 1, N)
+
+	// Two left turns from North yield South; then advance: move South by 1 unit.
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	// Turn right: from South, turning right yields West; then advance: move West by 1 unit.
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/robot-simulator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/robot-simulator [exercism/robot-simulator.test]
+./robot_simulator.go:56:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/robot-simulator/robot_simulator.go
+package robot
+
+// Dir represents the direction the robot is facing.
+type Dir int
+
+// Direction constants for the robot simulator.
+const (
+	N Dir = 0
+	E Dir = 1
+	S Dir = 2
+	W Dir = 3
+)
+
+// Robot represents the state of the robot for Step 1.
+// It holds the X, Y coordinates and the current facing direction (Dir).
+// The robot starts at (0, 0) facing North (N).
+
+type Robot struct {
+	X   int
+	Y   int
+	Dir Dir
+}
+
+// Step1Robot is the global robot instance used in Step 1 tests.
+var Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func Advance() {
+	switch Step1Robot.Dir {
+	case N:
+		Step1Robot.Y++
+	case E:
+		Step1Robot.X++
+	case S:
+		Step1Robot.Y--
+	case W:
+		Step1Robot.X--
+	}
+}
+
+// Right rotates the robot 90 degrees clockwise.
+func Right() {
+	Step1Robot.Dir = (Step1Robot.Dir + 1) % 4
+}
+
+// Left rotates the robot 90 degrees counterclockwise.
+func Left() {
+	Step1Robot.Dir = (Step1Robot.Dir + 3) % 4
+}
+
+
+// ----------------------------------------------------------------------
+// exercises/practice/robot-simulator/robot_simulator_test.go
+//go:build step1 || (!step2 && !step3)
+
+package robot
+
+import (
+	"runtime"
+	"testing"
+)
+
+// TestStep1 verifies that the robot correctly advances and rotates as per Step 1 requirements.
+func TestStep1(t *testing.T) {
+	// Helper function to check the robot's state.
+	want := func(x, y int, dir Dir) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+
+	// Reset the global robot to its initial state for test isolation.
+	Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+	want(0, 0, N)
+
+	// Advance: robot should move one unit forward (North).
+	Advance()
+	want(0, 1, N)
+
+	// Turn right: robot should now face East.
+	Right()
+	want(0, 1, E)
+
+	// Advance: robot moves one unit to the East.
+	Advance()
+	want(1, 1, E)
+
+	// Turn left: robot should now face North again.
+	Left()
+	want(1, 1, N)
+
+	// Two left turns from North yield South; then advance: move South by 1 unit.
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	// Turn right: from South, turning right yields West; then advance: move West by 1 unit.
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/robot-simulator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/robot-simulator [exercism/robot-simulator.test]
+./robot_simulator.go:57:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/robot-simulator/robot_simulator.go
+package robot
+
+// Dir represents the direction the robot is facing.
+type Dir int
+
+// Direction constants for the robot simulator.
+const (
+	N Dir = 0
+	E Dir = 1
+	S Dir = 2
+	W Dir = 3
+)
+
+// Robot represents the robot's state for Step 1.
+// It holds the X, Y coordinates along with the current facing direction (Dir).
+// The robot starts at (0, 0) facing North (N).
+
+type Robot struct {
+	X   int
+	Y   int
+	Dir Dir
+}
+
+// Step1Robot is the global robot instance used in Step 1 tests.
+var Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func Advance() {
+	switch Step1Robot.Dir {
+	case N:
+		Step1Robot.Y++
+	case E:
+		Step1Robot.X++
+	case S:
+		Step1Robot.Y--
+	case W:
+		Step1Robot.X--
+	}
+}
+
+// Right rotates the robot 90 degrees clockwise.
+func Right() {
+	Step1Robot.Dir = (Step1Robot.Dir + 1) % 4
+}
+
+// Left rotates the robot 90 degrees counterclockwise.
+func Left() {
+	Step1Robot.Dir = (Step1Robot.Dir + 3) % 4
+}
+
+// --------------------------------------------------------------
+// exercises/practice/robot-simulator/robot_simulator_test.go
+package robot
+
+import (
+	"runtime"
+	"testing"
+)
+
+// TestStep1 verifies that the robot correctly advances and rotates as per Step 1 requirements.
+func TestStep1(t *testing.T) {
+	// Helper function to check the robot's state.
+	want := func(x, y int, dir Dir) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+
+	// Reset the global robot to its initial state for test isolation.
+	Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+	want(0, 0, N)
+
+	// Advance: move one unit forward (North).
+	Advance()
+	want(0, 1, N)
+
+	// Turn right: robot should now face East.
+	Right()
+	want(0, 1, E)
+
+	// Advance: move one unit East.
+	Advance()
+	want(1, 1, E)
+
+	// Turn left: robot now faces North again.
+	Left()
+	want(1, 1, N)
+
+	// Two left turns from North yield South; then advance: move one unit South.
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	// Turn right from South yields West; then advance: move one unit West.
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/robot-simulator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/robot-simulator [exercism/robot-simulator.test]
+./robot_simulator.go:54:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/robot-simulator/robot_simulator.go
+package robot
+
+// Dir represents the direction the robot is facing.
+type Dir int
+
+// Direction constants for the robot simulator.
+const (
+	N Dir = 0
+	E Dir = 1
+	S Dir = 2
+	W Dir = 3
+)
+
+// Robot represents the state of the robot for Step 1.
+// It holds the X, Y coordinates along with the current facing direction (Dir).
+// The robot starts at (0, 0) facing North (N).
+
+type Robot struct {
+	X   int
+	Y   int
+	Dir Dir
+}
+
+// Step1Robot is the global robot instance used in Step 1 tests.
+var Step1Robot = Robot{X: 0, Y: 0, Dir: N}
+
+// Advance moves the robot one unit forward in the direction it is currently facing.
+func Advance() {
+	switch Step1Robot.Dir {
+	case N:
+		Step1Robot.Y++
+	case E:
+		Step1Robot.X++
+	case S:
+		Step1Robot.Y--
+	case W:
+		Step1Robot.X--
+	}
+}
+
+// Right rotates the robot 90 degrees clockwise.
+func Right() {
+	Step1Robot.Dir = (Step1Robot.Dir + 1) % 4
+}
+
+// Left rotates the robot 90 degrees counterclockwise.
+func Left() {
+	Step1Robot.Dir = (Step1Robot.Dir + 3) % 4
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/robot-simulator	0.279s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

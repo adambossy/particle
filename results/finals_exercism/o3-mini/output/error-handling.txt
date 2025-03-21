@@ -1,0 +1,1034 @@
+=== Initial Source Code ===
+Source file: exercises/practice/error-handling/.meta/example.py
+def handle_error_by_throwing_exception():
+    raise Exception('Meaningful message describing the source of the error')
+
+
+def handle_error_by_returning_none(input_data):
+    try:
+        return int(input_data)
+    except ValueError:
+        return None
+
+
+def handle_error_by_returning_tuple(input_data):
+    try:
+        return (True, int(input_data))
+    except ValueError:
+        return (False, None)
+
+
+def filelike_objects_are_closed_on_exception(filelike_object):
+    with filelike_object as file_obj:
+        file_obj.do_something()
+
+
+=== Source Interface ===
+def handle_error_by_throwing_exception():
+    pass
+
+
+def handle_error_by_returning_none(input_data):
+    pass
+
+
+def handle_error_by_returning_tuple(input_data):
+    pass
+
+
+def filelike_objects_are_closed_on_exception(filelike_object):
+    pass
+
+
+=== Target Interface ===
+package erratum
+
+func Use(opener ResourceOpener, input string) error {
+	panic("Please implement the Use function")
+}
+
+
+=== Source Test Code ===
+import unittest
+
+import error_handling as er
+from test_utils import FileLike
+
+
+class ErrorHandlingTest(unittest.TestCase):
+    def test_throw_exception(self):
+        with self.assertRaisesWithMessage(Exception):
+            er.handle_error_by_throwing_exception()
+
+    def test_return_none(self):
+        self.assertEqual(er.handle_error_by_returning_none('1'), 1,
+                         'Result of valid input should not be None')
+        self.assertIsNone(er.handle_error_by_returning_none('a'),
+                          'Result of invalid input should be None')
+
+    def test_return_tuple(self):
+        successful_result, result = er.handle_error_by_returning_tuple('1')
+        self.assertIs(successful_result, True,
+                      'Valid input should be successful')
+        self.assertEqual(result, 1, 'Result of valid input should not be None')
+
+        failure_result, result = er.handle_error_by_returning_tuple('a')
+        self.assertIs(failure_result, False,
+                      'Invalid input should not be successful')
+
+    def test_filelike_objects_are_closed_on_exception(self):
+        filelike_object = FileLike(fail_something=True)
+        with self.assertRaisesWithMessage(Exception):
+            er.filelike_objects_are_closed_on_exception(filelike_object)
+        self.assertIs(filelike_object.is_open, False,
+                      'filelike_object should be closed')
+        self.assertIs(filelike_object.was_open, True,
+                      'filelike_object should have been opened')
+        self.assertIs(filelike_object.did_something, True,
+                      'filelike_object should call do_something()')
+
+    def test_filelike_objects_are_closed_without_exception(self):
+        filelike_object = FileLike(fail_something=False)
+        er.filelike_objects_are_closed_on_exception(filelike_object)
+        self.assertIs(filelike_object.is_open, False,
+                      'filelike_object should be closed')
+        self.assertIs(filelike_object.was_open, True,
+                      'filelike_object should have been opened')
+        self.assertIs(filelike_object.did_something, True,
+                      'filelike_object should call do_something()')
+
+    # Utility functions
+    def assertRaisesWithMessage(self, exception):
+        return self.assertRaisesRegex(exception, r".+")
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+=== Target Test Code ===
+package erratum
+
+import (
+	"errors"
+	"testing"
+)
+
+// Please review the README for this exercise carefully before implementation.
+
+// Little helper to let us customize behavior of the resource on a per-test
+// basis.
+type mockResource struct {
+	close  func() error
+	frob   func(string)
+	defrob func(string)
+}
+
+const hello = "hello"
+
+func (mr mockResource) Close() error      { return mr.close() }
+func (mr mockResource) Frob(input string) { mr.frob(input) }
+func (mr mockResource) Defrob(tag string) { mr.defrob(tag) }
+
+// Use should not return an error on the "happy" path.
+func TestNoErrors(t *testing.T) {
+	var frobInput string
+	var closeCallsCount int
+	mr := mockResource{
+		close: func() error { closeCallsCount++; return nil },
+		frob:  func(input string) { frobInput = input },
+	}
+	opener := func() (Resource, error) { return mr, nil }
+	err := Use(opener, hello)
+	if err != nil {
+		t.Fatalf("Unexpected error from Use: %v", err)
+	}
+	if frobInput != hello {
+		t.Fatalf("Wrong string passed to Frob: got %v, expected %v", frobInput, hello)
+	}
+	if closeCallsCount == 0 {
+		t.Fatalf("Close was not called")
+	}
+	if closeCallsCount != 1 {
+		t.Fatalf("Close was called more than once")
+	}
+}
+
+// Use should keep trying if a transient error is returned on open.
+func TestKeepTryOpenOnTransient(t *testing.T) {
+	var frobInput string
+	mr := mockResource{
+		close: func() error { return nil },
+		frob:  func(input string) { frobInput = input },
+	}
+	nthCall := 0
+	opener := func() (Resource, error) {
+		if nthCall < 3 {
+			nthCall++
+			return mockResource{}, TransientError{errors.New("some error")}
+		}
+		return mr, nil
+	}
+	err := Use(opener, hello)
+	if err != nil {
+		t.Fatalf("Unexpected error from Use: %v", err)
+	}
+	if frobInput != hello {
+		t.Fatalf("Wrong string passed to Frob: got %v, expected %v", frobInput, hello)
+	}
+}
+
+// Use should fail if a non-transient error is returned on open.
+func TestFailOpenOnNonTransient(t *testing.T) {
+	nthCall := 0
+	opener := func() (Resource, error) {
+		if nthCall < 3 {
+			nthCall++
+			return mockResource{}, TransientError{errors.New("some error")}
+		}
+		return nil, errors.New("too awesome")
+	}
+	err := Use(opener, hello)
+	if err == nil {
+		t.Fatalf("Unexpected lack of error from Use")
+	}
+	if err.Error() != "too awesome" {
+		t.Fatalf("Invalid error returned from Use")
+	}
+}
+
+// Use should call Defrob and Close on FrobError panic from Frob
+// and return the error.
+func TestCallDefrobAndCloseOnFrobError(t *testing.T) {
+	tag := "moo"
+	var closeCallsCount int
+	var defrobTag string
+	mr := mockResource{
+		close: func() error { closeCallsCount++; return nil },
+		frob:  func(input string) { panic(FrobError{tag, errors.New("meh")}) },
+		defrob: func(tag string) {
+			if closeCallsCount != 0 {
+				t.Fatalf("Close was called before Defrob")
+			}
+			defrobTag = tag
+		},
+	}
+	opener := func() (Resource, error) { return mr, nil }
+	err := Use(opener, hello)
+	if err == nil {
+		t.Fatalf("Unexpected lack of error from Use")
+	}
+	if err.Error() != "meh" {
+		t.Fatalf("Invalid error returned from Use")
+	}
+	if defrobTag != tag {
+		t.Fatalf("Wrong string passed to Defrob: got %v, expected %v", defrobTag, tag)
+	}
+	if closeCallsCount == 0 {
+		t.Fatalf("Close was not called")
+	}
+	if closeCallsCount != 1 {
+		t.Fatalf("Close was called more than once")
+	}
+}
+
+// Use should call Close but not Defrob on non-FrobError panic from Frob
+// and return the error.
+func TestCallCloseOnNonFrobError(t *testing.T) {
+	var closeCallsCount int
+	var defrobCalled bool
+	mr := mockResource{
+		close:  func() error { closeCallsCount++; return nil },
+		frob:   func(input string) { panic(errors.New("meh")) },
+		defrob: func(tag string) { defrobCalled = true },
+	}
+	opener := func() (Resource, error) { return mr, nil }
+	err := Use(opener, hello)
+	if err == nil {
+		t.Fatalf("Unexpected lack of error from Use")
+	}
+	if err.Error() != "meh" {
+		t.Fatalf("Invalid error returned from Use")
+	}
+	if defrobCalled {
+		t.Fatalf("Defrob was called")
+	}
+	if closeCallsCount == 0 {
+		t.Fatalf("Close was not called")
+	}
+	if closeCallsCount != 1 {
+		t.Fatalf("Close was called more than once")
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/error-handling/.meta/example.go
+package meta
+
+import (
+	"strconv"
+)
+
+// HandleErrorByThrowingException panics with a meaningful error message describing the source of the error.
+func HandleErrorByThrowingException() {
+	panic("Meaningful message describing the source of the error")
+}
+
+// HandleErrorByReturningNone attempts to convert inputData to an integer.
+// Returns a pointer to the integer if successful, or nil if a conversion error occurs.
+func HandleErrorByReturningNone(inputData string) *int {
+	val, err := strconv.Atoi(inputData)
+	if err != nil {
+		return nil
+	}
+	return &val
+}
+
+// HandleErrorByReturningTuple attempts to convert inputData to an integer.
+// Returns a tuple where the first value is true and the second is the converted integer (as pointer) on success,
+// or false and nil if a conversion error occurs.
+func HandleErrorByReturningTuple(inputData string) (bool, *int) {
+	val, err := strconv.Atoi(inputData)
+	if err != nil {
+		return false, nil
+	}
+	return true, &val
+}
+
+// FileLike is an interface representing a file-like object that has a DoSomething and Close method.
+type FileLike interface {
+	DoSomething() error
+	Close() error
+}
+
+// FilelikeObjectsAreClosedOnException ensures that filelikeObject is properly closed even if DoSomething returns an error.
+// It calls the DoSomething method and defers the closing of filelikeObject.
+func FilelikeObjectsAreClosedOnException(filelikeObject FileLike) error {
+	// Ensure the file is closed regardless of what happens in DoSomething
+	defer filelikeObject.Close()
+	return filelikeObject.DoSomething()
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (error_handling.go) and erratum (error_handling_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/error-handling
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/error-handling/.meta/example.go
+package erratum
+
+import (
+	"errors"
+)
+
+// Resource is an interface representing a resource that can be opened, used, and closed.
+// It provides methods for performing an operation (Frob) and for closing the resource.
+// Some resources may also implement Defrob for error recovery.
+type Resource interface {
+	Close() error
+	Frob(string)
+}
+
+// ResourceOpener is a function type that opens a Resource and may return an error.
+// If a transient error occurs, it should be of type TransientError.
+type ResourceOpener func() (Resource, error)
+
+// TransientError represents a transient error that should prompt a retry.
+type TransientError struct {
+	Err error
+}
+
+func (te TransientError) Error() string {
+	return te.Err.Error()
+}
+
+// FrobError represents an error that occurs during the Frob operation.
+// It carries a tag, used when invoking Defrob.
+// The original error is stored in Err.
+type FrobError struct {
+	Tag string
+	Err error
+}
+
+func (fe FrobError) Error() string {
+	return fe.Err.Error()
+}
+
+// Use acquires a resource using the provided opener, calls Frob on it with the input string,
+// and ensures that the resource is closed. It retries the opener if a TransientError is encountered.
+// If Frob panics with a FrobError, it calls Defrob (if available) before returning the error.
+// If Frob panics with any other error, it returns that error.
+func Use(opener ResourceOpener, input string) (err error) {
+	var res Resource
+	for {
+		var openErr error
+		res, openErr = opener()
+		if openErr != nil {
+			if _, ok := openErr.(TransientError); ok {
+				continue
+			} else {
+				return openErr
+			}
+		}
+		break
+	}
+	// Ensure the resource is closed exactly once
+	defer func() {
+		closeErr := res.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
+	// Recover from panics during Frob
+	defer func() {
+		if r := recover(); r != nil {
+			// If it's a FrobError, call Defrob if available
+			if fe, ok := r.(FrobError); ok {
+				if def, ok := res.(interface{ Defrob(string) }); ok {
+					def.Defrob(fe.Tag)
+				}
+				err = fe.Err
+			} else if e, ok := r.(error); ok {
+				err = e
+			} else {
+				err = errors.New("unknown error")
+			}
+		}
+	}()
+	res.Frob(input)
+	return err
+}
+
+// exercises/practice/error-handling/error_handling_test.go
+package erratum
+
+import (
+	"errors"
+	"testing"
+)
+
+const hello = "hello"
+
+// mockResource is a helper type used in tests that implements Resource.
+// It allows customizing the behavior of Close, Frob, and Defrob.
+// Note: Defrob is optional and may not be defined.
+type mockResource struct {
+	close  func() error
+	frob   func(string)
+	defrob func(string)
+}
+
+func (mr mockResource) Close() error      { return mr.close() }
+func (mr mockResource) Frob(input string) { mr.frob(input) }
+func (mr mockResource) Defrob(tag string) {
+	if mr.defrob != nil {
+		mr.defrob(tag)
+	}
+}
+
+// TestNoErrors ensures that Use calls Frob with the correct input and that Close is called exactly once on the happy path.
+func TestNoErrors(t *testing.T) {
+	var frobInput string
+	var closeCallsCount int
+	mr := mockResource{
+		close: func() error { closeCallsCount++; return nil },
+		frob:  func(input string) { frobInput = input },
+	}
+	opener := func() (Resource, error) { return mr, nil }
+	err := Use(opener, hello)
+	if err != nil {
+		t.Fatalf("Unexpected error from Use: %v", err)
+	}
+	if frobInput != hello {
+		t.Fatalf("Wrong string passed to Frob: got %v, expected %v", frobInput, hello)
+	}
+	if closeCallsCount == 0 {
+		t.Fatalf("Close was not called")
+	}
+	if closeCallsCount != 1 {
+		t.Fatalf("Close was called more than once")
+	}
+}
+
+// TestKeepTryOpenOnTransient ensures that Use retries opening the resource if a TransientError is returned.
+func TestKeepTryOpenOnTransient(t *testing.T) {
+	var frobInput string
+	mr := mockResource{
+		close: func() error { return nil },
+		frob:  func(input string) { frobInput = input },
+	}
+	nthCall := 0
+	opener := func() (Resource, error) {
+		if nthCall < 3 {
+			nthCall++
+			return mockResource{}, TransientError{errors.New("some error")}
+		}
+		return mr, nil
+	}
+	err := Use(opener, hello)
+	if err != nil {
+		t.Fatalf("Unexpected error from Use: %v", err)
+	}
+	if frobInput != hello {
+		t.Fatalf("Wrong string passed to Frob: got %v, expected %v", frobInput, hello)
+	}
+}
+
+// TestFailOpenOnNonTransient ensures that Use fails if a non-transient error is returned on open.
+func TestFailOpenOnNonTransient(t *testing.T) {
+	nthCall := 0
+	opener := func() (Resource, error) {
+		if nthCall < 3 {
+			nthCall++
+			return mockResource{}, TransientError{errors.New("some error")}
+		}
+		return nil, errors.New("too awesome")
+	}
+	err := Use(opener, hello)
+	if err == nil {
+		t.Fatalf("Unexpected lack of error from Use")
+	}
+	if err.Error() != "too awesome" {
+		t.Fatalf("Invalid error returned from Use")
+	}
+}
+
+// TestCallDefrobAndCloseOnFrobError ensures that if Frob panics with a FrobError,
+// Use calls Defrob (if available) and Close, and returns the error from the FrobError.
+func TestCallDefrobAndCloseOnFrobError(t *testing.T) {
+	tag := "moo"
+	var closeCallsCount int
+	var defrobTag string
+	mr := mockResource{
+		close: func() error { closeCallsCount++; return nil },
+		frob:  func(input string) { panic(FrobError{tag, errors.New("meh")}) },
+		defrob: func(input string) {
+			if closeCallsCount != 0 {
+				t.Fatalf("Close was called before Defrob")
+			}
+			defrobTag = input
+		},
+	}
+	opener := func() (Resource, error) { return mr, nil }
+	err := Use(opener, hello)
+	if err == nil {
+		t.Fatalf("Unexpected lack of error from Use")
+	}
+	if err.Error() != "meh" {
+		t.Fatalf("Invalid error returned from Use")
+	}
+	if defrobTag != tag {
+		t.Fatalf("Wrong string passed to Defrob: got %v, expected %v", defrobTag, tag)
+	}
+	if closeCallsCount == 0 {
+		t.Fatalf("Close was not called")
+	}
+	if closeCallsCount != 1 {
+		t.Fatalf("Close was called more than once")
+	}
+}
+
+// TestCallCloseOnNonFrobError ensures that if Frob panics with a non-FrobError,
+// Use calls Close but does not call Defrob, and returns the error from the panic.
+func TestCallCloseOnNonFrobError(t *testing.T) {
+	var closeCallsCount int
+	var defrobCalled bool
+	mr := mockResource{
+		close:  func() error { closeCallsCount++; return nil },
+		frob:   func(input string) { panic(errors.New("meh")) },
+		defrob: func(tag string) { defrobCalled = true },
+	}
+	opener := func() (Resource, error) { return mr, nil }
+	err := Use(opener, hello)
+	if err == nil {
+		t.Fatalf("Unexpected lack of error from Use")
+	}
+	if err.Error() != "meh" {
+		t.Fatalf("Invalid error returned from Use")
+	}
+	if defrobCalled {
+		t.Fatalf("Defrob was called")
+	}
+	if closeCallsCount == 0 {
+		t.Fatalf("Close was not called")
+	}
+	if closeCallsCount != 1 {
+		t.Fatalf("Close was called more than once")
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/error-handling [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/error-handling [exercism/error-handling.test]
+./error_handling.go:87:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/error-handling/.meta/example.go
+package erratum
+
+import (
+	"errors"
+	"strconv"
+)
+
+// Resource is an interface representing a resource that can be opened, used, and closed.
+// It provides a method Frob to perform an operation and a Close method for cleanup.
+// Some resources might optionally implement the Defrob method for error recovery.
+
+type Resource interface {
+	Close() error
+	Frob(string)
+}
+
+// ResourceOpener is a function type that opens a Resource and returns it along with an error if any.
+// If a transient error occurs during opening, it should be of type TransientError.
+
+type ResourceOpener func() (Resource, error)
+
+// TransientError represents a transient error that should trigger a retry.
+
+type TransientError struct {
+	Err error
+}
+
+func (te TransientError) Error() string {
+	return te.Err.Error()
+}
+
+// FrobError indicates an error that occurred during the Frob operation.
+// It carries a tag to be used with Defrob if available, and the original error.
+
+type FrobError struct {
+	Tag string
+	Err error
+}
+
+func (fe FrobError) Error() string {
+	return fe.Err.Error()
+}
+
+// Use acquires a Resource using the provided opener, calls Frob on it with the input string, and ensures
+// that the Resource is closed. It retries the opener if a TransientError is encountered.
+// If Frob panics with a FrobError, Use will call Defrob (if available) before returning the underlying error.
+// If Frob panics with any other error, that error is returned.
+
+func Use(opener ResourceOpener, input string) error {
+	var res Resource
+	// Attempt to open the resource, retrying on TransientError
+	for {
+		r, err := opener()
+		if err != nil {
+			if _, ok := err.(TransientError); ok {
+				continue
+			} else {
+				return err
+			}
+		}
+		res = r
+		break
+	}
+
+	// Execute Frob with error recovery
+	var retErr error
+	func() {
+		defer func() {
+			r := recover()
+			if r != nil {
+				if fe, ok := r.(FrobError); ok {
+					// If the resource supports Defrob, call it
+					if def, ok := res.(interface{ Defrob(string) }); ok {
+						def.Defrob(fe.Tag)
+					}
+					retErr = fe.Err
+				} else if e, ok := r.(error); ok {
+					retErr = e
+				} else {
+					retErr = errors.New("unknown error")
+				}
+			}
+		}()
+		res.Frob(input)
+	}()
+
+	// Ensure the resource is closed
+	closeErr := res.Close()
+	if retErr == nil {
+		retErr = closeErr
+	}
+
+	return retErr
+}
+
+// The following functions are part of the interface from the original Python code and are provided as placeholders.
+// They have been implemented in Go to illustrate various error handling strategies.
+
+// HandleErrorByThrowingException panics with a meaningful error message describing the source of the error.
+func HandleErrorByThrowingException() {
+	panic("Meaningful message describing the source of the error")
+}
+
+// HandleErrorByReturningNone attempts to convert inputData to an integer.
+// Returns a pointer to the integer if successful, or nil if a conversion error occurs.
+func HandleErrorByReturningNone(inputData string) *int {
+	val, err := strconv.Atoi(inputData)
+	if err != nil {
+		return nil
+	}
+	return &val
+}
+
+// HandleErrorByReturningTuple attempts to convert inputData to an integer.
+// Returns a tuple where the first value indicates success and the second is a pointer to the converted integer, or nil if conversion fails.
+func HandleErrorByReturningTuple(inputData string) (bool, *int) {
+	val, err := strconv.Atoi(inputData)
+	if err != nil {
+		return false, nil
+	}
+	return true, &val
+}
+
+// FileLike is an interface representing a file-like object that has a DoSomething and Close method.
+// It is used to demonstrate ensuring that resources are closed even when exceptions occur.
+
+type FileLike interface {
+	DoSomething() error
+	Close() error
+}
+
+// FilelikeObjectsAreClosedOnException calls DoSomething on the given filelikeObject and ensures that it is closed afterward,
+// regardless of whether an error occurs during DoSomething.
+func FilelikeObjectsAreClosedOnException(filelikeObject FileLike) error {
+	defer filelikeObject.Close()
+	return filelikeObject.DoSomething()
+}
+
+// exercises/practice/error-handling/error_handling_test.go
+package erratum
+
+import (
+	"errors"
+	"testing"
+)
+
+const hello = "hello"
+
+// mockResource is a helper type used in tests that implements Resource.
+// It allows customizing the behavior of Close, Frob, and Defrob.
+// Note: Defrob is optional and may not be defined.
+
+type mockResource struct {
+	close  func() error
+	frob   func(string)
+	defrob func(string)
+}
+
+func (mr mockResource) Close() error      { return mr.close() }
+func (mr mockResource) Frob(input string) { mr.frob(input) }
+func (mr mockResource) Defrob(tag string) {
+	if mr.defrob != nil {
+		mr.defrob(tag)
+	}
+}
+
+// TestNoErrors ensures that Use calls Frob with the correct input and that Close is called exactly once on the happy path.
+func TestNoErrors(t *testing.T) {
+	var frobInput string
+	var closeCallsCount int
+	mr := mockResource{
+		close: func() error { closeCallsCount++; return nil },
+		frob:  func(input string) { frobInput = input },
+	}
+	opener := func() (Resource, error) { return mr, nil }
+	err := Use(opener, hello)
+	if err != nil {
+		t.Fatalf("Unexpected error from Use: %v", err)
+	}
+	if frobInput != hello {
+		t.Fatalf("Wrong string passed to Frob: got %v, expected %v", frobInput, hello)
+	}
+	if closeCallsCount == 0 {
+		t.Fatalf("Close was not called")
+	}
+	if closeCallsCount != 1 {
+		t.Fatalf("Close was called more than once")
+	}
+}
+
+// TestKeepTryOpenOnTransient ensures that Use retries opening the resource if a TransientError is returned.
+func TestKeepTryOpenOnTransient(t *testing.T) {
+	var frobInput string
+	mr := mockResource{
+		close: func() error { return nil },
+		frob:  func(input string) { frobInput = input },
+	}
+	nthCall := 0
+	opener := func() (Resource, error) {
+		if nthCall < 3 {
+			nthCall++
+			return mockResource{}, TransientError{errors.New("some error")}
+		}
+		return mr, nil
+	}
+	err := Use(opener, hello)
+	if err != nil {
+		t.Fatalf("Unexpected error from Use: %v", err)
+	}
+	if frobInput != hello {
+		t.Fatalf("Wrong string passed to Frob: got %v, expected %v", frobInput, hello)
+	}
+}
+
+// TestFailOpenOnNonTransient ensures that Use fails if a non-transient error is returned on open.
+func TestFailOpenOnNonTransient(t *testing.T) {
+	nthCall := 0
+	opener := func() (Resource, error) {
+		if nthCall < 3 {
+			nthCall++
+			return mockResource{}, TransientError{errors.New("some error")}
+		}
+		return nil, errors.New("too awesome")
+	}
+	err := Use(opener, hello)
+	if err == nil {
+		t.Fatalf("Unexpected lack of error from Use")
+	}
+	if err.Error() != "too awesome" {
+		t.Fatalf("Invalid error returned from Use")
+	}
+}
+
+// TestCallDefrobAndCloseOnFrobError ensures that if Frob panics with a FrobError,
+// Use calls Defrob (if available) and Close, and returns the error from the FrobError.
+func TestCallDefrobAndCloseOnFrobError(t *testing.T) {
+	tag := "moo"
+	var closeCallsCount int
+	var defrobTag string
+	mr := mockResource{
+		close: func() error { closeCallsCount++; return nil },
+		frob:  func(input string) { panic(FrobError{tag, errors.New("meh")}) },
+		defrob: func(input string) {
+			if closeCallsCount != 0 {
+				t.Fatalf("Close was called before Defrob")
+			}
+			defrobTag = input
+		},
+	}
+	opener := func() (Resource, error) { return mr, nil }
+	err := Use(opener, hello)
+	if err == nil {
+		t.Fatalf("Unexpected lack of error from Use")
+	}
+	if err.Error() != "meh" {
+		t.Fatalf("Invalid error returned from Use")
+	}
+	if defrobTag != tag {
+		t.Fatalf("Wrong string passed to Defrob: got %v, expected %v", defrobTag, tag)
+	}
+	if closeCallsCount == 0 {
+		t.Fatalf("Close was not called")
+	}
+	if closeCallsCount != 1 {
+		t.Fatalf("Close was called more than once")
+	}
+}
+
+// TestCallCloseOnNonFrobError ensures that if Frob panics with a non-FrobError,
+// Use calls Close but does not call Defrob, and returns the error from the panic.
+func TestCallCloseOnNonFrobError(t *testing.T) {
+	var closeCallsCount int
+	var defrobCalled bool
+	mr := mockResource{
+		close:  func() error { closeCallsCount++; return nil },
+		frob:   func(input string) { panic(errors.New("meh")) },
+		defrob: func(tag string) { defrobCalled = true },
+	}
+	opener := func() (Resource, error) { return mr, nil }
+	err := Use(opener, hello)
+	if err == nil {
+		t.Fatalf("Unexpected lack of error from Use")
+	}
+	if err.Error() != "meh" {
+		t.Fatalf("Invalid error returned from Use")
+	}
+	if defrobCalled {
+		t.Fatalf("Defrob was called")
+	}
+	if closeCallsCount == 0 {
+		t.Fatalf("Close was not called")
+	}
+	if closeCallsCount != 1 {
+		t.Fatalf("Close was called more than once")
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/error-handling [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/error-handling [exercism/error-handling.test]
+./error_handling.go:141:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/error-handling/.meta/example.go
+package erratum
+
+import (
+	"errors"
+	"strconv"
+)
+
+// Resource is an interface representing a resource that can be opened, used, and closed.
+// It provides a method Frob to perform an operation. Some resources might optionally implement Defrob for error recovery.
+// Clients of Resource must call Close after using it.
+
+type Resource interface {
+	Close() error
+	Frob(string)
+}
+
+// ResourceOpener is a function type that opens and returns a Resource, or an error if opening fails.
+// If a transient error occurs during opening, it should be returned as a TransientError.
+
+type ResourceOpener func() (Resource, error)
+
+// TransientError represents a transient error that should trigger a retry.
+
+type TransientError struct {
+	Err error
+}
+
+func (te TransientError) Error() string {
+	return te.Err.Error()
+}
+
+// FrobError indicates an error that occurred during the Frob operation.
+// It carries a tag to be used with Defrob (if available) and the underlying error.
+
+type FrobError struct {
+	Tag string
+	Err error
+}
+
+func (fe FrobError) Error() string {
+	return fe.Err.Error()
+}
+
+// Use acquires a Resource using the provided opener, then calls Frob on it with the given input.
+// It retries acquiring the Resource if a TransientError is encountered.
+// If Frob panics with a FrobError, Use will call Defrob (if available) on the resource before returning the error.
+// In all cases, the resource's Close method is called exactly once.
+func Use(opener ResourceOpener, input string) error {
+	var res Resource
+	// Attempt to open the resource, retrying if a TransientError is encountered
+	for {
+		r, err := opener()
+		if err != nil {
+			if _, ok := err.(TransientError); ok {
+				continue
+			} else {
+				return err
+			}
+		}
+		res = r
+		break
+	}
+
+	// Capture panics during Frob execution
+	var retErr error
+	func() {
+		defer func() {
+			r := recover()
+			if r != nil {
+				if fe, ok := r.(FrobError); ok {
+					if def, ok := res.(interface{ Defrob(string) }); ok {
+						def.Defrob(fe.Tag)
+					}
+					retErr = fe.Err
+				} else if e, ok := r.(error); ok {
+					retErr = e
+				} else {
+					retErr = errors.New("unknown error")
+				}
+			}
+		}()
+		res.Frob(input)
+	}()
+
+	// Ensure the resource is closed exactly once
+	closeErr := res.Close()
+	if retErr == nil {
+		retErr = closeErr
+	}
+
+	return retErr
+}
+
+// HandleErrorByThrowingException panics with a meaningful error message describing the source of the error.
+func HandleErrorByThrowingException() {
+	panic("Meaningful message describing the source of the error")
+}
+
+// HandleErrorByReturningNone attempts to convert inputData to an integer.
+// It returns a pointer to the integer if the conversion is successful, or nil if a conversion error occurs.
+func HandleErrorByReturningNone(inputData string) *int {
+	val, err := strconv.Atoi(inputData)
+	if err != nil {
+		return nil
+	}
+	return &val
+}
+
+// HandleErrorByReturningTuple attempts to convert inputData to an integer.
+// It returns a tuple where the first value indicates success (true) and the second is a pointer to the integer on success,
+// or false and nil if a conversion error occurs.
+func HandleErrorByReturningTuple(inputData string) (bool, *int) {
+	val, err := strconv.Atoi(inputData)
+	if err != nil {
+		return false, nil
+	}
+	return true, &val
+}
+
+// FileLike is an interface representing a file-like object with DoSomething and Close methods.
+// It is used to demonstrate resource cleanup even when exceptions occur.
+
+type FileLike interface {
+	DoSomething() error
+	Close() error
+}
+
+// FilelikeObjectsAreClosedOnException calls DoSomething on the filelikeObject and ensures that the object is closed
+// even if an error occurs during DoSomething.
+func FilelikeObjectsAreClosedOnException(filelikeObject FileLike) error {
+	defer filelikeObject.Close()
+	return filelikeObject.DoSomething()
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/error-handling	0.276s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

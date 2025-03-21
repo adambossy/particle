@@ -1,0 +1,371 @@
+=== Initial Source Code ===
+Source file: exercises/practice/etl/.meta/example.py
+def transform(legacy_data):
+    return {
+        letter.lower(): points
+        for points, letters in legacy_data.items()
+        for letter in letters
+    }
+
+
+=== Source Interface ===
+def transform(legacy_data):
+    pass
+
+
+=== Target Interface ===
+package etl
+
+func Transform(in map[int][]string) map[string]int {
+	panic("Please implement the Transform function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/etl/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from etl import (
+    transform,
+)
+
+
+class EtlTest(unittest.TestCase):
+    def test_single_letter(self):
+        legacy_data = {1: ["A"]}
+        data = {"a": 1}
+        self.assertEqual(transform(legacy_data), data)
+
+    def test_single_score_with_multiple_letters(self):
+        legacy_data = {1: ["A", "E", "I", "O", "U"]}
+        data = {"a": 1, "e": 1, "i": 1, "o": 1, "u": 1}
+        self.assertEqual(transform(legacy_data), data)
+
+    def test_multiple_scores_with_multiple_letters(self):
+        legacy_data = {1: ["A", "E"], 2: ["D", "G"]}
+        data = {"a": 1, "d": 2, "e": 1, "g": 2}
+        self.assertEqual(transform(legacy_data), data)
+
+    def test_multiple_scores_with_differing_numbers_of_letters(self):
+        legacy_data = {
+            1: ["A", "E", "I", "O", "U", "L", "N", "R", "S", "T"],
+            2: ["D", "G"],
+            3: ["B", "C", "M", "P"],
+            4: ["F", "H", "V", "W", "Y"],
+            5: ["K"],
+            8: ["J", "X"],
+            10: ["Q", "Z"],
+        }
+        data = {
+            "a": 1,
+            "b": 3,
+            "c": 3,
+            "d": 2,
+            "e": 1,
+            "f": 4,
+            "g": 2,
+            "h": 4,
+            "i": 1,
+            "j": 8,
+            "k": 5,
+            "l": 1,
+            "m": 3,
+            "n": 1,
+            "o": 1,
+            "p": 3,
+            "q": 10,
+            "r": 1,
+            "s": 1,
+            "t": 1,
+            "u": 1,
+            "v": 4,
+            "w": 4,
+            "x": 8,
+            "y": 4,
+            "z": 10,
+        }
+        self.assertEqual(transform(legacy_data), data)
+
+
+=== Target Test Code ===
+package etl
+
+import "testing"
+
+var transformTests = []struct {
+	description string
+	input       map[int][]string
+	expect      map[string]int
+}{
+	{
+		description: "single letter for one score",
+		input:       map[int][]string{1: {"A"}},
+		expect:      map[string]int{"a": 1},
+	},
+	{
+		description: "multiple letters for one score",
+		input:       map[int][]string{1: {"A", "E", "I", "O", "U"}},
+		expect:      map[string]int{"a": 1, "e": 1, "i": 1, "o": 1, "u": 1},
+	},
+	{
+		description: "multiple letters for multiple scores",
+		input: map[int][]string{
+			1: {"A", "E"},
+			2: {"D", "G"},
+		},
+		expect: map[string]int{
+			"a": 1,
+			"e": 1,
+			"d": 2,
+			"g": 2,
+		},
+	},
+	{
+		description: "all letters",
+		input: map[int][]string{
+			1:  {"A", "E", "I", "O", "U", "L", "N", "R", "S", "T"},
+			2:  {"D", "G"},
+			3:  {"B", "C", "M", "P"},
+			4:  {"F", "H", "V", "W", "Y"},
+			5:  {"K"},
+			8:  {"J", "X"},
+			10: {"Q", "Z"},
+		},
+		expect: map[string]int{
+			"a": 1, "e": 1, "i": 1, "o": 1, "u": 1, "l": 1, "n": 1, "r": 1, "s": 1, "t": 1,
+			"d": 2, "g": 2,
+			"b": 3, "c": 3, "m": 3, "p": 3,
+			"f": 4, "h": 4, "v": 4, "w": 4, "y": 4,
+			"k": 5,
+			"j": 8, "x": 8,
+			"q": 10, "z": 10,
+		},
+	},
+}
+
+func equal(actual, expectation map[string]int) bool {
+	if len(actual) != len(expectation) {
+		return false
+	}
+
+	for k, actualVal := range actual {
+		expectationVal, present := expectation[k]
+
+		if !present || actualVal != expectationVal {
+			return false
+		}
+	}
+
+	return true
+}
+
+func TestTransform(t *testing.T) {
+	for _, tt := range transformTests {
+		t.Run(tt.description, func(t *testing.T) {
+			if actual := Transform(tt.input); !equal(actual, tt.expect) {
+				t.Fatalf("Transform(%v)\n got:%v\nwant:%v", tt.input, actual, tt.expect)
+			}
+		})
+	}
+}
+
+func BenchmarkTransform(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+
+		for _, tt := range transformTests {
+			Transform(tt.input)
+		}
+
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/etl/.meta/example.go
+package etl
+
+// Transform converts legacy data format to the new format.
+func Transform(legacyData map[int][]string) map[string]int {
+	newData := make(map[string]int)
+	for points, letters := range legacyData {
+		for _, letter := range letters {
+			newData[strings.ToLower(letter)] = points
+		}
+	}
+	return newData
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/etl [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/etl [exercism/etl.test]
+./etl.go:9:12: undefined: strings
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/etl/.meta/example.go
+package etl
+
+import "strings"
+
+// Transform converts legacy data format to the new format.
+func Transform(legacyData map[int][]string) map[string]int {
+	newData := make(map[string]int)
+	for points, letters := range legacyData {
+		for _, letter := range letters {
+			newData[strings.ToLower(letter)] = points
+		}
+	}
+	return newData
+}
+
+func equal(actual, expectation map[string]int) bool {
+	if len(actual) != len(expectation) {
+		return false
+	}
+
+	for k, actualVal := range actual {
+		expectationVal, present := expectation[k]
+
+		if !present || actualVal != expectationVal {
+			return false
+		}
+	}
+
+	return true
+}
+
+func TestTransform(t *testing.T) {
+	tests := []struct {
+		description string
+		input       map[int][]string
+		expect      map[string]int
+	}{
+		{
+			description: "single letter for one score",
+			input:       map[int][]string{1: {"A"}},
+			expect:      map[string]int{"a": 1},
+		},
+		{
+			description: "multiple letters for one score",
+			input:       map[int][]string{1: {"A", "E", "I", "O", "U"}},
+			expect:      map[string]int{"a": 1, "e": 1, "i": 1, "o": 1, "u": 1},
+		},
+		{
+			description: "multiple letters for multiple scores",
+			input: map[int][]string{
+				1: {"A", "E"},
+				2: {"D", "G"},
+			},
+			expect: map[string]int{
+				"a": 1,
+				"e": 1,
+				"d": 2,
+				"g": 2,
+			},
+		},
+		{
+			description: "all letters",
+			input: map[int][]string{
+				1:  {"A", "E", "I", "O", "U", "L", "N", "R", "S", "T"},
+				2:  {"D", "G"},
+				3:  {"B", "C", "M", "P"},
+				4:  {"F", "H", "V", "W", "Y"},
+				5:  {"K"},
+				8:  {"J", "X"},
+				10: {"Q", "Z"},
+			},
+			expect: map[string]int{
+				"a": 1, "e": 1, "i": 1, "o": 1, "u": 1, "l": 1, "n": 1, "r": 1, "s": 1, "t": 1,
+				"d": 2, "g": 2,
+				"b": 3, "c": 3, "m": 3, "p": 3,
+				"f": 4, "h": 4, "v": 4, "w": 4, "y": 4,
+				"k": 5,
+				"j": 8, "x": 8,
+				"q": 10, "z": 10,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			if actual := Transform(tt.input); !equal(actual, tt.expect) {
+				t.Fatalf("Transform(%v)\n got:%v\nwant:%v", tt.input, actual, tt.expect)
+			}
+		})
+	}
+}
+
+func BenchmarkTransform(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Transform(map[int][]string{
+			1:  {"A", "E", "I", "O", "U", "L", "N", "R", "S", "T"},
+			2:  {"D", "G"},
+			3:  {"B", "C", "M", "P"},
+			4:  {"F", "H", "V", "W", "Y"},
+			5:  {"K"},
+			8:  {"J", "X"},
+			10: {"Q", "Z"},
+		})
+	}
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/etl [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/etl [exercism/etl.test]
+./etl_test.go:56:6: equal redeclared in this block
+	./etl.go:17:6: other declaration of equal
+./etl_test.go:72:6: TestTransform redeclared in this block
+	./etl.go:33:6: other declaration of TestTransform
+./etl_test.go:82:6: BenchmarkTransform redeclared in this block
+	./etl.go:94:6: other declaration of BenchmarkTransform
+./etl.go:33:23: undefined: testing
+./etl.go:86:33: undefined: testing
+./etl.go:94:28: undefined: testing
+./etl.go:95:5: undefined: testing
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/etl/.meta/example.go
+package etl
+
+import "strings"
+
+// Transform converts legacy data format to the new format.
+func Transform(legacyData map[int][]string) map[string]int {
+	newData := make(map[string]int)
+	for points, letters := range legacyData {
+		for _, letter := range letters {
+			newData[strings.ToLower(letter)] = points
+		}
+	}
+	return newData
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/etl	0.275s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

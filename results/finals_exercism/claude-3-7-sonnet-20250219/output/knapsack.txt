@@ -1,0 +1,298 @@
+=== Initial Source Code ===
+Source file: exercises/practice/knapsack/.meta/example.py
+def maximum_value(maximum_weight, items):
+    totals = [[0 for _ in range(len(items) + 1)]
+              for _ in range(maximum_weight + 1)]
+
+    for weight in range(1, maximum_weight + 1):
+        for index, item in enumerate(items, 1):
+            if item['weight'] <= weight:
+                value = item['value'] + \
+                        totals[weight - item['weight']][index - 1]
+
+                value_without_item = totals[weight][index - 1]
+                totals[weight][index] = max(value, value_without_item)
+            else:
+                totals[weight][index] = totals[weight][index - 1]
+    return totals[maximum_weight][len(items)]
+
+
+=== Source Interface ===
+def maximum_value(maximum_weight, items):
+    pass
+
+
+=== Target Interface ===
+package knapsack
+
+type Item struct {
+	Weight, Value int
+}
+
+// Knapsack takes in a maximum carrying capacity and a collection of items
+// and returns the maximum value that can be carried by the knapsack
+// given that the knapsack can only carry a maximum weight given by maximumWeight
+func Knapsack(maximumWeight int, items []Item) int {
+	panic("Please implement the Knapsack() function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/knapsack/canonical-data.json
+# File last updated on 2023-12-27
+
+import unittest
+
+from knapsack import (
+    maximum_value,
+)
+
+
+class KnapsackTest(unittest.TestCase):
+    def test_no_items(self):
+        self.assertEqual(maximum_value(100, []), 0)
+
+    def test_one_item_too_heavy(self):
+        self.assertEqual(maximum_value(10, [{"weight": 100, "value": 1}]), 0)
+
+    def test_five_items_cannot_be_greedy_by_weight(self):
+        self.assertEqual(
+            maximum_value(
+                10,
+                [
+                    {"weight": 2, "value": 5},
+                    {"weight": 2, "value": 5},
+                    {"weight": 2, "value": 5},
+                    {"weight": 2, "value": 5},
+                    {"weight": 10, "value": 21},
+                ],
+            ),
+            21,
+        )
+
+    def test_five_items_cannot_be_greedy_by_value(self):
+        self.assertEqual(
+            maximum_value(
+                10,
+                [
+                    {"weight": 2, "value": 20},
+                    {"weight": 2, "value": 20},
+                    {"weight": 2, "value": 20},
+                    {"weight": 2, "value": 20},
+                    {"weight": 10, "value": 50},
+                ],
+            ),
+            80,
+        )
+
+    def test_example_knapsack(self):
+        self.assertEqual(
+            maximum_value(
+                10,
+                [
+                    {"weight": 5, "value": 10},
+                    {"weight": 4, "value": 40},
+                    {"weight": 6, "value": 30},
+                    {"weight": 4, "value": 50},
+                ],
+            ),
+            90,
+        )
+
+    def test_8_items(self):
+        self.assertEqual(
+            maximum_value(
+                104,
+                [
+                    {"weight": 25, "value": 350},
+                    {"weight": 35, "value": 400},
+                    {"weight": 45, "value": 450},
+                    {"weight": 5, "value": 20},
+                    {"weight": 25, "value": 70},
+                    {"weight": 3, "value": 8},
+                    {"weight": 2, "value": 5},
+                    {"weight": 2, "value": 5},
+                ],
+            ),
+            900,
+        )
+
+    def test_15_items(self):
+        self.assertEqual(
+            maximum_value(
+                750,
+                [
+                    {"weight": 70, "value": 135},
+                    {"weight": 73, "value": 139},
+                    {"weight": 77, "value": 149},
+                    {"weight": 80, "value": 150},
+                    {"weight": 82, "value": 156},
+                    {"weight": 87, "value": 163},
+                    {"weight": 90, "value": 173},
+                    {"weight": 94, "value": 184},
+                    {"weight": 98, "value": 192},
+                    {"weight": 106, "value": 201},
+                    {"weight": 110, "value": 210},
+                    {"weight": 113, "value": 214},
+                    {"weight": 115, "value": 221},
+                    {"weight": 118, "value": 229},
+                    {"weight": 120, "value": 240},
+                ],
+            ),
+            1458,
+        )
+
+
+=== Target Test Code ===
+package knapsack
+
+import "testing"
+
+func TestKnapsack(t *testing.T) {
+	for _, tc := range maximumValueTests {
+		actual := Knapsack(tc.input.MaximumWeight, tc.input.Items)
+		expected := tc.expected
+
+		if actual != expected {
+			t.Fatalf("Knapsack(%d, %+v) = %d, want %d", tc.input.MaximumWeight, tc.input.Items, actual, tc.expected)
+		}
+	}
+}
+
+func BenchmarkKnapsack(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range maximumValueTests {
+			Knapsack(tc.input.MaximumWeight, tc.input.Items)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/knapsack/.meta/example.go
+package knapsack
+
+// Knapsack takes in a maximum carrying capacity and a collection of items
+// and returns the maximum value that can be carried by the knapsack
+// given that the knapsack can only carry a maximum weight given by maximumWeight
+func Knapsack(maximumWeight int, items []Item) int {
+	// Create a 2D slice to store the maximum value that can be carried
+	// for each weight and item combination
+	totals := make([][]int, maximumWeight+1)
+	for i := range totals {
+		totals[i] = make([]int, len(items)+1)
+	}
+
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index, item := range items {
+			// In the Go interface, index is 0-based, so we add 1 to match the Python algorithm
+			index++
+			
+			if item.Weight <= weight {
+				// Calculate value if we include this item
+				value := item.Value + totals[weight-item.Weight][index-1]
+				
+				// Get value without this item
+				valueWithoutItem := totals[weight][index-1]
+				
+				// Take the maximum
+				totals[weight][index] = max(value, valueWithoutItem)
+			} else {
+				// Item is too heavy, so skip it
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+	
+	return totals[maximumWeight][len(items)]
+}
+
+// max returns the larger of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/knapsack [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/knapsack [exercism/knapsack.test]
+./cases_test.go:10:18: undefined: Item
+./cases_test.go:25:21: undefined: Item
+./cases_test.go:34:13: undefined: Item
+./cases_test.go:49:13: undefined: Item
+./cases_test.go:84:13: undefined: Item
+./cases_test.go:119:13: undefined: Item
+./cases_test.go:149:13: undefined: Item
+./cases_test.go:199:13: undefined: Item
+./knapsack.go:7:42: undefined: Item
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/knapsack/.meta/example.go
+package knapsack
+
+// Item represents an item with a weight and a value
+type Item struct {
+	Weight, Value int
+}
+
+// Knapsack takes in a maximum carrying capacity and a collection of items
+// and returns the maximum value that can be carried by the knapsack
+// given that the knapsack can only carry a maximum weight given by maximumWeight
+func Knapsack(maximumWeight int, items []Item) int {
+	// Create a 2D slice to store the maximum value that can be carried
+	// for each weight and item combination
+	totals := make([][]int, maximumWeight+1)
+	for i := range totals {
+		totals[i] = make([]int, len(items)+1)
+	}
+
+	for weight := 1; weight <= maximumWeight; weight++ {
+		for index, item := range items {
+			// In the Go interface, index is 0-based, so we add 1 to match the Python algorithm
+			index++
+			
+			if item.Weight <= weight {
+				// Calculate value if we include this item
+				value := item.Value + totals[weight-item.Weight][index-1]
+				
+				// Get value without this item
+				valueWithoutItem := totals[weight][index-1]
+				
+				// Take the maximum
+				totals[weight][index] = max(value, valueWithoutItem)
+			} else {
+				// Item is too heavy, so skip it
+				totals[weight][index] = totals[weight][index-1]
+			}
+		}
+	}
+	
+	return totals[maximumWeight][len(items)]
+}
+
+// max returns the larger of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/knapsack	0.309s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

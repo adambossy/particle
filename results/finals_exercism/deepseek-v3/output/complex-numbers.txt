@@ -1,0 +1,874 @@
+=== Initial Source Code ===
+Source file: exercises/practice/complex-numbers/.meta/example.py
+import math
+
+class ComplexNumber:
+    def __init__(self, real=0, imaginary=0):
+        self.real = real
+        self.imaginary = imaginary
+
+    def __eq__(self, other):
+        if not isinstance(other, ComplexNumber):
+            other = ComplexNumber(other)
+        return self.real == other.real and self.imaginary == other.imaginary
+
+    def __add__(self, other):
+
+        if not isinstance(other, ComplexNumber):
+            other = ComplexNumber(other)
+
+        real_part = self.real + other.real
+        imaginary_part = self.imaginary + other.imaginary
+
+        return ComplexNumber(real_part, imaginary_part)
+
+    def __radd__(self, other):
+
+        if not isinstance(other, ComplexNumber):
+            other = ComplexNumber(other)
+
+        real_part = self.real + other.real
+        imaginary_part = self.imaginary + other.imaginary
+
+        return ComplexNumber(real_part, imaginary_part)
+
+    def __mul__(self, other):
+        if not isinstance(other, ComplexNumber):
+            other = ComplexNumber(other)
+
+        real_part = self.real * other.real - self.imaginary * other.imaginary
+        imaginary_part = self.real * other.imaginary + self.imaginary * other.real
+        return ComplexNumber(real_part, imaginary_part)
+
+    def __rmul__(self, other):
+        if not isinstance(other, ComplexNumber):
+            other = ComplexNumber(other)
+
+        real_part = self.real * other.real - self.imaginary * other.imaginary
+        imaginary_part = self.real * other.imaginary + self.imaginary * other.real
+        return ComplexNumber(real_part, imaginary_part)
+
+    def __sub__(self, other):
+        if not isinstance(other, ComplexNumber):
+            other = ComplexNumber(other)
+        real_part = self.real - other.real
+        imaginary_part = self.imaginary - other.imaginary
+        return ComplexNumber(real_part, imaginary_part)
+
+    def __rsub__(self, other):
+        if not isinstance(other, ComplexNumber):
+            other = ComplexNumber(other)
+
+        real_part = other.real - self.real
+        imaginary_part = other.imaginary - self.imaginary
+        return ComplexNumber(real_part, imaginary_part)
+
+    def __truediv__(self, other):
+        if not isinstance(other, ComplexNumber):
+            other = ComplexNumber(other)
+
+        conjugation = other.conjugate()
+        denominator_all = other * conjugation
+        denominator = denominator_all.real
+        numerator = self * conjugation
+
+        return ComplexNumber((numerator.real / denominator), (numerator.imaginary / denominator))
+
+    def __rtruediv__(self, other):
+        if not isinstance(other, ComplexNumber):
+            other = ComplexNumber(other)
+
+        conjugation = self.conjugate()
+        denominator_all = self * conjugation
+        denominator = float(denominator_all.real)
+        numerator = other * conjugation
+
+        return ComplexNumber((numerator.real / denominator), (numerator.imaginary / denominator))
+
+    def __abs__(self):
+        square_sum = self.real * self.real + self.imaginary * self.imaginary
+        return math.sqrt(square_sum)
+
+    def conjugate(self):
+        return ComplexNumber(self.real, -1 * self.imaginary)
+
+    def exp(self):
+        real_part = math.cos(self.imaginary) * math.exp(self.real)
+        imaginary_part = math.sin(self.imaginary) * math.exp(self.real)
+        return ComplexNumber(real_part, imaginary_part)
+
+
+=== Source Interface ===
+class ComplexNumber:
+    def __init__(self, real, imaginary):
+        pass
+
+    def __eq__(self, other):
+        pass
+
+    def __add__(self, other):
+        pass
+
+    def __mul__(self, other):
+        pass
+
+    def __sub__(self, other):
+        pass
+
+    def __truediv__(self, other):
+        pass
+
+    def __abs__(self):
+        pass
+
+    def conjugate(self):
+        pass
+
+    def exp(self):
+        pass
+
+
+=== Target Interface ===
+package complexnumbers
+
+// Define the Number type here.
+
+func (n Number) Real() float64 {
+	panic("Please implement the Real method")
+}
+
+func (n Number) Imaginary() float64 {
+	panic("Please implement the Imaginary method")
+}
+
+func (n1 Number) Add(n2 Number) Number {
+	panic("Please implement the Add method")
+}
+
+func (n1 Number) Subtract(n2 Number) Number {
+	panic("Please implement the Subtract method")
+}
+
+func (n1 Number) Multiply(n2 Number) Number {
+	panic("Please implement the Multiply method")
+}
+
+func (n Number) Times(factor float64) Number {
+	panic("Please implement the Times method")
+}
+
+func (n1 Number) Divide(n2 Number) Number {
+	panic("Please implement the Divide method")
+}
+
+func (n Number) Conjugate() Number {
+	panic("Please implement the Conjugate method")
+}
+
+func (n Number) Abs() float64 {
+	panic("Please implement the Abs method")
+}
+
+func (n Number) Exp() Number {
+	panic("Please implement the Exp method")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/complex-numbers/canonical-data.json
+# File last updated on 2023-07-19
+
+import math
+import unittest
+
+from complex_numbers import (
+    ComplexNumber,
+)
+
+
+class ComplexNumbersTest(unittest.TestCase):
+
+    # Real part
+
+    def test_real_part_of_a_purely_real_number(self):
+        self.assertEqual(ComplexNumber(1, 0).real, 1)
+
+    def test_real_part_of_a_purely_imaginary_number(self):
+        self.assertEqual(ComplexNumber(0, 1).real, 0)
+
+    def test_real_part_of_a_number_with_real_and_imaginary_part(self):
+        self.assertEqual(ComplexNumber(1, 2).real, 1)
+
+    # Imaginary part
+
+    def test_imaginary_part_of_a_purely_real_number(self):
+        self.assertEqual(ComplexNumber(1, 0).imaginary, 0)
+
+    def test_imaginary_part_of_a_purely_imaginary_number(self):
+        self.assertEqual(ComplexNumber(0, 1).imaginary, 1)
+
+    def test_imaginary_part_of_a_number_with_real_and_imaginary_part(self):
+        self.assertEqual(ComplexNumber(1, 2).imaginary, 2)
+
+    def test_imaginary_unit(self):
+        self.assertEqual(
+            ComplexNumber(0, 1) * ComplexNumber(0, 1), ComplexNumber(-1, 0)
+        )
+
+    # Arithmetic
+
+    # Addition
+
+    def test_add_purely_real_numbers(self):
+        self.assertEqual(ComplexNumber(1, 0) + ComplexNumber(2, 0), ComplexNumber(3, 0))
+
+    def test_add_purely_imaginary_numbers(self):
+        self.assertEqual(ComplexNumber(0, 1) + ComplexNumber(0, 2), ComplexNumber(0, 3))
+
+    def test_add_numbers_with_real_and_imaginary_part(self):
+        self.assertEqual(ComplexNumber(1, 2) + ComplexNumber(3, 4), ComplexNumber(4, 6))
+
+    # Subtraction
+
+    def test_subtract_purely_real_numbers(self):
+        self.assertEqual(
+            ComplexNumber(1, 0) - ComplexNumber(2, 0), ComplexNumber(-1, 0)
+        )
+
+    def test_subtract_purely_imaginary_numbers(self):
+        self.assertEqual(
+            ComplexNumber(0, 1) - ComplexNumber(0, 2), ComplexNumber(0, -1)
+        )
+
+    def test_subtract_numbers_with_real_and_imaginary_part(self):
+        self.assertEqual(
+            ComplexNumber(1, 2) - ComplexNumber(3, 4), ComplexNumber(-2, -2)
+        )
+
+    # Multiplication
+
+    def test_multiply_purely_real_numbers(self):
+        self.assertEqual(ComplexNumber(1, 0) * ComplexNumber(2, 0), ComplexNumber(2, 0))
+
+    def test_multiply_purely_imaginary_numbers(self):
+        self.assertEqual(
+            ComplexNumber(0, 1) * ComplexNumber(0, 2), ComplexNumber(-2, 0)
+        )
+
+    def test_multiply_numbers_with_real_and_imaginary_part(self):
+        self.assertEqual(
+            ComplexNumber(1, 2) * ComplexNumber(3, 4), ComplexNumber(-5, 10)
+        )
+
+    # Division
+
+    def test_divide_purely_real_numbers(self):
+        self.assertAlmostEqual(
+            ComplexNumber(1, 0) / ComplexNumber(2, 0), ComplexNumber(0.5, 0)
+        )
+
+    def test_divide_purely_imaginary_numbers(self):
+        self.assertAlmostEqual(
+            ComplexNumber(0, 1) / ComplexNumber(0, 2), ComplexNumber(0.5, 0)
+        )
+
+    def test_divide_numbers_with_real_and_imaginary_part(self):
+        self.assertAlmostEqual(
+            ComplexNumber(1, 2) / ComplexNumber(3, 4), ComplexNumber(0.44, 0.08)
+        )
+
+    # Absolute value
+
+    def test_absolute_value_of_a_positive_purely_real_number(self):
+        self.assertEqual(abs(ComplexNumber(5, 0)), 5)
+
+    def test_absolute_value_of_a_negative_purely_real_number(self):
+        self.assertEqual(abs(ComplexNumber(-5, 0)), 5)
+
+    def test_absolute_value_of_a_purely_imaginary_number_with_positive_imaginary_part(
+        self,
+    ):
+        self.assertEqual(abs(ComplexNumber(0, 5)), 5)
+
+    def test_absolute_value_of_a_purely_imaginary_number_with_negative_imaginary_part(
+        self,
+    ):
+        self.assertEqual(abs(ComplexNumber(0, -5)), 5)
+
+    def test_absolute_value_of_a_number_with_real_and_imaginary_part(self):
+        self.assertEqual(abs(ComplexNumber(3, 4)), 5)
+
+    # Complex conjugate
+
+    def test_conjugate_a_purely_real_number(self):
+        self.assertEqual(ComplexNumber(5, 0).conjugate(), ComplexNumber(5, 0))
+
+    def test_conjugate_a_purely_imaginary_number(self):
+        self.assertEqual(ComplexNumber(0, 5).conjugate(), ComplexNumber(0, -5))
+
+    def test_conjugate_a_number_with_real_and_imaginary_part(self):
+        self.assertEqual(ComplexNumber(1, 1).conjugate(), ComplexNumber(1, -1))
+
+    # Complex exponential function
+
+    def test_euler_s_identity_formula(self):
+        self.assertAlmostEqual(ComplexNumber(0, math.pi).exp(), ComplexNumber(-1, 0))
+
+    def test_exponential_of_0(self):
+        self.assertAlmostEqual(ComplexNumber(0, 0).exp(), ComplexNumber(1, 0))
+
+    def test_exponential_of_a_purely_real_number(self):
+        self.assertAlmostEqual(ComplexNumber(1, 0).exp(), ComplexNumber(math.e, 0))
+
+    def test_exponential_of_a_number_with_real_and_imaginary_part(self):
+        self.assertAlmostEqual(
+            ComplexNumber(math.log(2), math.pi).exp(), ComplexNumber(-2, 0)
+        )
+
+    def test_exponential_resulting_in_a_number_with_real_and_imaginary_part(self):
+        self.assertAlmostEqual(
+            ComplexNumber(math.log(2) / 2, math.pi / 4).exp(), ComplexNumber(1, 1)
+        )
+
+    # Operations between real numbers and complex numbers
+
+    def test_add_real_number_to_complex_number(self):
+        self.assertEqual(ComplexNumber(1, 2) + 5, ComplexNumber(6, 2))
+
+    def test_add_complex_number_to_real_number(self):
+        self.assertEqual(5 + ComplexNumber(1, 2), ComplexNumber(6, 2))
+
+    def test_subtract_real_number_from_complex_number(self):
+        self.assertEqual(ComplexNumber(5, 7) - 4, ComplexNumber(1, 7))
+
+    def test_subtract_complex_number_from_real_number(self):
+        self.assertEqual(4 - ComplexNumber(5, 7), ComplexNumber(-1, -7))
+
+    def test_multiply_complex_number_by_real_number(self):
+        self.assertEqual(ComplexNumber(2, 5) * 5, ComplexNumber(10, 25))
+
+    def test_multiply_real_number_by_complex_number(self):
+        self.assertEqual(5 * ComplexNumber(2, 5), ComplexNumber(10, 25))
+
+    def test_divide_complex_number_by_real_number(self):
+        self.assertAlmostEqual(ComplexNumber(10, 100) / 10, ComplexNumber(1, 10))
+
+    def test_divide_real_number_by_complex_number(self):
+        self.assertAlmostEqual(5 / ComplexNumber(1, 1), ComplexNumber(2.5, -2.5))
+
+    # Additional tests for this track
+
+    def test_equality_of_complex_numbers(self):
+        self.assertEqual(ComplexNumber(1, 2), ComplexNumber(1, 2))
+
+    def test_inequality_of_real_part(self):
+        self.assertNotEqual(ComplexNumber(1, 2), ComplexNumber(2, 2))
+
+    def test_inequality_of_imaginary_part(self):
+        self.assertNotEqual(ComplexNumber(1, 2), ComplexNumber(1, 1))
+
+
+=== Target Test Code ===
+package complexnumbers
+
+import (
+	"math"
+	"testing"
+)
+
+const floatEqualityThreshold = 1e-5
+
+func floatingPointEquals(got, want float64) bool {
+	absoluteDifferenceBelowThreshold := math.Abs(got-want) <= floatEqualityThreshold
+	relativeDifferenceBelowThreshold := math.Abs(got-want)/(math.Abs(got)+math.Abs(want)) <= floatEqualityThreshold
+	return absoluteDifferenceBelowThreshold || relativeDifferenceBelowThreshold
+}
+
+func TestNumber_Real(t *testing.T) {
+	for _, tt := range realTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			n := Number{tt.in.a, tt.in.b}
+			if got := n.Real(); !floatingPointEquals(got, tt.want) {
+				t.Errorf("Number%+v.Real() = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNumber_Imaginary(t *testing.T) {
+	for _, tt := range imaginaryTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			n := Number{tt.in.a, tt.in.b}
+			if got := n.Imaginary(); !floatingPointEquals(got, tt.want) {
+				t.Errorf("Number%+v.Imaginary() = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNumber_Add(t *testing.T) {
+	for _, tt := range addTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			n1 := Number{tt.n1.a, tt.n1.b}
+			n2 := Number{tt.n2.a, tt.n2.b}
+			if got := n1.Add(n2); !floatingPointEquals(got.Real(), tt.want.a) || !floatingPointEquals(got.Imaginary(), tt.want.b) {
+				t.Errorf("Number%+v.Add%+v\n got: %+v\nwant: %+v", tt.n1, tt.n2, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNumber_Subtract(t *testing.T) {
+	for _, tt := range subtractTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			n1 := Number{tt.n1.a, tt.n1.b}
+			n2 := Number{tt.n2.a, tt.n2.b}
+			if got := n1.Subtract(n2); !floatingPointEquals(got.Real(), tt.want.a) || !floatingPointEquals(got.Imaginary(), tt.want.b) {
+				t.Errorf("Number%+v.Subtract%+v\n got: %+v\nwant: %+v", tt.n1, tt.n2, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNumber_Multiply(t *testing.T) {
+	for _, tt := range multiplyTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			if tt.n2 == nil {
+				t.Skip("skipping tests with factor used withNumber.Times()")
+			}
+			n1 := Number{tt.n1.a, tt.n1.b}
+			n2 := Number{tt.n2.a, tt.n2.b}
+			if got := n1.Multiply(n2); !floatingPointEquals(got.Real(), tt.want.a) || !floatingPointEquals(got.Imaginary(), tt.want.b) {
+				t.Errorf("Number%+v.Multiply%+v\n got: %+v\nwant: %+v", tt.n1, tt.n2, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNumber_Times(t *testing.T) {
+	for _, tt := range multiplyTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			if tt.n2 != nil {
+				t.Skip("skipping tests with complex multiplier used withNumber.Multiply()")
+			}
+			n := Number{tt.n1.a, tt.n1.b}
+			if got := n.Times(tt.factor); !floatingPointEquals(got.Real(), tt.want.a) || !floatingPointEquals(got.Imaginary(), tt.want.b) {
+				t.Errorf("Number%+v.Times(%v)\n got: %+v\nwant: %+v", tt.n1, tt.factor, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNumber_Divide(t *testing.T) {
+	for _, tt := range divideTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			n1 := Number{tt.n1.a, tt.n1.b}
+			n2 := Number{tt.n2.a, tt.n2.b}
+			if got := n1.Divide(n2); !floatingPointEquals(got.Real(), tt.want.a) || !floatingPointEquals(got.Imaginary(), tt.want.b) {
+				t.Errorf("Number%+v.Divide%+v\n got: %+v\nwant: %+v", tt.n1, tt.n2, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNumber_Abs(t *testing.T) {
+	for _, tt := range absTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			n := Number{tt.in.a, tt.in.b}
+			if got := n.Abs(); !floatingPointEquals(got, tt.want) {
+				t.Errorf("Number.Abs%+v = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNumber_Conjugate(t *testing.T) {
+	for _, tt := range conjugateTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			n := Number{tt.in.a, tt.in.b}
+			if got := n.Conjugate(); !floatingPointEquals(got.Real(), tt.want.a) || !floatingPointEquals(got.Imaginary(), tt.want.b) {
+				t.Errorf("Number%+v.Conjugate()\n got: %+v\nwant: %+v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNumber_Exp(t *testing.T) {
+	for _, tt := range expTestCases {
+		t.Run(tt.description, func(t *testing.T) {
+			n := Number{tt.in.a, tt.in.b}
+			if got := n.Exp(); !floatingPointEquals(got.Real(), tt.want.a) || !floatingPointEquals(got.Imaginary(), tt.want.b) {
+				t.Errorf("Number%+v.Exp()\n got: %+v\nwant: %+v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/complex-numbers/.meta/example.go
+package complexnumbers
+
+import "math"
+
+// Define the Number type here.
+type Number struct {
+    real      float64
+    imaginary float64
+}
+
+func NewNumber(real, imaginary float64) Number {
+    return Number{real, imaginary}
+}
+
+func (n Number) Real() float64 {
+    return n.real
+}
+
+func (n Number) Imaginary() float64 {
+    return n.imaginary
+}
+
+func (n1 Number) Add(n2 Number) Number {
+    realPart := n1.real + n2.real
+    imaginaryPart := n1.imaginary + n2.imaginary
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Subtract(n2 Number) Number {
+    realPart := n1.real - n2.real
+    imaginaryPart := n1.imaginary - n2.imaginary
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Multiply(n2 Number) Number {
+    realPart := n1.real*n2.real - n1.imaginary*n2.imaginary
+    imaginaryPart := n1.real*n2.imaginary + n1.imaginary*n2.real
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n Number) Times(factor float64) Number {
+    realPart := n.real * factor
+    imaginaryPart := n.imaginary * factor
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Divide(n2 Number) Number {
+    conjugation := n2.Conjugate()
+    denominatorAll := n2.Multiply(conjugation)
+    denominator := denominatorAll.real
+    numerator := n1.Multiply(conjugation)
+    return NewNumber(numerator.real/denominator, numerator.imaginary/denominator)
+}
+
+func (n Number) Conjugate() Number {
+    return NewNumber(n.real, -1*n.imaginary)
+}
+
+func (n Number) Abs() float64 {
+    squareSum := n.real*n.real + n.imaginary*n.imaginary
+    return math.Sqrt(squareSum)
+}
+
+func (n Number) Exp() Number {
+    realPart := math.Cos(n.imaginary) * math.Exp(n.real)
+    imaginaryPart := math.Sin(n.imaginary) * math.Exp(n.real)
+    return NewNumber(realPart, imaginaryPart)
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/complex-numbers [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/complex-numbers [exercism/complex-numbers.test]
+./complex_numbers_test.go:17:21: undefined: realTestCases
+./complex_numbers_test.go:28:21: undefined: imaginaryTestCases
+./complex_numbers_test.go:39:21: undefined: addTestCases
+./complex_numbers_test.go:51:21: undefined: subtractTestCases
+./complex_numbers_test.go:63:21: undefined: multiplyTestCases
+./complex_numbers_test.go:78:21: undefined: multiplyTestCases
+./complex_numbers_test.go:92:21: undefined: divideTestCases
+./complex_numbers_test.go:104:21: undefined: absTestCases
+./complex_numbers_test.go:115:21: undefined: conjugateTestCases
+./complex_numbers_test.go:126:21: undefined: expTestCases
+./complex_numbers_test.go:126:21: too many errors
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/complex-numbers/.meta/example.go
+package complexnumbers
+
+import "math"
+
+// Define the Number type here.
+type Number struct {
+    real      float64
+    imaginary float64
+}
+
+func NewNumber(real, imaginary float64) Number {
+    return Number{real, imaginary}
+}
+
+func (n Number) Real() float64 {
+    return n.real
+}
+
+func (n Number) Imaginary() float64 {
+    return n.imaginary
+}
+
+func (n1 Number) Add(n2 Number) Number {
+    realPart := n1.real + n2.real
+    imaginaryPart := n1.imaginary + n2.imaginary
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Subtract(n2 Number) Number {
+    realPart := n1.real - n2.real
+    imaginaryPart := n1.imaginary - n2.imaginary
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Multiply(n2 Number) Number {
+    realPart := n1.real*n2.real - n1.imaginary*n2.imaginary
+    imaginaryPart := n1.real*n2.imaginary + n1.imaginary*n2.real
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n Number) Times(factor float64) Number {
+    realPart := n.real * factor
+    imaginaryPart := n.imaginary * factor
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Divide(n2 Number) Number {
+    conjugation := n2.Conjugate()
+    denominatorAll := n2.Multiply(conjugation)
+    denominator := denominatorAll.real
+    numerator := n1.Multiply(conjugation)
+    return NewNumber(numerator.real/denominator, numerator.imaginary/denominator)
+}
+
+func (n Number) Conjugate() Number {
+    return NewNumber(n.real, -1*n.imaginary)
+}
+
+func (n Number) Abs() float64 {
+    squareSum := n.real*n.real + n.imaginary*n.imaginary
+    return math.Sqrt(squareSum)
+}
+
+func (n Number) Exp() Number {
+    realPart := math.Cos(n.imaginary) * math.Exp(n.real)
+    imaginaryPart := math.Sin(n.imaginary) * math.Exp(n.real)
+    return NewNumber(realPart, imaginaryPart)
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/complex-numbers [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/complex-numbers [exercism/complex-numbers.test]
+./complex_numbers_test.go:17:21: undefined: realTestCases
+./complex_numbers_test.go:28:21: undefined: imaginaryTestCases
+./complex_numbers_test.go:39:21: undefined: addTestCases
+./complex_numbers_test.go:51:21: undefined: subtractTestCases
+./complex_numbers_test.go:63:21: undefined: multiplyTestCases
+./complex_numbers_test.go:78:21: undefined: multiplyTestCases
+./complex_numbers_test.go:92:21: undefined: divideTestCases
+./complex_numbers_test.go:104:21: undefined: absTestCases
+./complex_numbers_test.go:115:21: undefined: conjugateTestCases
+./complex_numbers_test.go:126:21: undefined: expTestCases
+./complex_numbers_test.go:126:21: too many errors
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/complex-numbers/.meta/example.go
+package complexnumbers
+
+import "math"
+
+// Define the Number type here.
+type Number struct {
+    real      float64
+    imaginary float64
+}
+
+func NewNumber(real, imaginary float64) Number {
+    return Number{real, imaginary}
+}
+
+func (n Number) Real() float64 {
+    return n.real
+}
+
+func (n Number) Imaginary() float64 {
+    return n.imaginary
+}
+
+func (n1 Number) Add(n2 Number) Number {
+    realPart := n1.real + n2.real
+    imaginaryPart := n1.imaginary + n2.imaginary
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Subtract(n2 Number) Number {
+    realPart := n1.real - n2.real
+    imaginaryPart := n1.imaginary - n2.imaginary
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Multiply(n2 Number) Number {
+    realPart := n1.real*n2.real - n1.imaginary*n2.imaginary
+    imaginaryPart := n1.real*n2.imaginary + n1.imaginary*n2.real
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n Number) Times(factor float64) Number {
+    realPart := n.real * factor
+    imaginaryPart := n.imaginary * factor
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Divide(n2 Number) Number {
+    conjugation := n2.Conjugate()
+    denominatorAll := n2.Multiply(conjugation)
+    denominator := denominatorAll.real
+    numerator := n1.Multiply(conjugation)
+    return NewNumber(numerator.real/denominator, numerator.imaginary/denominator)
+}
+
+func (n Number) Conjugate() Number {
+    return NewNumber(n.real, -1*n.imaginary)
+}
+
+func (n Number) Abs() float64 {
+    squareSum := n.real*n.real + n.imaginary*n.imaginary
+    return math.Sqrt(squareSum)
+}
+
+func (n Number) Exp() Number {
+    realPart := math.Cos(n.imaginary) * math.Exp(n.real
+    imaginaryPart := math.Sin(n.imaginary) * math.Exp(n.real)
+    return NewNumber(realPart, imaginaryPart)
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/complex-numbers [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/complex-numbers [exercism/complex-numbers.test]
+./complex_numbers.go:66:56: syntax error: unexpected newline in argument list; possibly missing comma or )
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/complex-numbers/.meta/example.go
+package complexnumbers
+
+import "math"
+
+// Define the Number type here.
+type Number struct {
+    real      float64
+    imaginary float64
+}
+
+func NewNumber(real, imaginary float64) Number {
+    return Number{real, imaginary}
+}
+
+func (n Number) Real() float64 {
+    return n.real
+}
+
+func (n Number) Imaginary() float64 {
+    return n.imaginary
+}
+
+func (n1 Number) Add(n2 Number) Number {
+    realPart := n1.real + n2.real
+    imaginaryPart := n1.imaginary + n2.imaginary
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Subtract(n2 Number) Number {
+    realPart := n1.real - n2.real
+    imaginaryPart := n1.imaginary - n2.imaginary
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Multiply(n2 Number) Number {
+    realPart := n1.real*n2.real - n1.imaginary*n2.imaginary
+    imaginaryPart := n1.real*n2.imaginary + n1.imaginary*n2.real
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n Number) Times(factor float64) Number {
+    realPart := n.real * factor
+    imaginaryPart := n.imaginary * factor
+    return NewNumber(realPart, imaginaryPart)
+}
+
+func (n1 Number) Divide(n2 Number) Number {
+    conjugation := n2.Conjugate()
+    denominatorAll := n2.Multiply(conjugation)
+    denominator := denominatorAll.real
+    numerator := n1.Multiply(conjugation)
+    return NewNumber(numerator.real/denominator, numerator.imaginary/denominator)
+}
+
+func (n Number) Conjugate() Number {
+    return NewNumber(n.real, -1*n.imaginary)
+}
+
+func (n Number) Abs() float64 {
+    squareSum := n.real*n.real + n.imaginary*n.imaginary
+    return math.Sqrt(squareSum)
+}
+
+func (n Number) Exp() Number {
+    realPart := math.Cos(n.imaginary) * math.Exp(n.real)
+    imaginaryPart := math.Sin(n.imaginary) * math.Exp(n.real)
+    return NewNumber(realPart, imaginaryPart)
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/complex-numbers [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/complex-numbers [exercism/complex-numbers.test]
+./complex_numbers_test.go:17:21: undefined: realTestCases
+./complex_numbers_test.go:28:21: undefined: imaginaryTestCases
+./complex_numbers_test.go:39:21: undefined: addTestCases
+./complex_numbers_test.go:51:21: undefined: subtractTestCases
+./complex_numbers_test.go:63:21: undefined: multiplyTestCases
+./complex_numbers_test.go:78:21: undefined: multiplyTestCases
+./complex_numbers_test.go:92:21: undefined: divideTestCases
+./complex_numbers_test.go:104:21: undefined: absTestCases
+./complex_numbers_test.go:115:21: undefined: conjugateTestCases
+./complex_numbers_test.go:126:21: undefined: expTestCases
+./complex_numbers_test.go:126:21: too many errors
+
+
+=== ERROR ===
+Error processing sample (returncode=2): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Request didn't generate first token before the given deadline"}}
+
+=== FINAL STATUS: ERROR ===

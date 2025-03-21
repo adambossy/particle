@@ -1,0 +1,620 @@
+=== Initial Source Code ===
+Source file: exercises/practice/sum-of-multiples/.meta/example.py
+def sum_of_multiples(limit, multiples):
+    return sum(value for value in range(limit)
+               if any(value % multiple == 0
+                      for multiple in multiples
+                      if multiple > 0))
+
+
+=== Source Interface ===
+def sum_of_multiples(limit, multiples):
+    pass
+
+
+=== Target Interface ===
+package summultiples
+
+func SumMultiples(limit int, divisors ...int) int {
+	panic("Please implement the SumMultiples function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/sum-of-multiples/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from sum_of_multiples import (
+    sum_of_multiples,
+)
+
+
+class SumOfMultiplesTest(unittest.TestCase):
+    def test_no_multiples_within_limit(self):
+        self.assertEqual(sum_of_multiples(1, [3, 5]), 0)
+
+    def test_one_factor_has_multiples_within_limit(self):
+        self.assertEqual(sum_of_multiples(4, [3, 5]), 3)
+
+    def test_more_than_one_multiple_within_limit(self):
+        self.assertEqual(sum_of_multiples(7, [3]), 9)
+
+    def test_more_than_one_factor_with_multiples_within_limit(self):
+        self.assertEqual(sum_of_multiples(10, [3, 5]), 23)
+
+    def test_each_multiple_is_only_counted_once(self):
+        self.assertEqual(sum_of_multiples(100, [3, 5]), 2318)
+
+    def test_a_much_larger_limit(self):
+        self.assertEqual(sum_of_multiples(1000, [3, 5]), 233168)
+
+    def test_three_factors(self):
+        self.assertEqual(sum_of_multiples(20, [7, 13, 17]), 51)
+
+    def test_factors_not_relatively_prime(self):
+        self.assertEqual(sum_of_multiples(15, [4, 6]), 30)
+
+    def test_some_pairs_of_factors_relatively_prime_and_some_not(self):
+        self.assertEqual(sum_of_multiples(150, [5, 6, 8]), 4419)
+
+    def test_one_factor_is_a_multiple_of_another(self):
+        self.assertEqual(sum_of_multiples(51, [5, 25]), 275)
+
+    def test_much_larger_factors(self):
+        self.assertEqual(sum_of_multiples(10000, [43, 47]), 2203160)
+
+    def test_all_numbers_are_multiples_of_1(self):
+        self.assertEqual(sum_of_multiples(100, [1]), 4950)
+
+    def test_no_factors_means_an_empty_sum(self):
+        self.assertEqual(sum_of_multiples(10000, []), 0)
+
+    def test_the_only_multiple_of_0_is_0(self):
+        self.assertEqual(sum_of_multiples(1, [0]), 0)
+
+    def test_the_factor_0_does_not_affect_the_sum_of_multiples_of_other_factors(self):
+        self.assertEqual(sum_of_multiples(4, [3, 0]), 3)
+
+    def test_solutions_using_include_exclude_must_extend_to_cardinality_greater_than_3(
+        self,
+    ):
+        self.assertEqual(sum_of_multiples(10000, [2, 3, 5, 7, 11]), 39614537)
+
+
+=== Target Test Code ===
+package summultiples
+
+import "testing"
+
+func TestSumMultiples(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := SumMultiples(tc.limit, tc.divisors...)
+			if actual != tc.expected {
+				t.Fatalf("SumMultiples(%d, %#v) = %d, want: %d", tc.limit, tc.divisors, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSumMultiples(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			SumMultiples(tc.limit, tc.divisors...)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (considering only positive divisors).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (considering only positive divisors).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// The following is an example usage of SumMultiples.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (considering only positive divisors).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// ExampleSumMultiples is an example usage of SumMultiples.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (only positive divisors are considered).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// ExampleSumMultiples demonstrates the usage of SumMultiples.
+// It prints the sum of multiples below 10 for divisors 3 and 5.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (only positive divisors are considered).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// ExampleSumMultiples demonstrates the usage of SumMultiples.
+// It prints the sum of multiples below 10 for divisors 3 and 5.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (only positive divisors are considered).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// ExampleSumMultiples demonstrates the usage of SumMultiples.
+// It prints the sum of multiples below 10 for divisors 3 and 5.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (only positive divisors are considered).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// ExampleSumMultiples demonstrates the usage of SumMultiples.
+// It prints the sum of multiples below 10 for divisors 3 and 5.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (only positive divisors are considered).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// ExampleSumMultiples demonstrates the usage of SumMultiples.
+// It prints the sum of multiples below 10 for divisors 3 and 5.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (only positive divisors are considered).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// ExampleSumMultiples demonstrates the usage of SumMultiples.
+// It prints the sum of multiples below 10 for divisors 3 and 5.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (only positive divisors are considered).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// ExampleSumMultiples demonstrates the usage of SumMultiples.
+// It prints the sum of multiples below 10 for divisors 3 and 5.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+// --------------------------------------------------------
+// exercism/sum-of-multiples/sum_of_multiples_test.go
+
+// This file contains tests for the SumMultiples function.
+
+package summultiples
+
+import "testing"
+
+// testCase defines the structure for test cases.
+type testCase struct {
+	description string
+	limit       int
+	divisors    []int
+	expected    int
+}
+
+var testCases = []testCase{
+	{
+		description: "Multiples of 3 and 5 below 10",
+		limit: 10,
+		divisors: []int{3, 5},
+		expected: 23,
+	},
+	{
+		description: "Multiples of 3 and 5 below 20",
+		limit: 20,
+		divisors: []int{3, 5},
+		expected: 78,
+	},
+	{
+		description: "No multiples if no divisors provided",
+		limit: 10,
+		divisors: []int{},
+		expected: 0,
+	},
+	{
+		description: "Ignoring non-positive divisors (only 5 considered)",
+		limit: 10,
+		divisors: []int{-3, 5},
+		expected: 5,
+	},
+}
+
+func TestSumMultiples(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := SumMultiples(tc.limit, tc.divisors...)
+			if actual != tc.expected {
+				t.Fatalf("SumMultiples(%d, %#v) = %d, want: %d", tc.limit, tc.divisors, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSumMultiples(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = SumMultiples(tc.limit, tc.divisors...)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples.go:33:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/sum-of-multiples/.meta/example.go
+package summultiples
+
+import "fmt"
+
+// SumMultiples calculates the sum of all numbers less than limit that are divisible
+// by any of the given divisors (only positive divisors are considered).
+func SumMultiples(limit int, divisors ...int) int {
+	total := 0
+	for i := 0; i < limit; i++ {
+		for _, d := range divisors {
+			if d > 0 && i%d == 0 {
+				total += i
+				break
+			}
+		}
+	}
+	return total
+}
+
+// ExampleSumMultiples demonstrates the usage of SumMultiples.
+// It prints the sum of multiples below 10 for divisors 3 and 5.
+func ExampleSumMultiples() {
+	result := SumMultiples(10, 3, 5)
+	fmt.Println(result) // Output: 23
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sum-of-multiples [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sum-of-multiples [exercism/sum-of-multiples.test]
+./sum_of_multiples_test.go:6:21: undefined: testCases
+./sum_of_multiples_test.go:21:22: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

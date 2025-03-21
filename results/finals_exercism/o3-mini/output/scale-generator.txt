@@ -1,0 +1,1708 @@
+=== Initial Source Code ===
+Source file: exercises/practice/scale-generator/.meta/example.py
+class Scale:
+    ASCENDING_INTERVALS = ['m', 'M', 'A']
+    CHROMATIC_SCALE = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#']
+    FLAT_CHROMATIC_SCALE = ['A', 'Bb', 'B', 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab']
+    FLAT_KEYS = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'd', 'g', 'c', 'f', 'bb', 'eb']
+
+    def __init__(self, tonic, intervals=None):
+        self.tonic = tonic.capitalize()
+        self.intervals = intervals
+        self.chromatic_scale = (self.FLAT_CHROMATIC_SCALE if tonic in self.FLAT_KEYS else self.CHROMATIC_SCALE)
+
+    def chromatic(self):
+        return self._reorder_chromatic_scale()
+
+    def interval(self, intervals):
+        last_index = 0
+        pitches = []
+        scale = self._reorder_chromatic_scale()
+
+        for _, interval in enumerate(intervals):
+            pitches.append(scale[last_index])
+            last_index += self.ASCENDING_INTERVALS.index(interval) + 1
+
+        pitches.append(self.tonic)
+
+        return pitches
+
+    def _reorder_chromatic_scale(self):
+        index = self.chromatic_scale.index(self.tonic)
+        return  self.chromatic_scale[index:] + self.chromatic_scale[:index]
+
+
+=== Source Interface ===
+class Scale:
+    def __init__(self, tonic):
+        pass
+
+    def chromatic(self):
+        pass
+
+    def interval(self, intervals):
+        pass
+
+
+=== Target Interface ===
+package scale
+
+func Scale(tonic, interval string) []string {
+	panic("Please implement the Scale function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/scale-generator/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from scale_generator import (
+    Scale,
+)
+
+
+class ScaleGeneratorTest(unittest.TestCase):
+
+    # Test chromatic scales
+    def test_chromatic_scale_with_sharps(self):
+        expected = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        self.assertEqual(Scale("C").chromatic(), expected)
+
+    def test_chromatic_scale_with_flats(self):
+        expected = ["F", "Gb", "G", "Ab", "A", "Bb", "B", "C", "Db", "D", "Eb", "E"]
+        self.assertEqual(Scale("F").chromatic(), expected)
+
+    # Test scales with specified intervals
+    def test_simple_major_scale(self):
+        expected = ["C", "D", "E", "F", "G", "A", "B", "C"]
+        self.assertEqual(Scale("C").interval("MMmMMMm"), expected)
+
+    def test_major_scale_with_sharps(self):
+        expected = ["G", "A", "B", "C", "D", "E", "F#", "G"]
+        self.assertEqual(Scale("G").interval("MMmMMMm"), expected)
+
+    def test_major_scale_with_flats(self):
+        expected = ["F", "G", "A", "Bb", "C", "D", "E", "F"]
+        self.assertEqual(Scale("F").interval("MMmMMMm"), expected)
+
+    def test_minor_scale_with_sharps(self):
+        expected = ["F#", "G#", "A", "B", "C#", "D", "E", "F#"]
+        self.assertEqual(Scale("f#").interval("MmMMmMM"), expected)
+
+    def test_minor_scale_with_flats(self):
+        expected = ["Bb", "C", "Db", "Eb", "F", "Gb", "Ab", "Bb"]
+        self.assertEqual(Scale("bb").interval("MmMMmMM"), expected)
+
+    def test_dorian_mode(self):
+        expected = ["D", "E", "F", "G", "A", "B", "C", "D"]
+        self.assertEqual(Scale("d").interval("MmMMMmM"), expected)
+
+    def test_mixolydian_mode(self):
+        expected = ["Eb", "F", "G", "Ab", "Bb", "C", "Db", "Eb"]
+        self.assertEqual(Scale("Eb").interval("MMmMMmM"), expected)
+
+    def test_lydian_mode(self):
+        expected = ["A", "B", "C#", "D#", "E", "F#", "G#", "A"]
+        self.assertEqual(Scale("a").interval("MMMmMMm"), expected)
+
+    def test_phrygian_mode(self):
+        expected = ["E", "F", "G", "A", "B", "C", "D", "E"]
+        self.assertEqual(Scale("e").interval("mMMMmMM"), expected)
+
+    def test_locrian_mode(self):
+        expected = ["G", "Ab", "Bb", "C", "Db", "Eb", "F", "G"]
+        self.assertEqual(Scale("g").interval("mMMmMMM"), expected)
+
+    def test_harmonic_minor(self):
+        expected = ["D", "E", "F", "G", "A", "Bb", "Db", "D"]
+        self.assertEqual(Scale("d").interval("MmMMmAm"), expected)
+
+    def test_octatonic(self):
+        expected = ["C", "D", "D#", "F", "F#", "G#", "A", "B", "C"]
+        self.assertEqual(Scale("C").interval("MmMmMmMm"), expected)
+
+    def test_hexatonic(self):
+        expected = ["Db", "Eb", "F", "G", "A", "B", "Db"]
+        self.assertEqual(Scale("Db").interval("MMMMMM"), expected)
+
+    def test_pentatonic(self):
+        expected = ["A", "B", "C#", "E", "F#", "A"]
+        self.assertEqual(Scale("A").interval("MMAMA"), expected)
+
+    def test_enigmatic(self):
+        expected = ["G", "G#", "B", "C#", "D#", "F", "F#", "G"]
+        self.assertEqual(Scale("G").interval("mAMMMmm"), expected)
+
+
+=== Target Test Code ===
+package scale
+
+import (
+	"fmt"
+	"testing"
+)
+
+func TestScale(t *testing.T) {
+	for _, tc := range scaleTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Scale(tc.tonic, tc.interval)
+			if fmt.Sprintf("%q", actual) != fmt.Sprintf("%q", tc.expected) {
+				t.Fatalf("Scale(%q, %q)\n got:%#v\nwant:%#v", tc.tonic, tc.interval, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScale(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range scaleTestCases {
+			Scale(test.tonic, test.interval)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/scale-generator/.meta/example.go
+package meta
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// Scale represents a musical scale generator.
+// It filters and transforms scales based on the tonic and provided intervals.
+type Scale struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// NewScale creates a new Scale instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func NewScale(tonic string, intervals string) *Scale {
+	var cs []string
+	if inSlice(tonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &Scale{
+		tonic:          capitalize(tonic),
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *Scale) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *Scale) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		intervalSymbol := string(r)
+		pitches = append(pitches, scale[lastIndex])
+		step := indexOf(intervalSymbol, ascendingIntervals)
+		// assuming valid interval symbols are provided
+		lastIndex += step + 1
+	}
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := NewScale(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *Scale) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// reorder: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (scale_generator.go) and scale (scale_generator_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/scale-generator
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// Scale represents a musical scale generator.
+// It filters and transforms scales based on the tonic and provided intervals.
+// This struct implements methods to generate both the chromatic scale and a scale based on a series of intervals.
+type Scale struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// NewScale creates a new Scale instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func NewScale(tonic string, intervals string) *Scale {
+	var cs []string
+	if inSlice(capitalize(tonic), flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &Scale{
+		tonic:          capitalize(tonic),
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *Scale) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *Scale) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		intervalSymbol := string(r)
+		pitches = append(pitches, scale[lastIndex])
+		step := indexOf(intervalSymbol, ascendingIntervals)
+		// assuming valid interval symbols are provided
+		lastIndex += step + 1
+	}
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := NewScale(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *Scale) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// reorder: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator.go:71:6: Scale redeclared in this block
+	./scale_generator.go:24:6: other declaration of Scale
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:11:30: too many arguments in conversion to Scale
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+./scale_generator_test.go:25:22: too many arguments in conversion to Scale
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// scaleGenerator represents a musical scale generator.
+// It transforms scales based on the tonic and provided intervals.
+type scaleGenerator struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// newScaleGenerator creates a new scaleGenerator instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func newScaleGenerator(tonic string, intervals string) *scaleGenerator {
+	capitalTonic := capitalize(tonic)
+	var cs []string
+	if inSlice(capitalTonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &scaleGenerator{
+		tonic:          capitalTonic,
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *scaleGenerator) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *scaleGenerator) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		intervalSymbol := string(r)
+		pitches = append(pitches, scale[lastIndex])
+		step := indexOf(intervalSymbol, ascendingIntervals)
+		// assuming valid interval symbols are provided
+		lastIndex += step + 1
+	}
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := newScaleGenerator(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *scaleGenerator) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// reorder: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// scaleGenerator represents a musical scale generator.
+// It transforms scales based on the tonic and provided intervals.
+// This struct implements methods to generate both the chromatic scale
+// and a scale based on a series of intervals.
+
+// Note: The exported function Scale returns a scale according to the provided tonic and interval pattern.
+// If the interval pattern is empty, a full chromatic scale starting from the tonic is returned.
+
+// scaleGenerator is an unexported type that holds the state for a scale generation.
+type scaleGenerator struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// newScaleGenerator creates a new scaleGenerator instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func newScaleGenerator(tonic string, intervals string) *scaleGenerator {
+	capitalTonic := capitalize(tonic)
+	var cs []string
+	if inSlice(capitalTonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &scaleGenerator{
+		tonic:          capitalTonic,
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *scaleGenerator) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *scaleGenerator) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		intervalSymbol := string(r)
+		pitches = append(pitches, scale[lastIndex])
+		step := indexOf(intervalSymbol, ascendingIntervals)
+		// assuming valid interval symbols are provided
+		lastIndex += step + 1
+	}
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := newScaleGenerator(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *scaleGenerator) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// reorder: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// scaleGenerator represents a musical scale generator.
+// It transforms scales based on the tonic and provided intervals.
+// This struct implements methods to generate both the chromatic scale
+// and a scale based on a series of intervals.
+
+// Note: The exported function Scale returns a scale according to the provided tonic and interval pattern.
+// If the interval pattern is empty, a full chromatic scale starting from the tonic is returned.
+
+// scaleGenerator is an unexported type that holds the state for a scale generation.
+type scaleGenerator struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// newScaleGenerator creates a new scaleGenerator instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func newScaleGenerator(tonic string, intervals string) *scaleGenerator {
+	capitalTonic := capitalize(tonic)
+	var cs []string
+	if inSlice(capitalTonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &scaleGenerator{
+		tonic:          capitalTonic,
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *scaleGenerator) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *scaleGenerator) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		intervalSymbol := string(r)
+		pitches = append(pitches, scale[lastIndex])
+		step := indexOf(intervalSymbol, ascendingIntervals)
+		// assuming valid interval symbols are provided
+		lastIndex += step + 1
+	}
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := newScaleGenerator(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *scaleGenerator) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// reorder: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// scaleGenerator represents a musical scale generator.
+// It transforms scales based on the tonic and provided intervals.
+// This struct implements methods to generate both the chromatic scale
+// and a scale based on a series of intervals.
+
+// scaleGenerator is an unexported type that holds the state for the scale generation.
+type scaleGenerator struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// newScaleGenerator creates a new scaleGenerator instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func newScaleGenerator(tonic string, intervals string) *scaleGenerator {
+	capitalTonic := capitalize(tonic)
+	var cs []string
+	if inSlice(capitalTonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &scaleGenerator{
+		tonic:          capitalTonic,
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *scaleGenerator) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *scaleGenerator) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		intervalSymbol := string(r)
+		pitches = append(pitches, scale[lastIndex])
+		step := indexOf(intervalSymbol, ascendingIntervals)
+		// assuming valid interval symbols are provided
+		lastIndex += step + 1
+	}
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := newScaleGenerator(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *scaleGenerator) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// reorder: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// scaleGenerator represents a musical scale generator.
+// It transforms scales based on the tonic and provided intervals.
+// This struct implements methods to generate both the chromatic scale
+// and a scale based on a series of intervals.
+
+// scaleGenerator is an unexported type that holds the state for the scale generation.
+type scaleGenerator struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// newScaleGenerator creates a new scaleGenerator instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func newScaleGenerator(tonic string, intervals string) *scaleGenerator {
+	capitalTonic := capitalize(tonic)
+	var cs []string
+	if inSlice(capitalTonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &scaleGenerator{
+		tonic:          capitalTonic,
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *scaleGenerator) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *scaleGenerator) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		intervalSymbol := string(r)
+		pitches = append(pitches, scale[lastIndex])
+		step := indexOf(intervalSymbol, ascendingIntervals)
+		// assuming valid interval symbols are provided
+		lastIndex += step + 1
+	}
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := newScaleGenerator(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *scaleGenerator) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// reorder the scale: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// scaleGenerator represents a musical scale generator.
+// It transforms scales based on the tonic and provided intervals.
+// This struct implements methods to generate both the chromatic scale
+// and a scale based on a series of intervals.
+
+// scaleGenerator is an unexported type that holds the state for the scale generation.
+type scaleGenerator struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// newScaleGenerator creates a new scaleGenerator instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func newScaleGenerator(tonic string, intervals string) *scaleGenerator {
+	capitalTonic := capitalize(tonic)
+	var cs []string
+	if inSlice(capitalTonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &scaleGenerator{
+		tonic:          capitalTonic,
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *scaleGenerator) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *scaleGenerator) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		// Append the note at the current position
+		pitches = append(pitches, scale[lastIndex])
+		// Determine step from the interval symbol (m=1, M=2, A=3 semitones)
+		step := indexOf(string(r), ascendingIntervals) + 1
+		lastIndex += step
+	}
+	// Append the octave note (tonic)
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := newScaleGenerator(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *scaleGenerator) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// Reorder the scale: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// scaleGenerator represents a musical scale generator.
+// It transforms scales based on the tonic and provided intervals.
+// This struct implements methods to generate both the chromatic scale
+// and a scale based on a series of intervals.
+
+// scaleGenerator is an unexported type that holds the state for the scale generation.
+type scaleGenerator struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// newScaleGenerator creates a new scaleGenerator instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func newScaleGenerator(tonic string, intervals string) *scaleGenerator {
+	capitalTonic := capitalize(tonic)
+	var cs []string
+	if inSlice(capitalTonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &scaleGenerator{
+		tonic:          capitalTonic,
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *scaleGenerator) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *scaleGenerator) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		// Append the note at the current position
+		pitches = append(pitches, scale[lastIndex])
+		// Determine step from the interval symbol (m=1, M=2, A=3 semitones)
+		step := indexOf(string(r), ascendingIntervals) + 1
+		lastIndex += step
+	}
+	// Append the octave note (tonic)
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := newScaleGenerator(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *scaleGenerator) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// Reorder the scale: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// scaleGenerator represents a musical scale generator.
+// It transforms scales based on the tonic and provided intervals.
+// This struct implements methods to generate both the chromatic scale
+// and a scale based on a series of intervals.
+
+// scaleGenerator is an unexported type that holds the state for the scale generation.
+type scaleGenerator struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// newScaleGenerator creates a new scaleGenerator instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func newScaleGenerator(tonic string, intervals string) *scaleGenerator {
+	capitalTonic := capitalize(tonic)
+	var cs []string
+	if inSlice(capitalTonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &scaleGenerator{
+		tonic:          capitalTonic,
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *scaleGenerator) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *scaleGenerator) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		// Append the note at the current position
+		pitches = append(pitches, scale[lastIndex])
+		// Determine step from the interval symbol (m=1, M=2, A=3 semitones)
+		step := indexOf(string(r), ascendingIntervals) + 1
+		lastIndex += step
+	}
+	// Append the octave note (tonic)
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale is returned.
+func Scale(tonic, interval string) []string {
+	s := newScaleGenerator(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *scaleGenerator) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// Reorder the scale: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/scale-generator/.meta/example.go
+package scale
+
+import (
+	"strings"
+	"unicode"
+)
+
+// ascendingIntervals defines the allowed interval steps.
+var ascendingIntervals = []string{"m", "M", "A"}
+
+// chromaticScale defines the chromatic scale using sharps.
+var chromaticScale = []string{"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"}
+
+// flatChromaticScale defines the chromatic scale using flats.
+var flatChromaticScale = []string{"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"}
+
+// flatKeys defines the keys that should use flat notation.
+var flatKeys = []string{"F", "Bb", "Eb", "Ab", "Db", "Gb", "d", "g", "c", "f", "bb", "eb"}
+
+// scaleGenerator represents a musical scale generator.
+// It transforms scales based on the tonic and provided intervals.
+// This struct implements methods to generate both the chromatic scale
+// and a scale based on a series of intervals.
+
+// scaleGenerator is an unexported type that holds the state for the scale generation.
+type scaleGenerator struct {
+	tonic          string
+	intervals      string
+	chromaticScale []string
+}
+
+// newScaleGenerator creates a new scaleGenerator instance. It capitalizes the tonic and selects the
+// appropriate chromatic scale based on whether the tonic is in the flat keys list.
+func newScaleGenerator(tonic string, intervals string) *scaleGenerator {
+	capitalTonic := capitalize(tonic)
+	var cs []string
+	if inSlice(capitalTonic, flatKeys) {
+		cs = flatChromaticScale
+	} else {
+		cs = chromaticScale
+	}
+	return &scaleGenerator{
+		tonic:          capitalTonic,
+		intervals:      intervals,
+		chromaticScale: cs,
+	}
+}
+
+// Chromatic returns the full chromatic scale starting at the tonic by reordering
+// the internal chromatic scale.
+func (s *scaleGenerator) Chromatic() []string {
+	return s.reorderChromaticScale()
+}
+
+// Interval generates a scale based on the provided intervals. It starts from the tonic
+// and follows the interval pattern to select subsequent notes, finally appending the tonic.
+func (s *scaleGenerator) Interval(intervals string) []string {
+	scale := s.reorderChromaticScale()
+	var pitches []string
+	lastIndex := 0
+	for _, r := range intervals {
+		// Append the note at the current position
+		pitches = append(pitches, scale[lastIndex])
+		// Determine step from the interval symbol (m=1, M=2, A=3 semitones)
+		step := indexOf(string(r), ascendingIntervals) + 1
+		lastIndex += step
+	}
+	// Append the octave note (tonic)
+	pitches = append(pitches, s.tonic)
+	return pitches
+}
+
+// Scale is the exported function that returns a musical scale based on the tonic and interval pattern.
+// If the interval is an empty string, the full chromatic scale starting from the tonic is returned.
+func Scale(tonic, interval string) []string {
+	s := newScaleGenerator(tonic, interval)
+	if strings.TrimSpace(interval) == "" {
+		return s.Chromatic()
+	}
+	return s.Interval(interval)
+}
+
+// reorderChromaticScale reorders the chromatic scale so that it starts at the tonic.
+func (s *scaleGenerator) reorderChromaticScale() []string {
+	idx := indexOf(s.tonic, s.chromaticScale)
+	if idx == -1 {
+		// if tonic is not found, return the scale as is
+		return s.chromaticScale
+	}
+	// Reorder the scale: from tonic to end then from beginning to tonic
+	return append(s.chromaticScale[idx:], s.chromaticScale[:idx]...)
+}
+
+// inSlice checks if a string is present in a slice of strings.
+func inSlice(val string, slice []string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+// indexOf returns the index of a string in a slice. It returns -1 if not found.
+func indexOf(val string, slice []string) int {
+	for i, item := range slice {
+		if item == val {
+			return i
+		}
+	}
+	return -1
+}
+
+// capitalize returns a copy of s with the first letter in upper case and the rest in lower case.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	for i := 1; i < len(r); i++ {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return string(r)
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scale-generator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scale-generator [exercism/scale-generator.test]
+./scale_generator_test.go:9:21: undefined: scaleTestCases
+./scale_generator_test.go:24:24: undefined: scaleTestCases
+
+
+=== FINAL STATUS: FAILED ===

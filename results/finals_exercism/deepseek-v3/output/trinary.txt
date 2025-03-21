@@ -1,0 +1,244 @@
+=== Initial Source Code ===
+Source file: exercises/practice/trinary/.meta/example.py
+from functools import reduce
+
+
+def trinary(string):
+    if set(string) - set('012'):
+        return 0
+    return reduce(lambda idx, edx: idx * 3 + int(edx), string, 0)
+
+
+=== Source Interface ===
+def trinary(string):
+    pass
+
+
+=== Target Interface ===
+package trinary
+
+func ParseTrinary(arg string, want int64, ok bool) {
+	panic("Please implement the ParseTrinary function")
+}
+
+
+=== Source Test Code ===
+import unittest
+
+from trinary import trinary
+
+
+class TrinaryTest(unittest.TestCase):
+    def test_valid_trinary1(self):
+        self.assertEqual(trinary('0'), 0)
+
+    def test_valid_trinary2(self):
+        self.assertEqual(trinary('1'), 1)
+
+    def test_valid_trinary3(self):
+        self.assertEqual(trinary('10'), 3)
+
+    def test_valid_trinary4(self):
+        self.assertEqual(trinary('102101'), 307)
+
+    def test_valid_trinary5(self):
+        self.assertEqual(trinary('22222'), 242)
+
+    def test_valid_trinary6(self):
+        self.assertEqual(trinary('10000'), 81)
+
+    def test_invalid_trinary(self):
+        self.assertEqual(trinary('13201'), 0)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+=== Target Test Code ===
+package trinary
+
+import "testing"
+
+var tests = []struct {
+	arg  string
+	want int64
+	ok   bool
+}{
+	{"0", 0, true},
+	{"1", 1, true},
+	{"2", 2, true},
+	{"10", 3, true},
+	{"201", 19, true},
+	{"0201", 19, true},
+	{"0000000000000000000000000000000000000000201", 19, true},
+	{"2021110011022210012102010021220101220221", 9223372036854775807, true},
+	{"2021110011022210012102010021220101220222", 0, false},
+}
+
+func TestParseTrinary(t *testing.T) {
+	for _, test := range tests {
+		switch res, err := ParseTrinary(test.arg); {
+		case err != nil:
+			var _ error = err
+			if test.ok {
+				t.Errorf("ParseTrinary(%q) returned error %q, Error not expected",
+					test.arg, err)
+			}
+		case !test.ok:
+			t.Errorf("ParseTrinary(%q) = %d, %v, expected error", test.arg, res, err)
+		case res != test.want:
+			t.Errorf("ParseTrinary(%q) = %d, want %d", test.arg, res, test.want)
+		}
+	}
+}
+
+func BenchmarkParseTrinary(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			ParseTrinary(test.arg)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"strings"
+)
+
+// ParseTrinary converts a trinary string to its integer value.
+func ParseTrinary(s string) (int64, bool) {
+	for _, r := range s {
+		if r < '0' || r > '2' {
+			return 0, false
+		}
+	}
+
+	result := int64(0)
+	for _, r := range s {
+		result = result*3 + int64(r-'0')
+	}
+	return result, true
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary_test.go:24:15: invalid operation: err != nil (mismatched types bool and untyped nil)
+./trinary_test.go:25:18: cannot use err (variable of type bool) as type error in variable declaration:
+	bool does not implement error (missing Error method)
+./trinary.go:5:2: imported and not used: "strings"
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+// ParseTrinary converts a trinary string to its integer value.
+func ParseTrinary(s string) (int64, bool) {
+	for _, r := range s {
+		if r < '0' || r > '2' {
+			return 0, false
+		}
+	}
+
+	result := int64(0)
+	for _, r := range s {
+		result = result*3 + int64(r-'0')
+	}
+	return result, true
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary_test.go:24:15: invalid operation: err != nil (mismatched types bool and untyped nil)
+./trinary_test.go:25:18: cannot use err (variable of type bool) as type error in variable declaration:
+	bool does not implement error (missing Error method)
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+// ParseTrinary converts a trinary string to its integer value.
+func ParseTrinary(s string) (int64, bool) {
+	for _, r := range s {
+		if r < '0' || r > '2' {
+			return 0, false
+		}
+	}
+
+	result := int64(0)
+	for _, r := range s {
+		result = result*3 + int64(r-'0')
+	}
+	return result, true
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary_test.go:24:15: invalid operation: err != nil (mismatched types bool and untyped nil)
+./trinary_test.go:25:18: cannot use err (variable of type bool) as type error in variable declaration:
+	bool does not implement error (missing Error method)
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+// ParseTrinary converts a trinary string to its integer value.
+func ParseTrinary(s string) (int64, bool) {
+	for _, r := range s {
+		if r < '0' || r > '2' {
+			return 0, false
+		}
+	}
+
+	result := int64(0)
+	for _, r := range s {
+		result = result*3 + int64(r-'0')
+	}
+	return result, true
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary_test.go:24:15: invalid operation: err != nil (mismatched types bool and untyped nil)
+./trinary_test.go:25:18: cannot use err (variable of type bool) as type error in variable declaration:
+	bool does not implement error (missing Error method)
+
+
+=== ERROR ===
+Error processing sample (returncode=2): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Missing end token '<｜tool▁calls▁end｜>' in function calls: <｜tool▁calls▁begin｜><｜tool▁call▁begin｜>function<｜t..."}}
+
+=== FINAL STATUS: ERROR ===

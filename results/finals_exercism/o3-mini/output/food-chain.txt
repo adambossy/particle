@@ -1,0 +1,1810 @@
+=== Initial Source Code ===
+Source file: exercises/practice/food-chain/.meta/example.py
+def get_song():
+
+    animals = ['fly', 'spider', 'bird', 'cat', 'dog', 'goat', 'cow', 'horse']
+
+    phrases = [' wriggled and jiggled and tickled inside her.',
+               'How absurd to swallow a bird!',
+               'Imagine that, to swallow a cat!',
+               'What a hog, to swallow a dog!',
+               'Just opened her throat and swallowed a goat!',
+               "I don't know how she swallowed a cow!",
+               "She's dead, of course!"]
+
+    old_lady = 'I know an old lady who swallowed a '
+    swallowed = 'She swallowed the <animal> to catch the '
+    die = "I don't know why she swallowed the fly. Perhaps she'll die."
+
+    song = ''
+    verse = ''
+    chain = ''
+
+    for number, animal in enumerate(animals):
+        verse = old_lady + animal + '.\n'
+
+        if number == 7:
+            verse += phrases[6]
+        else:
+            if number == 0:
+                chain = swallowed + animal + '.\n'
+            elif number == 1:
+                verse += 'It' + phrases[0] + '\n'
+                chain = chain.replace('<animal>', animal)
+                verse += chain
+                chain = swallowed + animal + ' that' + phrases[0] + '\n' + chain
+            else:
+                verse += phrases[number-1] + '\n'
+                chain = chain.replace('<animal>', animal)
+                verse += chain
+                chain = swallowed + animal + '.\n' + chain
+
+            verse += die + '\n'
+
+        verse += '\n'
+        song += verse
+
+    return song
+
+
+def verses(letter):
+    return letter.replace('die.', 'die.slice').split('slice')
+
+
+def recite(start_verse, end_verse):
+    generated = [verse.strip().split('\n') for verse in verses(get_song())]
+    if start_verse == end_verse:
+        return generated[start_verse - 1]
+    else:
+        result = []
+        for idx in range(start_verse - 1, end_verse):
+            result += generated[idx] + ['']
+
+        # Pop out the last empty string
+        result.pop()
+        return result
+
+
+=== Source Interface ===
+def recite(start_verse, end_verse):
+    pass
+
+
+=== Target Interface ===
+package foodchain
+
+func Verse(v int) string {
+	panic("Please implement the Verse function")
+}
+
+func Verses(start, end int) string {
+	panic("Please implement the Verses function")
+}
+
+func Song() string {
+	panic("Please implement the Song function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/food-chain/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from food_chain import (
+    recite,
+)
+
+
+class FoodChainTest(unittest.TestCase):
+    def test_fly(self):
+        self.assertEqual(
+            recite(1, 1),
+            [
+                "I know an old lady who swallowed a fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+            ],
+        )
+
+    def test_spider(self):
+        self.assertEqual(
+            recite(2, 2),
+            [
+                "I know an old lady who swallowed a spider.",
+                "It wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+            ],
+        )
+
+    def test_bird(self):
+        self.assertEqual(
+            recite(3, 3),
+            [
+                "I know an old lady who swallowed a bird.",
+                "How absurd to swallow a bird!",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+            ],
+        )
+
+    def test_cat(self):
+        self.assertEqual(
+            recite(4, 4),
+            [
+                "I know an old lady who swallowed a cat.",
+                "Imagine that, to swallow a cat!",
+                "She swallowed the cat to catch the bird.",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+            ],
+        )
+
+    def test_dog(self):
+        self.assertEqual(
+            recite(5, 5),
+            [
+                "I know an old lady who swallowed a dog.",
+                "What a hog, to swallow a dog!",
+                "She swallowed the dog to catch the cat.",
+                "She swallowed the cat to catch the bird.",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+            ],
+        )
+
+    def test_goat(self):
+        self.assertEqual(
+            recite(6, 6),
+            [
+                "I know an old lady who swallowed a goat.",
+                "Just opened her throat and swallowed a goat!",
+                "She swallowed the goat to catch the dog.",
+                "She swallowed the dog to catch the cat.",
+                "She swallowed the cat to catch the bird.",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+            ],
+        )
+
+    def test_cow(self):
+        self.assertEqual(
+            recite(7, 7),
+            [
+                "I know an old lady who swallowed a cow.",
+                "I don't know how she swallowed a cow!",
+                "She swallowed the cow to catch the goat.",
+                "She swallowed the goat to catch the dog.",
+                "She swallowed the dog to catch the cat.",
+                "She swallowed the cat to catch the bird.",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+            ],
+        )
+
+    def test_horse(self):
+        self.assertEqual(
+            recite(8, 8),
+            ["I know an old lady who swallowed a horse.", "She's dead, of course!"],
+        )
+
+    def test_multiple_verses(self):
+        self.assertEqual(
+            recite(1, 3),
+            [
+                "I know an old lady who swallowed a fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+                "",
+                "I know an old lady who swallowed a spider.",
+                "It wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+                "",
+                "I know an old lady who swallowed a bird.",
+                "How absurd to swallow a bird!",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+            ],
+        )
+
+    def test_full_song(self):
+        self.assertEqual(
+            recite(1, 8),
+            [
+                "I know an old lady who swallowed a fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+                "",
+                "I know an old lady who swallowed a spider.",
+                "It wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+                "",
+                "I know an old lady who swallowed a bird.",
+                "How absurd to swallow a bird!",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+                "",
+                "I know an old lady who swallowed a cat.",
+                "Imagine that, to swallow a cat!",
+                "She swallowed the cat to catch the bird.",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+                "",
+                "I know an old lady who swallowed a dog.",
+                "What a hog, to swallow a dog!",
+                "She swallowed the dog to catch the cat.",
+                "She swallowed the cat to catch the bird.",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+                "",
+                "I know an old lady who swallowed a goat.",
+                "Just opened her throat and swallowed a goat!",
+                "She swallowed the goat to catch the dog.",
+                "She swallowed the dog to catch the cat.",
+                "She swallowed the cat to catch the bird.",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+                "",
+                "I know an old lady who swallowed a cow.",
+                "I don't know how she swallowed a cow!",
+                "She swallowed the cow to catch the goat.",
+                "She swallowed the goat to catch the dog.",
+                "She swallowed the dog to catch the cat.",
+                "She swallowed the cat to catch the bird.",
+                "She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+                "She swallowed the spider to catch the fly.",
+                "I don't know why she swallowed the fly. Perhaps she'll die.",
+                "",
+                "I know an old lady who swallowed a horse.",
+                "She's dead, of course!",
+            ],
+        )
+
+
+=== Target Test Code ===
+package foodchain
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+)
+
+var text = []string{``,
+
+	`I know an old lady who swallowed a fly.
+I don't know why she swallowed the fly. Perhaps she'll die.`,
+
+	`I know an old lady who swallowed a spider.
+It wriggled and jiggled and tickled inside her.
+She swallowed the spider to catch the fly.
+I don't know why she swallowed the fly. Perhaps she'll die.`,
+
+	`I know an old lady who swallowed a bird.
+How absurd to swallow a bird!
+She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+She swallowed the spider to catch the fly.
+I don't know why she swallowed the fly. Perhaps she'll die.`,
+
+	`I know an old lady who swallowed a cat.
+Imagine that, to swallow a cat!
+She swallowed the cat to catch the bird.
+She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+She swallowed the spider to catch the fly.
+I don't know why she swallowed the fly. Perhaps she'll die.`,
+
+	`I know an old lady who swallowed a dog.
+What a hog, to swallow a dog!
+She swallowed the dog to catch the cat.
+She swallowed the cat to catch the bird.
+She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+She swallowed the spider to catch the fly.
+I don't know why she swallowed the fly. Perhaps she'll die.`,
+
+	`I know an old lady who swallowed a goat.
+Just opened her throat and swallowed a goat!
+She swallowed the goat to catch the dog.
+She swallowed the dog to catch the cat.
+She swallowed the cat to catch the bird.
+She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+She swallowed the spider to catch the fly.
+I don't know why she swallowed the fly. Perhaps she'll die.`,
+
+	`I know an old lady who swallowed a cow.
+I don't know how she swallowed a cow!
+She swallowed the cow to catch the goat.
+She swallowed the goat to catch the dog.
+She swallowed the dog to catch the cat.
+She swallowed the cat to catch the bird.
+She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+She swallowed the spider to catch the fly.
+I don't know why she swallowed the fly. Perhaps she'll die.`,
+
+	`I know an old lady who swallowed a horse.
+She's dead, of course!`,
+}
+
+// diff compares two multi-line strings and returns a helpful comment
+func diff(got, want string) string {
+	g := strings.Split(got, "\n")
+	w := strings.Split(want, "\n")
+	for i := 0; ; i++ {
+		switch {
+		case i < len(g) && i < len(w):
+			if g[i] == w[i] {
+				continue
+			}
+			return fmt.Sprintf("-- first difference in line %d:\n"+
+				"-- got : %q\n-- want: %q\n", i+1, g[i], w[i])
+		case i < len(g):
+			return fmt.Sprintf("-- got %d extra lines after line %d:\n"+
+				"-- first extra line: %q\n", len(g)-len(w), i, g[i])
+		case i < len(w):
+			return fmt.Sprintf("-- got %d correct lines, want %d more lines:\n"+
+				"-- want next: %q\n", i, len(w)-i, w[i])
+		default:
+			return "no differences found"
+		}
+	}
+}
+
+func TestVerse(t *testing.T) {
+	for v := 1; v <= 8; v++ {
+		t.Run(fmt.Sprintf("verse %d", v), func(t *testing.T) {
+			if got := Verse(v); got != text[v] {
+				t.Fatalf("Verse(%d)\ngot:%s\nwant:%s\nhelp: %s", v, got, text[v], diff(got, text[v]))
+			}
+		})
+	}
+}
+
+func TestVerses(t *testing.T) {
+	if got, want := Verses(1, 3), strings.Join(text[1:4], "\n\n"); got != want {
+		t.Fatalf("Verses(1, 3) =\n%s\n  want:\n%s\n%s", got, want, diff(got, want))
+	}
+}
+
+func TestSong(t *testing.T) {
+	if got, want := Song(), strings.Join(text[1:], "\n\n"); got != want {
+		t.Fatalf("Song() =\n%s\n  want:\n%s\n%s", got, want, diff(got, want))
+	}
+}
+
+func BenchmarkSong(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Song()
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/food-chain/.meta/example.go
+package foodchain
+
+import "strings"
+
+// replaceFirst replaces the first occurrence of old in s with new.
+func replaceFirst(s, old, new string) string {
+	idx := strings.Index(s, old)
+	if idx == -1 {
+		return s
+	}
+	return s[:idx] + new + s[idx+len(old):]
+}
+
+// Song returns the entire song as a single string.
+func Song() string {
+	animals := []string{"fly", "spider", "bird", "cat", "dog", "goat", "cow", "horse"}
+	phrases := []string{
+		" wriggled and jiggled and tickled inside her.",
+		"How absurd to swallow a bird!",
+		"Imagine that, to swallow a cat!",
+		"What a hog, to swallow a dog!",
+		"Just opened her throat and swallowed a goat!",
+		"I don't know how she swallowed a cow!",
+		"She's dead, of course!",
+	}
+	oldLady := "I know an old lady who swallowed a "
+	swallowed := "She swallowed the <animal> to catch the "
+	die := "I don't know why she swallowed the fly. Perhaps she'll die."
+
+	song := ""
+	chain := ""
+
+	for i, animal := range animals {
+		verse := oldLady + animal + ".\n"
+		if i == 7 { // horse
+			verse += phrases[6]
+		} else {
+			if i == 0 {
+				chain = swallowed + animal + ".\n"
+			} else if i == 1 {
+				verse += "It" + phrases[0] + "\n"
+				chain = replaceFirst(chain, "<animal>", animal)
+				verse += chain
+				chain = swallowed + animal + " that" + phrases[0] + "\n" + chain
+			} else {
+				verse += phrases[i-1] + "\n"
+				chain = replaceFirst(chain, "<animal>", animal)
+				verse += chain
+				chain = swallowed + animal + ".\n" + chain
+			}
+			verse += die + "\n"
+		}
+		verse += "\n"
+		song += verse
+	}
+
+	return song
+}
+
+// Verse returns the verse for the given verse number (1-indexed).
+func Verse(v int) string {
+	fullSong := Song()
+	trimmed := strings.TrimSuffix(fullSong, "\n")
+	verses := strings.Split(trimmed, "\n\n")
+	if v < 1 || v > len(verses) {
+		return ""
+	}
+	return verses[v-1]
+}
+
+// Verses returns the song verses from start to end (1-indexed and inclusive), joined by a blank line.
+func Verses(start, end int) string {
+	fullSong := Song()
+	trimmed := strings.TrimSuffix(fullSong, "\n")
+	verses := strings.Split(trimmed, "\n\n")
+	if start < 1 || end > len(verses) || start > end {
+		return ""
+	}
+	selected := verses[start-1 : end]
+	return strings.Join(selected, "\n\n")
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestSong (0.00s)
+    food_chain_test.go:105: Song() =
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+        
+          want:
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+        -- got 1 extra lines after line 50:
+        -- first extra line: ""
+FAIL
+FAIL	exercism/food-chain	0.266s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/food-chain/.meta/example.go
+package foodchain
+
+import "strings"
+
+// replaceFirst replaces the first occurrence of old in s with new.
+func replaceFirst(s, old, new string) string {
+	idx := strings.Index(s, old)
+	if idx == -1 {
+		return s
+	}
+	return s[:idx] + new + s[idx+len(old):]
+}
+
+// Song returns the entire song as a single string.
+func Song() string {
+	animals := []string{"fly", "spider", "bird", "cat", "dog", "goat", "cow", "horse"}
+	phrases := []string{
+		" wriggled and jiggled and tickled inside her.",
+		"How absurd to swallow a bird!",
+		"Imagine that, to swallow a cat!",
+		"What a hog, to swallow a dog!",
+		"Just opened her throat and swallowed a goat!",
+		"I don't know how she swallowed a cow!",
+		"She's dead, of course!",
+	}
+	oldLady := "I know an old lady who swallowed a "
+	swallowed := "She swallowed the <animal> to catch the "
+	die := "I don't know why she swallowed the fly. Perhaps she'll die."
+
+	song := ""
+	chain := ""
+
+	for i, animal := range animals {
+		verse := oldLady + animal + ".\n"
+		if i == 7 { // horse
+			verse += phrases[6]
+		} else {
+			if i == 0 {
+				chain = swallowed + animal + ".\n"
+			} else if i == 1 {
+				verse += "It" + phrases[0] + "\n"
+				chain = replaceFirst(chain, "<animal>", animal)
+				verse += chain
+				chain = swallowed + animal + " that" + phrases[0] + "\n" + chain
+			} else {
+				verse += phrases[i-1] + "\n"
+				chain = replaceFirst(chain, "<animal>", animal)
+				verse += chain
+				chain = swallowed + animal + ".\n" + chain
+			}
+			verse += die + "\n"
+		}
+		verse += "\n"
+		song += verse
+	}
+	
+	// Remove the extra blank line at the end
+	return strings.TrimSuffix(song, "\n\n")
+}
+
+// Verse returns the verse for the given verse number (1-indexed).
+func Verse(v int) string {
+	fullSong := Song()
+	verses := strings.Split(fullSong, "\n\n")
+	if v < 1 || v > len(verses) {
+		return ""
+	}
+	return verses[v-1]
+}
+
+// Verses returns the song verses from start to end (1-indexed and inclusive), joined by a blank line.
+func Verses(start, end int) string {
+	fullSong := Song()
+	verses := strings.Split(fullSong, "\n\n")
+	if start < 1 || end > len(verses) || start > end {
+		return ""
+	}
+	return strings.Join(verses[start-1:end], "\n\n")
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestVerse (0.00s)
+    --- FAIL: TestVerse/verse_8 (0.00s)
+        food_chain_test.go:91: Verse(8)
+            got:I know an old lady who swallowed a horse.
+            She's dead, of course!
+            
+            want:I know an old lady who swallowed a horse.
+            She's dead, of course!
+            help: -- got 1 extra lines after line 2:
+            -- first extra line: ""
+--- FAIL: TestSong (0.00s)
+    food_chain_test.go:105: Song() =
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+        
+          want:
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+        -- got 1 extra lines after line 50:
+        -- first extra line: ""
+FAIL
+FAIL	exercism/food-chain	0.549s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/food-chain/.meta/example.go
+package foodchain
+
+import "strings"
+
+// replaceFirst replaces the first occurrence of old in s with new.
+func replaceFirst(s, old, new string) string {
+	idx := strings.Index(s, old)
+	if idx == -1 {
+		return s
+	}
+	return s[:idx] + new + s[idx+len(old):]
+}
+
+// Song returns the entire song as a single string, with verses separated by a blank line.
+func Song() string {
+	animals := []string{"fly", "spider", "bird", "cat", "dog", "goat", "cow", "horse"}
+	phrases := []string{
+		" wriggled and jiggled and tickled inside her.",
+		"How absurd to swallow a bird!",
+		"Imagine that, to swallow a cat!",
+		"What a hog, to swallow a dog!",
+		"Just opened her throat and swallowed a goat!",
+		"I don't know how she swallowed a cow!",
+		"She's dead, of course!",
+	}
+	oldLady := "I know an old lady who swallowed a "
+	swallowed := "She swallowed the <animal> to catch the "
+	die := "I don't know why she swallowed the fly. Perhaps she'll die."
+
+	verses := make([]string, len(animals))
+	chain := ""
+
+	for i, animal := range animals {
+		verse := oldLady + animal + ".\n"
+		if i == 7 { // horse
+			verse += phrases[6]
+		} else {
+			if i == 0 {
+				chain = swallowed + animal + ".\n"
+			} else if i == 1 {
+				verse += "It" + phrases[0] + "\n"
+				chain = replaceFirst(chain, "<animal>", animal)
+				verse += chain
+				chain = swallowed + animal + " that" + phrases[0] + "\n" + chain
+			} else {
+				verse += phrases[i-1] + "\n"
+				chain = replaceFirst(chain, "<animal>", animal)
+				verse += chain
+				chain = swallowed + animal + ".\n" + chain
+			}
+			verse += "\n" + die
+		}
+		verses[i] = verse
+	}
+
+	return strings.Join(verses, "\n\n")
+}
+
+// Verse returns the verse for the given verse number (1-indexed).
+func Verse(v int) string {
+	t := Song()
+	verses := strings.Split(t, "\n\n")
+	if v < 1 || v > len(verses) {
+		return ""
+	}
+	return verses[v-1]
+}
+
+// Verses returns the song verses from start to end (1-indexed and inclusive), joined by a blank line.
+func Verses(start, end int) string {
+	t := Song()
+	verses := strings.Split(t, "\n\n")
+	if start < 1 || end > len(verses) || start > end {
+		return ""
+	}
+	return strings.Join(verses[start-1:end], "\n\n")
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestVerse (0.00s)
+    --- FAIL: TestVerse/verse_1 (0.00s)
+        food_chain_test.go:91: Verse(1)
+            got:I know an old lady who swallowed a fly.
+            want:I know an old lady who swallowed a fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- got 1 correct lines, want 1 more lines:
+            -- want next: "I don't know why she swallowed the fly. Perhaps she'll die."
+    --- FAIL: TestVerse/verse_2 (0.00s)
+        food_chain_test.go:91: Verse(2)
+            got:I don't know why she swallowed the fly. Perhaps she'll die.
+            want:I know an old lady who swallowed a spider.
+            It wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I don't know why she swallowed the fly. Perhaps she'll die."
+            -- want: "I know an old lady who swallowed a spider."
+    --- FAIL: TestVerse/verse_3 (0.00s)
+        food_chain_test.go:91: Verse(3)
+            got:I know an old lady who swallowed a spider.
+            It wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            want:I know an old lady who swallowed a bird.
+            How absurd to swallow a bird!
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I know an old lady who swallowed a spider."
+            -- want: "I know an old lady who swallowed a bird."
+    --- FAIL: TestVerse/verse_4 (0.00s)
+        food_chain_test.go:91: Verse(4)
+            got:I don't know why she swallowed the fly. Perhaps she'll die.
+            want:I know an old lady who swallowed a cat.
+            Imagine that, to swallow a cat!
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I don't know why she swallowed the fly. Perhaps she'll die."
+            -- want: "I know an old lady who swallowed a cat."
+    --- FAIL: TestVerse/verse_5 (0.00s)
+        food_chain_test.go:91: Verse(5)
+            got:I know an old lady who swallowed a bird.
+            How absurd to swallow a bird!
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            want:I know an old lady who swallowed a dog.
+            What a hog, to swallow a dog!
+            She swallowed the dog to catch the cat.
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I know an old lady who swallowed a bird."
+            -- want: "I know an old lady who swallowed a dog."
+    --- FAIL: TestVerse/verse_6 (0.00s)
+        food_chain_test.go:91: Verse(6)
+            got:I don't know why she swallowed the fly. Perhaps she'll die.
+            want:I know an old lady who swallowed a goat.
+            Just opened her throat and swallowed a goat!
+            She swallowed the goat to catch the dog.
+            She swallowed the dog to catch the cat.
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I don't know why she swallowed the fly. Perhaps she'll die."
+            -- want: "I know an old lady who swallowed a goat."
+    --- FAIL: TestVerse/verse_7 (0.00s)
+        food_chain_test.go:91: Verse(7)
+            got:I know an old lady who swallowed a cat.
+            Imagine that, to swallow a cat!
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            want:I know an old lady who swallowed a cow.
+            I don't know how she swallowed a cow!
+            She swallowed the cow to catch the goat.
+            She swallowed the goat to catch the dog.
+            She swallowed the dog to catch the cat.
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I know an old lady who swallowed a cat."
+            -- want: "I know an old lady who swallowed a cow."
+    --- FAIL: TestVerse/verse_8 (0.00s)
+        food_chain_test.go:91: Verse(8)
+            got:I don't know why she swallowed the fly. Perhaps she'll die.
+            want:I know an old lady who swallowed a horse.
+            She's dead, of course!
+            help: -- first difference in line 1:
+            -- got : "I don't know why she swallowed the fly. Perhaps she'll die."
+            -- want: "I know an old lady who swallowed a horse."
+--- FAIL: TestVerses (0.00s)
+    food_chain_test.go:99: Verses(1, 3) =
+        I know an old lady who swallowed a fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+          want:
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        -- first difference in line 2:
+        -- got : ""
+        -- want: "I don't know why she swallowed the fly. Perhaps she'll die."
+--- FAIL: TestSong (0.00s)
+    food_chain_test.go:105: Song() =
+        I know an old lady who swallowed a fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+          want:
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+        -- first difference in line 2:
+        -- got : ""
+        -- want: "I don't know why she swallowed the fly. Perhaps she'll die."
+FAIL
+FAIL	exercism/food-chain	0.281s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/food-chain/.meta/example.go
+package foodchain
+
+import "strings"
+
+// replaceFirst replaces the first occurrence of old in s with new.
+func replaceFirst(s, old, new string) string {
+	idx := strings.Index(s, old)
+	if idx == -1 {
+		return s
+	}
+	return s[:idx] + new + s[idx+len(old):]
+}
+
+// Song returns the entire song as a single string, with verses separated by a blank line.
+func Song() string {
+	animals := []string{"fly", "spider", "bird", "cat", "dog", "goat", "cow", "horse"}
+	phrases := []string{
+		" wriggled and jiggled and tickled inside her.",
+		"How absurd to swallow a bird!",
+		"Imagine that, to swallow a cat!",
+		"What a hog, to swallow a dog!",
+		"Just opened her throat and swallowed a goat!",
+		"I don't know how she swallowed a cow!",
+		"She's dead, of course!",
+	}
+	oldLady := "I know an old lady who swallowed a "
+	// Note: swallowed contains a placeholder <animal> to be replaced in later verses
+	swallowed := "She swallowed the <animal> to catch the "
+	die := "I don't know why she swallowed the fly. Perhaps she'll die."
+
+	verses := make([]string, len(animals))
+	var chain string
+
+	for i, animal := range animals {
+		title := oldLady + animal + "."
+		var verse string
+	
+		if i == 0 {
+			// Verse 1: only the title and the die line
+			verse = title + "\n" + die
+			// Initialize chain for later verses; note the placeholder remains in swallowed
+			chain = swallowed + animal + ".\n"
+		} else if i == 7 {
+			// Verse for the horse: special case, no die line and no chain
+			verse = title + "\n" + phrases[6]
+		} else if i == 1 {
+			// Verse 2
+			verse = title + "\n" + "It" + phrases[0] + "\n"
+			chain = replaceFirst(chain, "<animal>", animal)
+			verse += chain
+			chain = swallowed + animal + " that" + phrases[0] + "\n" + chain
+			verse += "\n" + die
+		} else {
+			// Verses 3 to 7 (except horse)
+			verse = title + "\n" + phrases[i-1] + "\n"
+			chain = replaceFirst(chain, "<animal>", animal)
+			verse += chain
+			chain = swallowed + animal + ".\n" + chain
+			verse += "\n" + die
+		}
+		
+		verses[i] = verse
+	}
+
+	return strings.Join(verses, "\n\n")
+}
+
+// Verse returns the verse for the given verse number (1-indexed).
+func Verse(v int) string {
+	s := Song()
+	verses := strings.Split(s, "\n\n")
+	if v < 1 || v > len(verses) {
+		return ""
+	}
+	return verses[v-1]
+}
+
+// Verses returns the song verses from start to end (1-indexed, inclusive), joined by a blank line.
+func Verses(start, end int) string {
+	s := Song()
+	verses := strings.Split(s, "\n\n")
+	if start < 1 || end > len(verses) || start > end {
+		return ""
+	}
+	return strings.Join(verses[start-1:end], "\n\n")
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestVerse (0.00s)
+    --- FAIL: TestVerse/verse_2 (0.00s)
+        food_chain_test.go:91: Verse(2)
+            got:I know an old lady who swallowed a spider.
+            It wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            want:I know an old lady who swallowed a spider.
+            It wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- got 3 correct lines, want 1 more lines:
+            -- want next: "I don't know why she swallowed the fly. Perhaps she'll die."
+    --- FAIL: TestVerse/verse_3 (0.00s)
+        food_chain_test.go:91: Verse(3)
+            got:I don't know why she swallowed the fly. Perhaps she'll die.
+            want:I know an old lady who swallowed a bird.
+            How absurd to swallow a bird!
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I don't know why she swallowed the fly. Perhaps she'll die."
+            -- want: "I know an old lady who swallowed a bird."
+    --- FAIL: TestVerse/verse_4 (0.00s)
+        food_chain_test.go:91: Verse(4)
+            got:I know an old lady who swallowed a bird.
+            How absurd to swallow a bird!
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            want:I know an old lady who swallowed a cat.
+            Imagine that, to swallow a cat!
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I know an old lady who swallowed a bird."
+            -- want: "I know an old lady who swallowed a cat."
+    --- FAIL: TestVerse/verse_5 (0.00s)
+        food_chain_test.go:91: Verse(5)
+            got:I don't know why she swallowed the fly. Perhaps she'll die.
+            want:I know an old lady who swallowed a dog.
+            What a hog, to swallow a dog!
+            She swallowed the dog to catch the cat.
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I don't know why she swallowed the fly. Perhaps she'll die."
+            -- want: "I know an old lady who swallowed a dog."
+    --- FAIL: TestVerse/verse_6 (0.00s)
+        food_chain_test.go:91: Verse(6)
+            got:I know an old lady who swallowed a cat.
+            Imagine that, to swallow a cat!
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            want:I know an old lady who swallowed a goat.
+            Just opened her throat and swallowed a goat!
+            She swallowed the goat to catch the dog.
+            She swallowed the dog to catch the cat.
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I know an old lady who swallowed a cat."
+            -- want: "I know an old lady who swallowed a goat."
+    --- FAIL: TestVerse/verse_7 (0.00s)
+        food_chain_test.go:91: Verse(7)
+            got:I don't know why she swallowed the fly. Perhaps she'll die.
+            want:I know an old lady who swallowed a cow.
+            I don't know how she swallowed a cow!
+            She swallowed the cow to catch the goat.
+            She swallowed the goat to catch the dog.
+            She swallowed the dog to catch the cat.
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 1:
+            -- got : "I don't know why she swallowed the fly. Perhaps she'll die."
+            -- want: "I know an old lady who swallowed a cow."
+    --- FAIL: TestVerse/verse_8 (0.00s)
+        food_chain_test.go:91: Verse(8)
+            got:I know an old lady who swallowed a dog.
+            What a hog, to swallow a dog!
+            She swallowed the dog to catch the cat.
+            She swallowed the cat to catch the bird.
+            She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            want:I know an old lady who swallowed a horse.
+            She's dead, of course!
+            help: -- first difference in line 1:
+            -- got : "I know an old lady who swallowed a dog."
+            -- want: "I know an old lady who swallowed a horse."
+--- FAIL: TestVerses (0.00s)
+    food_chain_test.go:99: Verses(1, 3) =
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+          want:
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        -- first difference in line 7:
+        -- got : ""
+        -- want: "I don't know why she swallowed the fly. Perhaps she'll die."
+--- FAIL: TestSong (0.00s)
+    food_chain_test.go:105: Song() =
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+          want:
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+        -- first difference in line 7:
+        -- got : ""
+        -- want: "I don't know why she swallowed the fly. Perhaps she'll die."
+FAIL
+FAIL	exercism/food-chain	0.336s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/food-chain/.meta/example.go
+package foodchain
+
+import "strings"
+
+// Song returns the entire song as a single string, with verses separated by a blank line.
+func Song() string {
+	animals := []string{"fly", "spider", "bird", "cat", "dog", "goat", "cow", "horse"}
+
+	// Unique phrases for each animal (index aligned with animals).
+	unique := []string{
+		"", // fly has no unique opening line
+		"It wriggled and tickled inside her.",
+		"How absurd to swallow a bird!",
+		"Imagine that, to swallow a cat!",
+		"What a hog, to swallow a dog!",
+		"Just opened her throat and swallowed a goat!",
+		"I don't know how she swallowed a cow!",
+		"She's dead, of course!",
+	}
+
+	die := "I don't know why she swallowed the fly. Perhaps she'll die."
+
+	// Chain lines for building the cumulative part of the song (for verses 2 to 7).
+	chainLines := []string{
+		"She swallowed the spider to catch the fly.",
+		"She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+		"She swallowed the cat to catch the bird.",
+		"She swallowed the dog to catch the cat.",
+		"She swallowed the goat to catch the dog.",
+		"She swallowed the cow to catch the goat.",
+	}
+
+	verses := make([]string, len(animals))
+
+	for i := 0; i < len(animals); i++ {
+		lines := []string{}
+		// First line: title for the verse
+		lines = append(lines, "I know an old lady who swallowed a "+animals[i]+".")
+
+		if i == 0 {
+			// Verse 1: only the title and the die line
+			lines = append(lines, die)
+		} else if i == len(animals)-1 {
+			// Last verse (horse): special case, only the title and the unique line
+			lines = append(lines, unique[i])
+		} else {
+			// For verses 2 to 7
+			lines = append(lines, unique[i])
+			// Append the chain lines in reverse order: from current-1 down to 0
+			for k := i - 1; k >= 0; k-- {
+				lines = append(lines, chainLines[k])
+			}
+			lines = append(lines, die)
+		}
+
+		verses[i] = strings.Join(lines, "\n")
+	}
+
+	return strings.Join(verses, "\n\n")
+}
+
+// Verse returns the verse for the given verse number (1-indexed).
+func Verse(v int) string {
+	t := Song()
+	verses := strings.Split(t, "\n\n")
+	if v < 1 || v > len(verses) {
+		return ""
+	}
+	return verses[v-1]
+}
+
+// Verses returns the song verses from start to end (1-indexed, inclusive), joined by a blank line.
+func Verses(start, end int) string {
+	t := Song()
+	verses := strings.Split(t, "\n\n")
+	if start < 1 || end > len(verses) || start > end {
+		return ""
+	}
+	return strings.Join(verses[start-1:end], "\n\n")
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestVerse (0.00s)
+    --- FAIL: TestVerse/verse_2 (0.00s)
+        food_chain_test.go:91: Verse(2)
+            got:I know an old lady who swallowed a spider.
+            It wriggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            want:I know an old lady who swallowed a spider.
+            It wriggled and jiggled and tickled inside her.
+            She swallowed the spider to catch the fly.
+            I don't know why she swallowed the fly. Perhaps she'll die.
+            help: -- first difference in line 2:
+            -- got : "It wriggled and tickled inside her."
+            -- want: "It wriggled and jiggled and tickled inside her."
+--- FAIL: TestVerses (0.00s)
+    food_chain_test.go:99: Verses(1, 3) =
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+          want:
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        -- first difference in line 5:
+        -- got : "It wriggled and tickled inside her."
+        -- want: "It wriggled and jiggled and tickled inside her."
+--- FAIL: TestSong (0.00s)
+    food_chain_test.go:105: Song() =
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+          want:
+        I know an old lady who swallowed a fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a spider.
+        It wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a bird.
+        How absurd to swallow a bird!
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cat.
+        Imagine that, to swallow a cat!
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a dog.
+        What a hog, to swallow a dog!
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a goat.
+        Just opened her throat and swallowed a goat!
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a cow.
+        I don't know how she swallowed a cow!
+        She swallowed the cow to catch the goat.
+        She swallowed the goat to catch the dog.
+        She swallowed the dog to catch the cat.
+        She swallowed the cat to catch the bird.
+        She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.
+        She swallowed the spider to catch the fly.
+        I don't know why she swallowed the fly. Perhaps she'll die.
+        
+        I know an old lady who swallowed a horse.
+        She's dead, of course!
+        -- first difference in line 5:
+        -- got : "It wriggled and tickled inside her."
+        -- want: "It wriggled and jiggled and tickled inside her."
+FAIL
+FAIL	exercism/food-chain	0.330s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/food-chain/.meta/example.go
+package foodchain
+
+import "strings"
+
+// Song returns the entire song as a single string, with verses separated by a blank line.
+func Song() string {
+	animals := []string{"fly", "spider", "bird", "cat", "dog", "goat", "cow", "horse"}
+
+	// Unique opening lines for each animal (index aligned with animals).
+	// Note: The fly (index 0) has no unique line.
+	unique := []string{
+		"", // fly
+		"It wriggled and jiggled and tickled inside her.",
+		"How absurd to swallow a bird!",
+		"Imagine that, to swallow a cat!",
+		"What a hog, to swallow a dog!",
+		"Just opened her throat and swallowed a goat!",
+		"I don't know how she swallowed a cow!",
+		"She's dead, of course!",
+	}
+
+	die := "I don't know why she swallowed the fly. Perhaps she'll die."
+
+	// Chain lines used for the cumulative part of the song for verses 2 to 7.
+	chainLines := []string{
+		"She swallowed the spider to catch the fly.",
+		"She swallowed the bird to catch the spider that wriggled and jiggled and tickled inside her.",
+		"She swallowed the cat to catch the bird.",
+		"She swallowed the dog to catch the cat.",
+		"She swallowed the goat to catch the dog.",
+		"She swallowed the cow to catch the goat.",
+	}
+
+	verses := make([]string, len(animals))
+
+	for i := 0; i < len(animals); i++ {
+		lines := []string{}
+		// Title line
+		lines = append(lines, "I know an old lady who swallowed a "+animals[i]+".")
+
+		if i == 0 {
+			// Verse 1: only the title and the die line
+			lines = append(lines, die)
+		} else if i == len(animals)-1 {
+			// Verse for the horse: special case without cumulative chain and die line
+			lines = append(lines, unique[i])
+		} else {
+			// Verses 2 to 7
+			lines = append(lines, unique[i])
+			// Append the chain lines in reverse order, from current-1 down to 0
+			for k := i - 1; k >= 0; k-- {
+				lines = append(lines, chainLines[k])
+			}
+			lines = append(lines, die)
+		}
+
+		verses[i] = strings.Join(lines, "\n")
+	}
+
+	return strings.Join(verses, "\n\n")
+}
+
+// Verse returns the verse for the given verse number (1-indexed).
+func Verse(v int) string {
+	s := Song()
+	verses := strings.Split(s, "\n\n")
+	if v < 1 || v > len(verses) {
+		return ""
+	}
+	return verses[v-1]
+}
+
+// Verses returns the song verses from start to end (1-indexed, inclusive), joined by a blank line.
+func Verses(start, end int) string {
+	s := Song()
+	verses := strings.Split(s, "\n\n")
+	if start < 1 || end > len(verses) || start > end {
+		return ""
+	}
+	return strings.Join(verses[start-1:end], "\n\n")
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/food-chain	0.278s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

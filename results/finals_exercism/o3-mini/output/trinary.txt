@@ -1,0 +1,754 @@
+=== Initial Source Code ===
+Source file: exercises/practice/trinary/.meta/example.py
+from functools import reduce
+
+
+def trinary(string):
+    if set(string) - set('012'):
+        return 0
+    return reduce(lambda idx, edx: idx * 3 + int(edx), string, 0)
+
+
+=== Source Interface ===
+def trinary(string):
+    pass
+
+
+=== Target Interface ===
+package trinary
+
+func ParseTrinary(arg string, want int64, ok bool) {
+	panic("Please implement the ParseTrinary function")
+}
+
+
+=== Source Test Code ===
+import unittest
+
+from trinary import trinary
+
+
+class TrinaryTest(unittest.TestCase):
+    def test_valid_trinary1(self):
+        self.assertEqual(trinary('0'), 0)
+
+    def test_valid_trinary2(self):
+        self.assertEqual(trinary('1'), 1)
+
+    def test_valid_trinary3(self):
+        self.assertEqual(trinary('10'), 3)
+
+    def test_valid_trinary4(self):
+        self.assertEqual(trinary('102101'), 307)
+
+    def test_valid_trinary5(self):
+        self.assertEqual(trinary('22222'), 242)
+
+    def test_valid_trinary6(self):
+        self.assertEqual(trinary('10000'), 81)
+
+    def test_invalid_trinary(self):
+        self.assertEqual(trinary('13201'), 0)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+=== Target Test Code ===
+package trinary
+
+import "testing"
+
+var tests = []struct {
+	arg  string
+	want int64
+	ok   bool
+}{
+	{"0", 0, true},
+	{"1", 1, true},
+	{"2", 2, true},
+	{"10", 3, true},
+	{"201", 19, true},
+	{"0201", 19, true},
+	{"0000000000000000000000000000000000000000201", 19, true},
+	{"2021110011022210012102010021220101220221", 9223372036854775807, true},
+	{"2021110011022210012102010021220101220222", 0, false},
+}
+
+func TestParseTrinary(t *testing.T) {
+	for _, test := range tests {
+		switch res, err := ParseTrinary(test.arg); {
+		case err != nil:
+			var _ error = err
+			if test.ok {
+				t.Errorf("ParseTrinary(%q) returned error %q, Error not expected",
+					test.arg, err)
+			}
+		case !test.ok:
+			t.Errorf("ParseTrinary(%q) = %d, %v, expected error", test.arg, res, err)
+		case res != test.want:
+			t.Errorf("ParseTrinary(%q) = %d, want %d", test.arg, res, test.want)
+		}
+	}
+}
+
+func BenchmarkParseTrinary(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			ParseTrinary(test.arg)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import "fmt"
+
+// ParseTrinary converts a trinary number (base 3) given as a string to its int64 representation.
+// It returns (0, false) if the input contains any invalid digit.
+// For an empty string, it returns (0, true).
+func ParseTrinary(arg string) (int64, bool) {
+	var result int64 = 0
+	for i := 0; i < len(arg); i++ {
+		c := arg[i]
+		if c < '0' || c > '2' {
+			return 0, false
+		}
+		result = result*3 + int64(c-'0')
+	}
+	return result, true
+}
+
+// The following stub was provided as the interface to implement:
+// func ParseTrinary(arg string, want int64, ok bool) {
+//     panic("Please implement the ParseTrinary function")
+// }
+
+// For demonstration purposes, a main function could be added, but it is omitted as tests drive the verification.
+
+// exercises/practice/trinary/.meta/example_test.go
+package trinary
+
+import "testing"
+
+func TestParseTrinary(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int64
+		valid bool
+	}{
+		// Valid cases
+		{"", 0, true},
+		{"1", 1, true},
+		{"2", 2, true},
+		{"10", 3, true},
+		{"112", 14, true},
+		{"121", 16, true},
+		{"102012", 302, true},
+		
+		// Invalid cases
+		{"abc", 0, false},
+		{"2a", 0, false},
+		{"3", 0, false},
+	}
+
+	for _, tt := range tests {
+		got, valid := ParseTrinary(tt.input)
+		if got != tt.want || valid != tt.valid {
+			t.Errorf("ParseTrinary(%q) = (%d, %v), want (%d, %v)", tt.input, got, valid, tt.want, tt.valid)
+		}
+	}
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary.go:29:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"errors"
+	"math"
+	"testing"
+)
+
+// ParseTrinary converts a trinary (base-3) number represented as a string into an int64.
+// It returns an error if the string contains invalid characters or if the number overflows int64.
+func ParseTrinary(arg string) (int64, error) {
+	var result int64 = 0
+	for i := 0; i < len(arg); i++ {
+		c := arg[i]
+		if c < '0' || c > '2' {
+			return 0, errors.New("invalid input")
+		}
+		digit := int64(c - '0')
+		// Check for overflow before multiplying and adding the digit
+		if result > (math.MaxInt64-digit)/3 {
+			return 0, errors.New("overflow")
+		}
+		result = result*3 + digit
+	}
+	return result, nil
+}
+
+// Test cases for ParseTrinary
+var tests = []struct {
+	arg  string
+	want int64
+	ok   bool
+}{
+	// Basic valid cases
+	{"0", 0, true},
+	{"1", 1, true},
+	{"2", 2, true},
+	{"10", 3, true},
+	{"201", 19, true},
+	{"0201", 19, true},
+	{"0000000000000000000000000000000000000000201", 19, true},
+	// Maximum valid trinary value for int64
+	{"2021110011022210012102010021220101220221", 9223372036854775807, true},
+	// Overflow case
+	{"2021110011022210012102010021220101220222", 0, false},
+}
+
+// TestParseTrinary tests the ParseTrinary function with various inputs.
+func TestParseTrinary(t *testing.T) {
+	for _, test := range tests {
+		res, err := ParseTrinary(test.arg)
+		if err != nil {
+			if test.ok {
+				t.Errorf("ParseTrinary(%q) returned unexpected error: %v", test.arg, err)
+			}
+		} else {
+			if !test.ok {
+				t.Errorf("ParseTrinary(%q) = %d, expected an error", test.arg, res)
+			} else if res != test.want {
+				t.Errorf("ParseTrinary(%q) = %d, want %d", test.arg, res, test.want)
+			}
+		}
+	}
+}
+
+// BenchmarkParseTrinary benchmarks the ParseTrinary function.
+func BenchmarkParseTrinary(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			ParseTrinary(test.arg)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary_test.go:5:5: tests redeclared in this block
+	./trinary.go:30:5: other declaration of tests
+./trinary_test.go:21:6: TestParseTrinary redeclared in this block
+	./trinary.go:50:6: other declaration of TestParseTrinary
+./trinary_test.go:38:6: BenchmarkParseTrinary redeclared in this block
+	./trinary.go:68:6: other declaration of BenchmarkParseTrinary
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"errors"
+	"math"
+)
+
+// ParseTrinary converts a trinary (base-3) number represented as a string into an int64.
+// It returns an error if the string contains invalid characters or if the number overflows int64.
+func ParseTrinary(arg string) (int64, error) {
+	var result int64 = 0
+	for i := 0; i < len(arg); i++ {
+		c := arg[i]
+		if c < '0' || c > '2' {
+			return 0, errors.New("invalid input")
+		}
+		digit := int64(c - '0')
+		// Check for overflow before multiplying and adding the digit
+		if result > (math.MaxInt64-digit)/3 {
+			return 0, errors.New("overflow")
+		}
+		result = result*3 + digit
+	}
+	return result, nil
+}
+
+// exercises/practice/trinary/.meta/example_test.go
+package trinary
+
+import "testing"
+
+var tests = []struct {
+	arg  string
+	want int64
+	ok   bool
+}{
+	{"0", 0, true},
+	{"1", 1, true},
+	{"2", 2, true},
+	{"10", 3, true},
+	{"201", 19, true},
+	{"0201", 19, true},
+	{"0000000000000000000000000000000000000000201", 19, true},
+	{"2021110011022210012102010021220101220221", 9223372036854775807, true},
+	{"2021110011022210012102010021220101220222", 0, false},
+}
+
+// TestParseTrinary tests the ParseTrinary function with various valid and invalid inputs.
+func TestParseTrinary(t *testing.T) {
+	for _, test := range tests {
+		res, err := ParseTrinary(test.arg)
+		if err != nil {
+			if test.ok {
+				t.Errorf("ParseTrinary(%q) returned unexpected error: %v", test.arg, err)
+			}
+		} else {
+			if !test.ok {
+				t.Errorf("ParseTrinary(%q) = %d, expected an error", test.arg, res)
+			} else if res != test.want {
+				t.Errorf("ParseTrinary(%q) = %d, want %d", test.arg, res, test.want)
+			}
+		}
+	}
+}
+
+// BenchmarkParseTrinary benchmarks the ParseTrinary function.
+func BenchmarkParseTrinary(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			ParseTrinary(test.arg)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary.go:29:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"errors"
+	"math"
+)
+
+// ParseTrinary converts a trinary (base-3) number represented as a string into an int64.
+// It returns an error if the string contains invalid characters or if the number overflows int64.
+func ParseTrinary(arg string) (int64, error) {
+	var result int64 = 0
+	for i := 0; i < len(arg); i++ {
+		c := arg[i]
+		if c < '0' || c > '2' {
+			return 0, errors.New("invalid input")
+		}
+		digit := int64(c - '0')
+		// Check for potential overflow before multiplying and adding the digit
+		if result > (math.MaxInt64-digit)/3 {
+			return 0, errors.New("overflow")
+		}
+		result = result*3 + digit
+	}
+	return result, nil
+}
+
+// exercises/practice/trinary/.meta/example_test.go
+package trinary
+
+import "testing"
+
+var tests = []struct {
+	arg  string
+	want int64
+	ok   bool
+}{
+	{"0", 0, true},
+	{"1", 1, true},
+	{"2", 2, true},
+	{"10", 3, true},
+	{"201", 19, true},
+	{"0201", 19, true},
+	{"0000000000000000000000000000000000000000201", 19, true},
+	{"2021110011022210012102010021220101220221", 9223372036854775807, true},
+	{"2021110011022210012102010021220101220222", 0, false},
+}
+
+// TestParseTrinary tests the ParseTrinary function with a variety of inputs.
+func TestParseTrinary(t *testing.T) {
+	for _, test := range tests {
+		res, err := ParseTrinary(test.arg)
+		if err != nil {
+			if test.ok {
+				t.Errorf("ParseTrinary(%q) returned unexpected error: %v", test.arg, err)
+			}
+		} else {
+			if !test.ok {
+				t.Errorf("ParseTrinary(%q) = %d, expected an error", test.arg, res)
+			} else if res != test.want {
+				t.Errorf("ParseTrinary(%q) = %d, want %d", test.arg, res, test.want)
+			}
+		}
+	}
+}
+
+// BenchmarkParseTrinary benchmarks the ParseTrinary function.
+func BenchmarkParseTrinary(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			ParseTrinary(test.arg)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary.go:29:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"errors"
+	"math"
+)
+
+// ParseTrinary converts a trinary (base-3) number represented as a string into an int64.
+// It returns an error if the string contains invalid characters or if the number overflows int64.
+func ParseTrinary(arg string) (int64, error) {
+	var result int64 = 0
+	for i := 0; i < len(arg); i++ {
+		c := arg[i]
+		if c < '0' || c > '2' {
+			return 0, errors.New("invalid input")
+		}
+		digit := int64(c - '0')
+		if result > (math.MaxInt64-digit)/3 {
+			return 0, errors.New("overflow")
+		}
+		result = result*3 + digit
+	}
+	return result, nil
+}
+
+// exercises/practice/trinary/.meta/example_test.go
+package trinary
+
+import "testing"
+
+var tests = []struct {
+	arg  string
+	want int64
+	ok   bool
+}{
+	{"0", 0, true},
+	{"1", 1, true},
+	{"2", 2, true},
+	{"10", 3, true},
+	{"201", 19, true},
+	{"0201", 19, true},
+	{"0000000000000000000000000000000000000000201", 19, true},
+	{"2021110011022210012102010021220101220221", 9223372036854775807, true},
+	{"2021110011022210012102010021220101220222", 0, false},
+}
+
+// TestParseTrinary tests the ParseTrinary function with a variety of inputs.
+func TestParseTrinary(t *testing.T) {
+	for _, test := range tests {
+		res, err := ParseTrinary(test.arg)
+		if err != nil {
+			if test.ok {
+				t.Errorf("ParseTrinary(%q) returned unexpected error: %v", test.arg, err)
+			}
+		} else {
+			if !test.ok {
+				t.Errorf("ParseTrinary(%q) = %d, expected an error", test.arg, res)
+			} else if res != test.want {
+				t.Errorf("ParseTrinary(%q) = %d, want %d", test.arg, res, test.want)
+			}
+		}
+	}
+}
+
+// BenchmarkParseTrinary benchmarks the ParseTrinary function.
+func BenchmarkParseTrinary(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			ParseTrinary(test.arg)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary.go:28:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"errors"
+	"math"
+)
+
+// ParseTrinary converts a trinary (base-3) number represented as a string into an int64.
+// It returns an error if the string contains invalid characters or if the number overflows int64.
+func ParseTrinary(arg string) (int64, error) {
+	var result int64 = 0
+	for i := 0; i < len(arg); i++ {
+		c := arg[i]
+		if c < '0' || c > '2' {
+			return 0, errors.New("invalid input")
+		}
+		digit := int64(c - '0')
+		// Check for overflow before multiplying and adding the digit
+		if result > (math.MaxInt64-digit)/3 {
+			return 0, errors.New("overflow")
+		}
+		result = result*3 + digit
+	}
+	return result, nil
+}
+
+// exercises/practice/trinary/.meta/example_test.go
+package trinary
+
+import "testing"
+
+var tests = []struct {
+	arg  string
+	want int64
+	ok   bool
+}{
+	{"0", 0, true},
+	{"1", 1, true},
+	{"2", 2, true},
+	{"10", 3, true},
+	{"201", 19, true},
+	{"0201", 19, true},
+	{"0000000000000000000000000000000000000000201", 19, true},
+	{"2021110011022210012102010021220101220221", 9223372036854775807, true},
+	{"2021110011022210012102010021220101220222", 0, false},
+}
+
+// TestParseTrinary tests the ParseTrinary function with a variety of inputs.
+func TestParseTrinary(t *testing.T) {
+	for _, test := range tests {
+		res, err := ParseTrinary(test.arg)
+		if err != nil {
+			if test.ok {
+				t.Errorf("ParseTrinary(%q) returned unexpected error: %v", test.arg, err)
+			}
+		} else {
+			if !test.ok {
+				t.Errorf("ParseTrinary(%q) = %d, expected an error", test.arg, res)
+			} else if res != test.want {
+				t.Errorf("ParseTrinary(%q) = %d, want %d", test.arg, res, test.want)
+			}
+		}
+	}
+}
+
+// BenchmarkParseTrinary benchmarks the ParseTrinary function.
+func BenchmarkParseTrinary(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			ParseTrinary(test.arg)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary.go:29:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"errors"
+	"math"
+)
+
+// ParseTrinary converts a trinary (base-3) number represented as a string into an int64.
+// It returns an error if the input contains invalid characters or if the number overflows int64.
+func ParseTrinary(arg string) (int64, error) {
+	var result int64 = 0
+	for i := 0; i < len(arg); i++ {
+		c := arg[i]
+		if c < '0' || c > '2' {
+			return 0, errors.New("invalid input")
+		}
+		digit := int64(c - '0')
+		// Check for overflow before multiplying and adding the digit
+		if result > (math.MaxInt64-digit)/3 {
+			return 0, errors.New("overflow")
+		}
+		result = result*3 + digit
+	}
+	return result, nil
+}
+
+// exercises/practice/trinary/.meta/example_test.go
+package trinary
+
+import "testing"
+
+var tests = []struct {
+	arg  string
+	want int64
+	ok   bool
+}{
+	{"0", 0, true},
+	{"1", 1, true},
+	{"2", 2, true},
+	{"10", 3, true},
+	{"201", 19, true},
+	{"0201", 19, true},
+	{"0000000000000000000000000000000000000000201", 19, true},
+	{"2021110011022210012102010021220101220221", 9223372036854775807, true},
+	{"2021110011022210012102010021220101220222", 0, false},
+}
+
+// TestParseTrinary tests the ParseTrinary function with a suite of valid and invalid inputs.
+func TestParseTrinary(t *testing.T) {
+	for _, test := range tests {
+		res, err := ParseTrinary(test.arg)
+		if err != nil {
+			if test.ok {
+				t.Errorf("ParseTrinary(%q) returned unexpected error: %v", test.arg, err)
+			}
+		} else {
+			if !test.ok {
+				t.Errorf("ParseTrinary(%q) = %d, expected an error", test.arg, res)
+			} else if res != test.want {
+				t.Errorf("ParseTrinary(%q) = %d, want %d", test.arg, res, test.want)
+			}
+		}
+	}
+}
+
+// BenchmarkParseTrinary benchmarks the ParseTrinary function.
+func BenchmarkParseTrinary(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			ParseTrinary(test.arg)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/trinary [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/trinary [exercism/trinary.test]
+./trinary.go:29:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/trinary/.meta/example.go
+package trinary
+
+import (
+	"errors"
+	"math"
+)
+
+// ParseTrinary converts a trinary (base-3) number represented as a string into an int64.
+// It returns an error if the input contains invalid characters or if the number overflows int64.
+func ParseTrinary(arg string) (int64, error) {
+	var result int64 = 0
+	for i := 0; i < len(arg); i++ {
+		c := arg[i]
+		if c < '0' || c > '2' {
+			return 0, errors.New("invalid input")
+		}
+		digit := int64(c - '0')
+		// Check for overflow before multiplying and adding the digit
+		if result > (math.MaxInt64-digit)/3 {
+			return 0, errors.New("overflow")
+		}
+		result = result*3 + digit
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/trinary	0.278s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,767 @@
+=== Initial Source Code ===
+Source file: exercises/practice/ocr-numbers/.meta/example.py
+NUM_ROWS = 4
+NUM_COLS = 3
+
+
+def split_ocr(ocr):
+    return [[ocr[idx][NUM_COLS * jam:NUM_COLS * (jam + 1)] for idx in range(NUM_ROWS)]
+            for jam in range(len(ocr[0]) // NUM_COLS)]
+
+
+ALL = ['    _  _     _  _  _  _  _  _ ',
+       '  | _| _||_||_ |_   ||_||_|| |',
+       '  ||_  _|  | _||_|  ||_| _||_|',
+       '                              ']
+
+OCR_LIST = split_ocr(ALL)
+OCR_LIST = [OCR_LIST[-1]] + OCR_LIST[:9]
+
+
+def convert(input_grid):
+    split_indices = (list(range(0, len(input_grid), NUM_ROWS)) +
+                     [len(input_grid)])
+
+    lines = [input_grid[start:end]
+             for start, end in zip(split_indices[:-1], split_indices[1:])]
+
+    return ','.join(convert_one_line(line) for line in lines)
+
+
+def convert_one_line(input_grid):
+    if len(input_grid) != NUM_ROWS:
+        raise ValueError('Number of input lines is not a multiple of four')
+
+    if len(input_grid[0]) % NUM_COLS:
+        raise ValueError('Number of input columns is not a multiple of three')
+
+    numbers = split_ocr(input_grid)
+    digits = ''
+    for num in numbers:
+        try:
+            digits += str(OCR_LIST.index(num))
+        except ValueError:
+            digits += '?'
+    return digits
+
+
+=== Source Interface ===
+def convert(input_grid):
+    pass
+
+
+
+=== Target Interface ===
+package ocr
+
+func Recognize(string) []string {
+	panic("Please implement the Recognize function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/ocr-numbers/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from ocr_numbers import (
+    convert,
+)
+
+
+class OcrNumbersTest(unittest.TestCase):
+    def test_recognizes_0(self):
+        self.assertEqual(convert([" _ ", "| |", "|_|", "   "]), "0")
+
+    def test_recognizes_1(self):
+        self.assertEqual(convert(["   ", "  |", "  |", "   "]), "1")
+
+    def test_unreadable_but_correctly_sized_inputs_return(self):
+        self.assertEqual(convert(["   ", "  _", "  |", "   "]), "?")
+
+    def test_input_with_a_number_of_lines_that_is_not_a_multiple_of_four_raises_an_error(
+        self,
+    ):
+        with self.assertRaises(ValueError) as err:
+            convert([" _ ", "| |", "   "])
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "Number of input lines is not a multiple of four"
+        )
+
+    def test_input_with_a_number_of_columns_that_is_not_a_multiple_of_three_raises_an_error(
+        self,
+    ):
+        with self.assertRaises(ValueError) as err:
+            convert(["    ", "   |", "   |", "    "])
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "Number of input columns is not a multiple of three"
+        )
+
+    def test_recognizes_110101100(self):
+        self.assertEqual(
+            convert(
+                [
+                    "       _     _        _  _ ",
+                    "  |  || |  || |  |  || || |",
+                    "  |  ||_|  ||_|  |  ||_||_|",
+                    "                           ",
+                ]
+            ),
+            "110101100",
+        )
+
+    def test_garbled_numbers_in_a_string_are_replaced_with(self):
+        self.assertEqual(
+            convert(
+                [
+                    "       _     _           _ ",
+                    "  |  || |  || |     || || |",
+                    "  |  | _|  ||_|  |  ||_||_|",
+                    "                           ",
+                ]
+            ),
+            "11?10?1?0",
+        )
+
+    def test_recognizes_2(self):
+        self.assertEqual(convert([" _ ", " _|", "|_ ", "   "]), "2")
+
+    def test_recognizes_3(self):
+        self.assertEqual(convert([" _ ", " _|", " _|", "   "]), "3")
+
+    def test_recognizes_4(self):
+        self.assertEqual(convert(["   ", "|_|", "  |", "   "]), "4")
+
+    def test_recognizes_5(self):
+        self.assertEqual(convert([" _ ", "|_ ", " _|", "   "]), "5")
+
+    def test_recognizes_6(self):
+        self.assertEqual(convert([" _ ", "|_ ", "|_|", "   "]), "6")
+
+    def test_recognizes_7(self):
+        self.assertEqual(convert([" _ ", "  |", "  |", "   "]), "7")
+
+    def test_recognizes_8(self):
+        self.assertEqual(convert([" _ ", "|_|", "|_|", "   "]), "8")
+
+    def test_recognizes_9(self):
+        self.assertEqual(convert([" _ ", "|_|", " _|", "   "]), "9")
+
+    def test_recognizes_string_of_decimal_numbers(self):
+        self.assertEqual(
+            convert(
+                [
+                    "    _  _     _  _  _  _  _  _ ",
+                    "  | _| _||_||_ |_   ||_||_|| |",
+                    "  ||_  _|  | _||_|  ||_| _||_|",
+                    "                              ",
+                ]
+            ),
+            "1234567890",
+        )
+
+    def test_numbers_separated_by_empty_lines_are_recognized_lines_are_joined_by_commas(
+        self,
+    ):
+        self.assertEqual(
+            convert(
+                [
+                    "    _  _ ",
+                    "  | _| _|",
+                    "  ||_  _|",
+                    "         ",
+                    "    _  _ ",
+                    "|_||_ |_ ",
+                    "  | _||_|",
+                    "         ",
+                    " _  _  _ ",
+                    "  ||_||_|",
+                    "  ||_| _|",
+                    "         ",
+                ]
+            ),
+            "123,456,789",
+        )
+
+
+=== Target Test Code ===
+package ocr
+
+import (
+	"reflect"
+	"testing"
+)
+
+var testCases = []struct {
+	description string
+	in          string
+	out         []string
+}{
+	{
+		description: "single digit - 0",
+		in: `
+ _ 
+| |
+|_|
+   `,
+		out: []string{"0"}},
+	{
+		description: "single digit - 1",
+		in: `
+   
+  |
+  |
+   `,
+		out: []string{"1"}},
+	{
+		description: "single digit - 2",
+		in: `
+ _ 
+ _|
+|_ 
+   `,
+		out: []string{"2"}},
+	{
+		description: "single digit - 3",
+		in: `
+ _ 
+ _|
+ _|
+   `,
+		out: []string{"3"}},
+	{
+		description: "single digit - 4",
+		in: `
+   
+|_|
+  |
+   `,
+		out: []string{"4"}},
+	{
+		description: "single digit - 5",
+		in: `
+ _ 
+|_ 
+ _|
+   `,
+		out: []string{"5"}},
+	{
+		description: "single digit - 6",
+		in: `
+ _ 
+|_ 
+|_|
+   `,
+		out: []string{"6"}},
+	{
+		description: "single digit - 7",
+		in: `
+ _ 
+  |
+  |
+   `,
+		out: []string{"7"}},
+	{
+		description: "single digit - 8",
+		in: `
+ _ 
+|_|
+|_|
+   `,
+		out: []string{"8"}},
+	{
+		description: "single digit - 9",
+		in: `
+ _ 
+|_|
+ _|
+   `,
+		out: []string{"9"}},
+	{
+		description: "multiple digits - 10",
+		in: `
+    _ 
+  || |
+  ||_|
+      `,
+		out: []string{"10"}},
+	{
+		description: "multiple digits - 11",
+		in: `
+   
+| |
+| |
+   `,
+		out: []string{"?"}},
+	{
+		description: "multiple digits - 110101100",
+		in: `
+       _     _        _  _ 
+  |  || |  || |  |  || || |
+  |  ||_|  ||_|  |  ||_||_|
+                           `,
+		out: []string{"110101100"}},
+	{
+		description: "multiple digits - 11?10?1?0",
+		in: `
+       _     _           _ 
+  |  || |  || |     || || |
+  |  | _|  ||_|  |  ||_||_|
+                           `,
+		out: []string{"11?10?1?0"}},
+	{
+		in: `
+    _  _     _  _  _  _  _  _ 
+  | _| _||_||_ |_   ||_||_|| |
+  ||_  _|  | _||_|  ||_| _||_|
+                              `,
+		out: []string{"1234567890"}},
+	{
+		description: "multiple numbers with multiple digits - 123 456 789",
+		in: `
+    _  _ 
+  | _| _|
+  ||_  _|
+         
+    _  _ 
+|_||_ |_ 
+  | _||_|
+         
+ _  _  _ 
+  ||_||_|
+  ||_| _|
+         `,
+		out: []string{"123", "456", "789"}},
+}
+
+var _ = recognizeDigit // step 1.
+
+func TestRecognize(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if got := Recognize(tc.in); !reflect.DeepEqual(got, tc.out) {
+				t.Fatalf("Recognize(%q) = %q, want: %q", tc.in, got, tc.out)
+			}
+		})
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/ocr-numbers/.meta/example.go
+package ocr
+
+import (
+	"fmt"
+	"strings"
+)
+
+const (
+	NUM_ROWS = 4
+	NUM_COLS = 3
+)
+
+// ALL defines the OCR digits in their raw format.
+var ALL = []string{
+	"    _  _     _  _  _  _  _  _ ",
+	"  | _| _||_||_ |_   ||_||_|| |",
+	"  ||_  _|  | _||_|  ||_| _||_|",
+	"                              ",
+}
+
+// splitOCR splits an OCR input (list of strings) into individual digit patterns.
+// Each digit is represented as a slice of strings with NUM_ROWS elements.
+func splitOCR(ocr []string) [][]string {
+	if len(ocr) == 0 {
+		return nil
+	}
+	numDigits := len(ocr[0]) / NUM_COLS
+	result := make([][]string, numDigits)
+	for digit := 0; digit < numDigits; digit++ {
+		slice := make([]string, NUM_ROWS)
+		for row := 0; row < NUM_ROWS; row++ {
+			start := digit * NUM_COLS
+			end := start + NUM_COLS
+			// Safety check in case of malformed input
+			if end > len(ocr[row]) {
+				end = len(ocr[row])
+			}
+			slice[row] = ocr[row][start:end]
+		}
+		result[digit] = slice
+	}
+	return result
+}
+
+// OCRList is the canonical list of OCR digit patterns.
+// It is constructed by splitting ALL and rearranging so that the digit '0' is represented by the last pattern.
+var OCRList = func() [][]string {
+	base := splitOCR(ALL)
+	if len(base) < 10 {
+		panic("OCR definition error: not enough digit patterns")
+	}
+	res := make([][]string, 0, 10)
+	// In the original Python code, OCR_LIST = [OCR_LIST[-1]] + OCR_LIST[:9]
+	res = append(res, base[len(base)-1])
+	res = append(res, base[:9]...)
+	return res
+}()
+
+// equalSlice compares two slices of strings for equality.
+func equalSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// convertOneLine converts a single group of OCR lines into the recognized digit string.
+// It panics if the number of lines is not NUM_ROWS or if the number of columns is not a multiple of NUM_COLS.
+func convertOneLine(inputGrid []string) string {
+	if len(inputGrid) != NUM_ROWS {
+		panic("Number of input lines is not a multiple of four")
+	}
+	if len(inputGrid[0])%NUM_COLS != 0 {
+		panic("Number of input columns is not a multiple of three")
+	}
+	// Split the input grid into individual digit patterns.
+	numbers := splitOCR(inputGrid)
+	var digits strings.Builder
+	for _, num := range numbers {
+		found := false
+		for idx, ocrDigit := range OCRList {
+			if equalSlice(num, ocrDigit) {
+				digits.WriteString(fmt.Sprintf("%d", idx))
+				found = true
+				break
+			}
+		}
+		if !found {
+			digits.WriteString("?")
+		}
+	}
+	return digits.String()
+}
+
+// Recognize processes an OCR input string and returns a slice of recognized number strings.
+// The input should contain a number of lines that is a multiple of four.
+// Each group of four lines is interpreted as one line of digits.
+// If a digit pattern cannot be recognized, a '?' is used in its place.
+func Recognize(input string) []string {
+	// Split input into lines. Remove a trailing empty line if present.
+	lines := strings.Split(input, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines)%NUM_ROWS != 0 {
+		panic("Number of input lines is not a multiple of four")
+	}
+	var result []string
+	for i := 0; i < len(lines); i += NUM_ROWS {
+		group := lines[i : i+NUM_ROWS]
+		result = append(result, convertOneLine(group))
+	}
+	return result
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/ocr-numbers [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/ocr-numbers [exercism/ocr-numbers.test]
+./ocr_numbers_test.go:150:9: undefined: recognizeDigit
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/ocr-numbers/.meta/example.go
+package ocr
+
+import (
+	"fmt"
+	"strings"
+)
+
+const (
+	NUM_ROWS = 4
+	NUM_COLS = 3
+)
+
+// ALL defines the canonical OCR digit patterns in their raw format.
+var ALL = []string{
+	"    _  _     _  _  _  _  _  _ ",
+	"  | _| _||_||_ |_   ||_||_|| |",
+	"  ||_  _|  | _||_|  ||_| _||_|",
+	"                              ",
+}
+
+// splitOCR splits an OCR input (slice of strings) into individual digit patterns.
+// Each digit is represented as a slice of strings with NUM_ROWS elements.
+func splitOCR(ocr []string) [][]string {
+	if len(ocr) == 0 {
+		return nil
+	}
+	numDigits := len(ocr[0]) / NUM_COLS
+	result := make([][]string, numDigits)
+	for digit := 0; digit < numDigits; digit++ {
+		slice := make([]string, NUM_ROWS)
+		for row := 0; row < NUM_ROWS; row++ {
+			start := digit * NUM_COLS
+			end := start + NUM_COLS
+			slice[row] = ocr[row][start:end]
+		}
+		result[digit] = slice
+	}
+	return result
+}
+
+// OCRList is the canonical list of OCR digit patterns.
+// It is constructed by splitting ALL and rearranging so that the digit '0' is represented by the last pattern.
+var OCRList = func() [][]string {
+	base := splitOCR(ALL)
+	if len(base) < 10 {
+		panic("OCR definition error: not enough digit patterns")
+	}
+	res := make([][]string, 0, 10)
+	// In the original Python code, OCR_LIST = [OCR_LIST[-1]] + OCR_LIST[:9]
+	res = append(res, base[len(base)-1])
+	res = append(res, base[:9]...)
+	return res
+}()
+
+// equalSlice compares two slices of strings for equality.
+func equalSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// convertOneLine converts a single group of OCR lines into the recognized digit string.
+// It panics if the number of lines is not exactly NUM_ROWS or if the number of columns is not a multiple of NUM_COLS.
+func convertOneLine(inputGrid []string) string {
+	if len(inputGrid) != NUM_ROWS {
+		panic("Number of input lines is not a multiple of four")
+	}
+	if len(inputGrid[0])%NUM_COLS != 0 {
+		panic("Number of input columns is not a multiple of three")
+	}
+	// Split the input grid into individual digit patterns.
+	numbers := splitOCR(inputGrid)
+	var digits strings.Builder
+	for _, num := range numbers {
+		found := false
+		for idx, ocrDigit := range OCRList {
+			if equalSlice(num, ocrDigit) {
+				digits.WriteString(fmt.Sprintf("%d", idx))
+				found = true
+				break
+			}
+		}
+		if !found {
+			digits.WriteString("?")
+		}
+	}
+	return digits.String()
+}
+
+// Recognize processes an OCR input string and returns a slice of recognized digit strings.
+// The input should contain a number of lines that is a multiple of NUM_ROWS.
+// Each group of NUM_ROWS lines is interpreted as one line of digits.
+// If a digit pattern cannot be recognized, a '?' is used in its place.
+func Recognize(input string) []string {
+	// Split the input into lines and remove any trailing empty line.
+	lines := strings.Split(input, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines)%NUM_ROWS != 0 {
+		panic("Number of input lines is not a multiple of four")
+	}
+	var result []string
+	for i := 0; i < len(lines); i += NUM_ROWS {
+		group := lines[i : i+NUM_ROWS]
+		result = append(result, convertOneLine(group))
+	}
+	return result
+}
+
+// recognizeDigit is provided as an alias to Recognize to satisfy interface requirements in tests.
+var recognizeDigit = Recognize
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestRecognize (0.00s)
+    --- FAIL: TestRecognize/single_digit_-_0 (0.00s)
+panic: Number of input lines is not a multiple of four [recovered]
+	panic: Number of input lines is not a multiple of four
+
+goroutine 19 [running]:
+testing.tRunner.func1.2({0x1028e1520, 0x102902cf8})
+	/usr/local/go/src/testing/testing.go:1396 +0x1c8
+testing.tRunner.func1()
+	/usr/local/go/src/testing/testing.go:1399 +0x378
+panic({0x1028e1520, 0x102902cf8})
+	/usr/local/go/src/runtime/panic.go:884 +0x204
+exercism/ocr-numbers.Recognize({0x1028a3c30?, 0x14000048f08?})
+	/private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/ocr-numbers/ocr_numbers.go:108 +0x1ac
+exercism/ocr-numbers.TestRecognize.func1(0x14000110b60)
+	/private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/ocr-numbers/ocr_numbers_test.go:155 +0x38
+testing.tRunner(0x14000110b60, 0x14000104540)
+	/usr/local/go/src/testing/testing.go:1446 +0x10c
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:1493 +0x300
+FAIL	exercism/ocr-numbers	0.303s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/ocr-numbers/.meta/example.go
+package ocr
+
+import (
+	"fmt"
+	"strings"
+)
+
+const (
+	NUM_ROWS = 4
+	NUM_COLS = 3
+)
+
+// ALL defines the canonical OCR digit patterns in their raw format.
+var ALL = []string{
+	"    _  _     _  _  _  _  _  _ ",
+	"  | _| _||_||_ |_   ||_||_|| |",
+	"  ||_  _|  | _||_|  ||_| _||_|",
+	"                              ",
+}
+
+// splitOCR splits an OCR input (slice of strings) into individual digit patterns.
+// Each digit is represented as a slice of strings with NUM_ROWS elements.
+func splitOCR(ocr []string) [][]string {
+	if len(ocr) == 0 {
+		return nil
+	}
+	numDigits := len(ocr[0]) / NUM_COLS
+	result := make([][]string, numDigits)
+	for digit := 0; digit < numDigits; digit++ {
+		slice := make([]string, NUM_ROWS)
+		for row := 0; row < NUM_ROWS; row++ {
+			start := digit * NUM_COLS
+			end := start + NUM_COLS
+			slice[row] = ocr[row][start:end]
+		}
+		result[digit] = slice
+	}
+	return result
+}
+
+// OCRList is the canonical list of OCR digit patterns.
+// It is constructed by splitting ALL and rearranging so that the digit '0' is represented by the last pattern.
+var OCRList = func() [][]string {
+	base := splitOCR(ALL)
+	if len(base) < 10 {
+		panic("OCR definition error: not enough digit patterns")
+	}
+	res := make([][]string, 0, 10)
+	// In the original Python code, OCR_LIST = [OCR_LIST[-1]] + OCR_LIST[:9]
+	res = append(res, base[len(base)-1])
+	res = append(res, base[:9]...)
+	return res
+}()
+
+// equalSlice compares two slices of strings for equality.
+func equalSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// convertOneLine converts a single group of OCR lines into the recognized digit string.
+// It panics if the number of lines is not exactly NUM_ROWS or if the number of columns is not a multiple of NUM_COLS.
+func convertOneLine(inputGrid []string) string {
+	if len(inputGrid) != NUM_ROWS {
+		panic("Number of input lines is not a multiple of four")
+	}
+	if len(inputGrid[0])%NUM_COLS != 0 {
+		panic("Number of input columns is not a multiple of three")
+	}
+	// Split the input grid into individual digit patterns.
+	numbers := splitOCR(inputGrid)
+	var digits strings.Builder
+	for _, num := range numbers {
+		found := false
+		for idx, ocrDigit := range OCRList {
+			if equalSlice(num, ocrDigit) {
+				digits.WriteString(fmt.Sprintf("%d", idx))
+				found = true
+				break
+			}
+		}
+		if !found {
+			digits.WriteString("?")
+		}
+	}
+	return digits.String()
+}
+
+// Recognize processes an OCR input string and returns a slice of recognized digit strings.
+// The input should contain a number of lines (ignoring leading and trailing newlines) that is a multiple of NUM_ROWS.
+// Each group of NUM_ROWS lines is interpreted as one line of digits.
+// If a digit pattern cannot be recognized, a '?' is used in its place.
+func Recognize(input string) []string {
+	// Trim leading and trailing newlines to avoid empty lines at start or end
+	trimmed := strings.Trim(input, "\n")
+	lines := strings.Split(trimmed, "\n")
+	if len(lines)%NUM_ROWS != 0 {
+		panic("Number of input lines is not a multiple of four")
+	}
+	var result []string
+	for i := 0; i < len(lines); i += NUM_ROWS {
+		group := lines[i : i+NUM_ROWS]
+		result = append(result, convertOneLine(group))
+	}
+	return result
+}
+
+// recognizeDigit is provided as an alias to Recognize to satisfy interface requirements in tests.
+var recognizeDigit = Recognize
+
+
+=== Test Results (Attempt 2) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/ocr-numbers	0.270s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,1092 @@
+=== Initial Source Code ===
+Source file: exercises/practice/matching-brackets/.meta/example.py
+def is_paired(input_string):
+    counterparts = {')': '(', '}': '{', ']': '['}
+
+    stack = []
+    for char in input_string:
+        if char in counterparts.values():
+            stack.append(char)
+        elif char in counterparts:
+            if not stack:
+                return False
+            if stack.pop() != counterparts[char]:
+                return False
+    return not stack
+
+
+=== Source Interface ===
+def is_paired(input_string):
+    pass
+
+
+=== Target Interface ===
+package brackets
+
+func Bracket(input string) bool {
+	panic("Please implement the Bracket function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/matching-brackets/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from matching_brackets import (
+    is_paired,
+)
+
+
+class MatchingBracketsTest(unittest.TestCase):
+    def test_paired_square_brackets(self):
+        self.assertEqual(is_paired("[]"), True)
+
+    def test_empty_string(self):
+        self.assertEqual(is_paired(""), True)
+
+    def test_unpaired_brackets(self):
+        self.assertEqual(is_paired("[["), False)
+
+    def test_wrong_ordered_brackets(self):
+        self.assertEqual(is_paired("}{"), False)
+
+    def test_wrong_closing_bracket(self):
+        self.assertEqual(is_paired("{]"), False)
+
+    def test_paired_with_whitespace(self):
+        self.assertEqual(is_paired("{ }"), True)
+
+    def test_partially_paired_brackets(self):
+        self.assertEqual(is_paired("{[])"), False)
+
+    def test_simple_nested_brackets(self):
+        self.assertEqual(is_paired("{[]}"), True)
+
+    def test_several_paired_brackets(self):
+        self.assertEqual(is_paired("{}[]"), True)
+
+    def test_paired_and_nested_brackets(self):
+        self.assertEqual(is_paired("([{}({}[])])"), True)
+
+    def test_unopened_closing_brackets(self):
+        self.assertEqual(is_paired("{[)][]}"), False)
+
+    def test_unpaired_and_nested_brackets(self):
+        self.assertEqual(is_paired("([{])"), False)
+
+    def test_paired_and_wrong_nested_brackets(self):
+        self.assertEqual(is_paired("[({]})"), False)
+
+    def test_paired_and_wrong_nested_brackets_but_innermost_are_correct(self):
+        self.assertEqual(is_paired("[({}])"), False)
+
+    def test_paired_and_incomplete_brackets(self):
+        self.assertEqual(is_paired("{}["), False)
+
+    def test_too_many_closing_brackets(self):
+        self.assertEqual(is_paired("[]]"), False)
+
+    def test_early_unexpected_brackets(self):
+        self.assertEqual(is_paired(")()"), False)
+
+    def test_early_mismatched_brackets(self):
+        self.assertEqual(is_paired("{)()"), False)
+
+    def test_math_expression(self):
+        self.assertEqual(is_paired("(((185 + 223.85) * 15) - 543)/2"), True)
+
+    def test_complex_latex_expression(self):
+        self.assertEqual(
+            is_paired(
+                "\\left(\\begin{array}{cc} \\frac{1}{3} & x\\\\ \\mathrm{e}^{x} &... x^2 \\end{array}\\right)"
+            ),
+            True,
+        )
+
+
+=== Target Test Code ===
+package brackets
+
+import (
+	"testing"
+)
+
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Bracket(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tt := range testCases {
+			Bracket(tt.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/matching-brackets/.meta/example.go
+package brackets
+
+// Bracket checks if the input string has correctly paired brackets.
+// It filters and processes the characters '(', ')', '{', '}', '[' and ']'.
+// Returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		// If the character is an opening bracket, push it onto the stack
+		if ch == '(' || ch == '{' || ch == '[' {
+			stack = append(stack, ch)
+		} else if ch == ')' || ch == '}' || ch == ']' {
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the top element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			// Check if the popped element matches the opening counterpart
+			if last != counterparts[ch] {
+				return false
+			}
+		}
+		// Other characters are ignored
+	}
+
+	return len(stack) == 0
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/matching-brackets [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/matching-brackets [exercism/matching-brackets.test]
+./matching_brackets_test.go:8:21: undefined: testCases
+./matching_brackets_test.go:23:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package brackets
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+// exercises/practice/matching-brackets/.meta/matching_brackets_test.go
+package brackets
+
+import (
+	"testing"
+)
+
+// testCases contains sample test cases for the Bracket function
+var testCases = []struct {
+	description string
+	input       string
+	expected    bool
+}{
+	{description: "empty string", input: "", expected: true},
+	{description: "single pair", input: "()", expected: true},
+	{description: "multiple pairs", input: "()[]{}", expected: true},
+	{description: "nested brackets", input: "([])", expected: true},
+	{description: "mismatched brackets", input: "(]", expected: false},
+	{description: "incomplete pair - 1", input: "(", expected: false},
+	{description: "incomplete pair - 2", input: "([)", expected: false},
+	{description: "extra closing bracket", input: "())", expected: false},
+}
+
+// TestBracket tests the Bracket function with various test cases.
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Bracket(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkBracket benchmarks the Bracket function.
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tt := range testCases {
+			_ = Bracket(tt.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/matching-brackets [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/matching-brackets [exercism/matching-brackets.test]
+./matching_brackets.go:39:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package brackets
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+// exercises/practice/matching-brackets/.meta/matching_brackets_test.go
+package brackets
+
+import (
+	"testing"
+)
+
+// testCases contains sample test cases for the Bracket function
+var testCases = []struct {
+	description string
+	input       string
+	expected    bool
+}{
+	{description: "empty string", input: "", expected: true},
+	{description: "single pair", input: "()", expected: true},
+	{description: "multiple pairs", input: "()[]{}", expected: true},
+	{description: "nested brackets", input: "([])", expected: true},
+	{description: "mismatched brackets", input: "(]", expected: false},
+	{description: "incomplete pair - 1", input: "(", expected: false},
+	{description: "incomplete pair - 2", input: "([)", expected: false},
+	{description: "extra closing bracket", input: "())", expected: false},
+}
+
+// TestBracket tests the Bracket function with various test cases.
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Bracket(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkBracket benchmarks the Bracket function.
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tt := range testCases {
+			_ = Bracket(tt.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/matching-brackets [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/matching-brackets [exercism/matching-brackets.test]
+./matching_brackets.go:39:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package brackets
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+// exercises/practice/matching-brackets/.meta/matching_brackets_test.go
+package brackets
+
+import (
+	"testing"
+)
+
+// testCases contains sample test cases for the Bracket function
+var testCases = []struct {
+	description string
+	input       string
+	expected    bool
+}{
+	{description: "empty string", input: "", expected: true},
+	{description: "single pair", input: "()", expected: true},
+	{description: "multiple pairs", input: "()[]{}", expected: true},
+	{description: "nested brackets", input: "([])", expected: true},
+	{description: "mismatched brackets", input: "(]", expected: false},
+	{description: "incomplete pair - 1", input: "(", expected: false},
+	{description: "incomplete pair - 2", input: "([)", expected: false},
+	{description: "extra closing bracket", input: "())", expected: false},
+}
+
+// TestBracket tests the Bracket function with various test cases.
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if result := Bracket(tc.input); result != tc.expected {
+				t.Errorf("Bracket(%q) = %t; want %t", tc.input, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkBracket benchmarks the Bracket function.
+func BenchmarkBracket(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Bracket(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/matching-brackets [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/matching-brackets [exercism/matching-brackets.test]
+./matching_brackets.go:39:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package meta
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (matching_brackets.go) and brackets (matching_brackets_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/matching-brackets
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package meta
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+// exercises/practice/matching-brackets/.meta/matching_brackets_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCases contains sample test cases for the Bracket function
+var testCases = []struct {
+	description string
+	input       string
+	expected    bool
+}{
+	{description: "empty string", input: "", expected: true},
+	{description: "single pair", input: "()", expected: true},
+	{description: "multiple pairs", input: "()[]{}", expected: true},
+	{description: "nested brackets", input: "([])", expected: true},
+	{description: "mismatched brackets", input: "(]", expected: false},
+	{description: "incomplete pair - 1", input: "(", expected: false},
+	{description: "incomplete pair - 2", input: "([)", expected: false},
+	{description: "extra closing bracket", input: "())", expected: false},
+}
+
+// TestBracket tests the Bracket function with various test cases.
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Bracket(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkBracket benchmarks the Bracket function.
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Bracket(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (matching_brackets.go) and brackets (matching_brackets_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/matching-brackets
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package meta
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+// exercises/practice/matching-brackets/.meta/matching_brackets_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCases contains sample test cases for the Bracket function
+var testCases = []struct {
+	description string
+	input       string
+	expected    bool
+}{
+	{description: "empty string", input: "", expected: true},
+	{description: "single pair", input: "()", expected: true},
+	{description: "multiple pairs", input: "()[]{}", expected: true},
+	{description: "nested brackets", input: "([])", expected: true},
+	{description: "mismatched brackets", input: "(]", expected: false},
+	{description: "incomplete pair - 1", input: "(", expected: false},
+	{description: "incomplete pair - 2", input: "([)", expected: false},
+	{description: "extra closing bracket", input: "())", expected: false},
+}
+
+// TestBracket tests the Bracket function with various test cases.
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Bracket(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkBracket benchmarks the Bracket function.
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Bracket(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (matching_brackets.go) and brackets (matching_brackets_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/matching-brackets
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package meta
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+// exercises/practice/matching-brackets/.meta/matching_brackets_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCases contains sample test cases for the Bracket function
+var testCases = []struct {
+	description string
+	input       string
+	expected    bool
+}{
+	{description: "empty string", input: "", expected: true},
+	{description: "single pair", input: "()", expected: true},
+	{description: "multiple pairs", input: "()[]{}", expected: true},
+	{description: "nested brackets", input: "([])", expected: true},
+	{description: "mismatched brackets", input: "(]", expected: false},
+	{description: "incomplete pair - 1", input: "(", expected: false},
+	{description: "incomplete pair - 2", input: "([)", expected: false},
+	{description: "extra closing bracket", input: "())", expected: false},
+}
+
+// TestBracket tests the Bracket function with various test cases.
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Bracket(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkBracket benchmarks the Bracket function.
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Bracket(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (matching_brackets.go) and brackets (matching_brackets_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/matching-brackets
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package brackets
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+// exercises/practice/matching-brackets/.meta/matching_brackets_test.go
+package brackets
+
+import (
+	"testing"
+)
+
+// testCases contains sample test cases for the Bracket function
+var testCases = []struct {
+	description string
+	input       string
+	expected    bool
+}{
+	{description: "empty string", input: "", expected: true},
+	{description: "single pair", input: "()", expected: true},
+	{description: "multiple pairs", input: "()[]{}", expected: true},
+	{description: "nested brackets", input: "([])", expected: true},
+	{description: "mismatched brackets", input: "(]", expected: false},
+	{description: "incomplete pair - 1", input: "(", expected: false},
+	{description: "incomplete pair - 2", input: "([)", expected: false},
+	{description: "extra closing bracket", input: "())", expected: false},
+}
+
+// TestBracket tests the Bracket function with various test cases.
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Bracket(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkBracket benchmarks the Bracket function.
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Bracket(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/matching-brackets [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/matching-brackets [exercism/matching-brackets.test]
+./matching_brackets.go:39:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package meta
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+// exercises/practice/matching-brackets/.meta/matching_brackets_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCases contains sample test cases for the Bracket function
+var testCases = []struct {
+	description string
+	input       string
+	expected    bool
+}{
+	{description: "empty string", input: "", expected: true},
+	{description: "single pair", input: "()", expected: true},
+	{description: "multiple pairs", input: "()[]{}", expected: true},
+	{description: "nested brackets", input: "([])", expected: true},
+	{description: "mismatched brackets", input: "(]", expected: false},
+	{description: "incomplete pair - 1", input: "(", expected: false},
+	{description: "incomplete pair - 2", input: "([)", expected: false},
+	{description: "extra closing bracket", input: "())", expected: false},
+}
+
+// TestBracket tests the Bracket function with various test cases.
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Bracket(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkBracket benchmarks the Bracket function.
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Bracket(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (matching_brackets.go) and brackets (matching_brackets_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/matching-brackets
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/matching-brackets/.meta/example.go
+package meta
+
+// Bracket checks if the input string has correctly paired brackets.
+// It returns true if every opening bracket is properly closed in the correct order; otherwise, it returns false.
+func Bracket(input string) bool {
+	// Map of closing bracket to its corresponding opening bracket
+	counterparts := map[rune]rune{
+		')': '(',
+		'}': '{',
+		']': '[',
+	}
+
+	var stack []rune
+
+	for _, ch := range input {
+		switch ch {
+		case '(', '{', '[':
+			stack = append(stack, ch)
+		case ')', '}', ']':
+			if len(stack) == 0 {
+				return false
+			}
+			// Pop the last element from the stack
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if last != counterparts[ch] {
+				return false
+			}
+		default:
+			// Ignore non-bracket characters
+		}
+	}
+
+	return len(stack) == 0
+}
+
+// exercises/practice/matching-brackets/.meta/matching_brackets_test.go
+package meta
+
+import (
+	"testing"
+)
+
+// testCases contains sample test cases for the Bracket function
+var testCases = []struct {
+	description string
+	input       string
+	expected    bool
+}{
+	{description: "empty string", input: "", expected: true},
+	{description: "single pair", input: "()", expected: true},
+	{description: "multiple pairs", input: "()[]{}", expected: true},
+	{description: "nested brackets", input: "([])", expected: true},
+	{description: "mismatched brackets", input: "(]", expected: false},
+	{description: "incomplete pair - 1", input: "(", expected: false},
+	{description: "incomplete pair - 2", input: "([)", expected: false},
+	{description: "extra closing bracket", input: "())", expected: false},
+}
+
+// TestBracket tests the Bracket function with various test cases.
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if result := Bracket(tc.input); result != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, result, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkBracket benchmarks the Bracket function.
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_ = Bracket(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (matching_brackets.go) and brackets (matching_brackets_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/matching-brackets
+
+
+=== FINAL STATUS: FAILED ===

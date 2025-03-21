@@ -1,0 +1,1 @@
+collatz-conjecture,10,2

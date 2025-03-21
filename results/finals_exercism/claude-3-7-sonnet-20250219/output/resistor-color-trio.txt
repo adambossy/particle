@@ -1,0 +1,185 @@
+=== Initial Source Code ===
+Source file: exercises/practice/resistor-color-trio/.meta/example.py
+COLORS = [
+        'black',
+        'brown',
+        'red',
+        'orange',
+        'yellow',
+        'green',
+        'blue',
+        'violet',
+        'grey',
+        'white'
+]
+
+
+def label(colors):
+    value = 10 * COLORS.index(colors[0]) + COLORS.index(colors[1])
+    value *= 10 ** COLORS.index(colors[2])
+    label = str(value)
+
+    if len(label) < 4 :
+        unit = 'ohms'
+    elif len(label) < 7:
+        label = str(value//1000)
+        unit = 'kiloohms'
+    elif len(label) <= 8 :
+        label = str(value//1000000)
+        unit = 'megaohms'
+    elif len(label) >= 9:
+        label = str(value//1000000000)
+        unit = 'gigaohms'
+
+    return f'{value if value < 1000 else label} {unit}'
+
+
+=== Source Interface ===
+def label(colors):
+    pass
+
+
+=== Target Interface ===
+package resistorcolortrio
+
+// Label describes the resistance value given the colors of a resistor.
+// The label is a string with a resistance value with an unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	panic("Implement the Label function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/resistor-color-trio/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from resistor_color_trio import (
+    label,
+)
+
+
+class ResistorColorTrioTest(unittest.TestCase):
+    def test_orange_and_orange_and_black(self):
+        self.assertEqual(label(["orange", "orange", "black"]), "33 ohms")
+
+    def test_blue_and_grey_and_brown(self):
+        self.assertEqual(label(["blue", "grey", "brown"]), "680 ohms")
+
+    def test_red_and_black_and_red(self):
+        self.assertEqual(label(["red", "black", "red"]), "2 kiloohms")
+
+    def test_green_and_brown_and_orange(self):
+        self.assertEqual(label(["green", "brown", "orange"]), "51 kiloohms")
+
+    def test_yellow_and_violet_and_yellow(self):
+        self.assertEqual(label(["yellow", "violet", "yellow"]), "470 kiloohms")
+
+    def test_blue_and_violet_and_blue(self):
+        self.assertEqual(label(["blue", "violet", "blue"]), "67 megaohms")
+
+    def test_minimum_possible_value(self):
+        self.assertEqual(label(["black", "black", "black"]), "0 ohms")
+
+    def test_maximum_possible_value(self):
+        self.assertEqual(label(["white", "white", "white"]), "99 gigaohms")
+
+    def test_first_two_colors_make_an_invalid_octal_number(self):
+        self.assertEqual(label(["black", "grey", "black"]), "8 ohms")
+
+    def test_ignore_extra_colors(self):
+        self.assertEqual(label(["blue", "green", "yellow", "orange"]), "650 kiloohms")
+
+
+=== Target Test Code ===
+package resistorcolortrio
+
+import "testing"
+
+func TestLabel(t *testing.T) {
+	for _, tc := range labelTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Label(tc.input)
+
+			if actual != tc.expected {
+				t.Fatalf("Label(%+q): expected %q, actual %q", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// labelBench is intended to be used in BenchmarkLabel to avoid compiler optimizations.
+var labelBench string
+
+func BenchmarkLabel(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range labelTestCases {
+			labelBench = Label(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/resistor-color-trio/.meta/example.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"math"
+)
+
+var colors = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of a color in the colors slice
+// or -1 if not found
+func indexOf(color string) int {
+	for i, c := range colors {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label describes the resistance value given the colors of a resistor.
+// The label is a string with a resistance value with an unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	value := 10*indexOf(colors[0]) + indexOf(colors[1])
+	value *= int(math.Pow10(indexOf(colors[2])))
+	
+	if value < 1000 {
+		return fmt.Sprintf("%d ohms", value)
+	} else if value < 1000000 {
+		return fmt.Sprintf("%d kiloohms", value/1000)
+	} else if value <= 100000000 {
+		return fmt.Sprintf("%d megaohms", value/1000000)
+	} else {
+		return fmt.Sprintf("%d gigaohms", value/1000000000)
+	}
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/resistor-color-trio	0.319s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

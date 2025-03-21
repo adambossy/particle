@@ -1,0 +1,205 @@
+=== Initial Source Code ===
+Source file: exercises/practice/resistor-color/.meta/example.py
+COLORS = [
+    'black',
+    'brown',
+    'red',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'violet',
+    'grey',
+    'white'
+]
+
+
+def color_code(color):
+    return COLORS.index(color)
+
+
+def colors():
+    return COLORS
+
+
+=== Source Interface ===
+def color_code(color):
+    pass
+
+
+def colors():
+    pass
+
+
+=== Target Interface ===
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	panic("Please implement the Colors function")
+}
+
+// ColorCode returns the resistance value of the given color.
+func ColorCode(color string) int {
+	panic("Please implement the ColorCode function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/resistor-color/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from resistor_color import (
+    color_code,
+    colors,
+)
+
+
+class ResistorColorTest(unittest.TestCase):
+    def test_black(self):
+        self.assertEqual(color_code("black"), 0)
+
+    def test_white(self):
+        self.assertEqual(color_code("white"), 9)
+
+    def test_orange(self):
+        self.assertEqual(color_code("orange"), 3)
+
+    def test_colors(self):
+        expected = [
+            "black",
+            "brown",
+            "red",
+            "orange",
+            "yellow",
+            "green",
+            "blue",
+            "violet",
+            "grey",
+            "white",
+        ]
+        self.assertEqual(colors(), expected)
+
+
+=== Target Test Code ===
+package resistorcolor
+
+import "testing"
+
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected %+v, actual %+v", tc.expected, actual)
+			}
+
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %+v, actual %+v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// colorCodeBench is intended to be used in BenchmarkColorCode to avoid compiler optimizations.
+var colorCodeBench int
+
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// colorsBench is intended to be used in BenchmarkColors to avoid compiler optimizations.
+var colorsBench []string
+
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Initial Translation ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// COLORS is a slice of all resistor color names in order of their values
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// ColorCode returns the resistance value of the given color
+func ColorCode(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1 // Return -1 if color not found, though this case isn't handled in the Python code
+}
+
+// Colors returns the list of all colors
+func Colors() []string {
+	return COLORS
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/resistor-color	0.271s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

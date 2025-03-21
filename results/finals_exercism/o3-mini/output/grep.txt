@@ -1,0 +1,2040 @@
+=== Initial Source Code ===
+Source file: exercises/practice/grep/.meta/example.py
+def matches(line, pattern, flags):
+    if '-i' in flags:  # case-insensitive
+        line = line.lower()
+        pattern = pattern.lower()
+
+    if '-x' in flags:  # match entire lines
+        if len(pattern) != len(line.rstrip()):
+            return '-v' in flags
+
+    if '-v' in flags:  # invert matching
+        return pattern not in line
+
+    return pattern in line
+
+
+def format_files(matched_lines):
+    result = ''
+
+    for file_name, _, _ in matched_lines:
+        if file_name not in result:
+            result += file_name + '\n'
+
+    return result
+
+
+def format_lines(matched_lines, flags, files):
+    result = []
+
+    for file_name, line_number, line in matched_lines:
+        line_result = ''
+
+        if len(files) > 1:
+            line_result += file_name + ':'
+
+        if '-n' in flags:
+            line_result += str(line_number) + ':'
+
+        line_result += line
+
+        result.append(line_result)
+
+    return ''.join(result)
+
+
+def grep(pattern, flags, files):
+    matched_lines = []
+
+    for file_name in files:
+        with open(file_name, encoding='utf-8') as f:
+            for line_number, line in enumerate(f.readlines(), start=1):
+                if matches(line, pattern, flags):
+                    matched_lines.append((file_name, line_number, line))
+
+    if '-l' in flags:
+        return format_files(matched_lines)
+
+    return format_lines(matched_lines, flags, files)
+
+
+=== Source Interface ===
+def grep(pattern, flags, files):
+    pass
+
+
+=== Target Interface ===
+package grep
+
+func Search(pattern string, flags, files []string) []string {
+	panic("Please implement the Search function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/grep/canonical-data.json
+# File last updated on 2023-07-19
+
+import io
+import unittest
+
+from grep import (
+    grep,
+)
+from unittest import mock
+
+FILE_TEXT = {
+    "iliad.txt": """Achilles sing, O Goddess! Peleus' son;
+His wrath pernicious, who ten thousand woes
+Caused to Achaia's host, sent many a soul
+Illustrious into Ades premature,
+And Heroes gave (so stood the will of Jove)
+To dogs and to all ravening fowls a prey,
+When fierce dispute had separated once
+The noble Chief Achilles from the son
+Of Atreus, Agamemnon, King of men.\n""",
+    "midsummer-night.txt": """I do entreat your grace to pardon me.
+I know not by what power I am made bold,
+Nor how it may concern my modesty,
+In such a presence here to plead my thoughts;
+But I beseech your grace that I may know
+The worst that may befall me in this case,
+If I refuse to wed Demetrius.\n""",
+    "paradise-lost.txt": """Of Mans First Disobedience, and the Fruit
+Of that Forbidden Tree, whose mortal tast
+Brought Death into the World, and all our woe,
+With loss of Eden, till one greater Man
+Restore us, and regain the blissful Seat,
+Sing Heav'nly Muse, that on the secret top
+Of Oreb, or of Sinai, didst inspire
+That Shepherd, who first taught the chosen Seed\n""",
+}
+
+
+def open_mock(fname, *args, **kwargs):
+    try:
+        return io.StringIO(FILE_TEXT[fname])
+    except KeyError:
+        raise RuntimeError(
+            "Expected one of {0!r}: got {1!r}".format(list(FILE_TEXT.keys()), fname)
+        )
+
+
+@mock.patch("grep.open", name="open", side_effect=open_mock, create=True)
+@mock.patch("io.StringIO", name="StringIO", wraps=io.StringIO)
+class GrepTest(unittest.TestCase):
+    # Test grepping a single file
+    def test_one_file_one_match_no_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("Agamemnon", "", ["iliad.txt"]), "Of Atreus, Agamemnon, King of men.\n"
+        )
+
+    def test_one_file_one_match_print_line_numbers_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("Forbidden", "-n", ["paradise-lost.txt"]),
+            "2:Of that Forbidden Tree, whose mortal tast\n",
+        )
+
+    def test_one_file_one_match_case_insensitive_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("FORBIDDEN", "-i", ["paradise-lost.txt"]),
+            "Of that Forbidden Tree, whose mortal tast\n",
+        )
+
+    def test_one_file_one_match_print_file_names_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("Forbidden", "-l", ["paradise-lost.txt"]), "paradise-lost.txt\n"
+        )
+
+    def test_one_file_one_match_match_entire_lines_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "With loss of Eden, till one greater Man", "-x", ["paradise-lost.txt"]
+            ),
+            "With loss of Eden, till one greater Man\n",
+        )
+
+    def test_one_file_one_match_multiple_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("OF ATREUS, Agamemnon, KIng of MEN.", "-n -i -x", ["iliad.txt"]),
+            "9:Of Atreus, Agamemnon, King of men.\n",
+        )
+
+    def test_one_file_several_matches_no_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("may", "", ["midsummer-night.txt"]),
+            "Nor how it may concern my modesty,\n"
+            "But I beseech your grace that I may know\n"
+            "The worst that may befall me in this case,\n",
+        )
+
+    def test_one_file_several_matches_print_line_numbers_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep("may", "-n", ["midsummer-night.txt"]),
+            "3:Nor how it may concern my modesty,\n"
+            "5:But I beseech your grace that I may know\n"
+            "6:The worst that may befall me in this case,\n",
+        )
+
+    def test_one_file_several_matches_match_entire_lines_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(grep("may", "-x", ["midsummer-night.txt"]), "")
+
+    def test_one_file_several_matches_case_insensitive_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("ACHILLES", "-i", ["iliad.txt"]),
+            "Achilles sing, O Goddess! Peleus' son;\n"
+            "The noble Chief Achilles from the son\n",
+        )
+
+    def test_one_file_several_matches_inverted_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("Of", "-v", ["paradise-lost.txt"]),
+            "Brought Death into the World, and all our woe,\n"
+            "With loss of Eden, till one greater Man\n"
+            "Restore us, and regain the blissful Seat,\n"
+            "Sing Heav'nly Muse, that on the secret top\n"
+            "That Shepherd, who first taught the chosen Seed\n",
+        )
+
+    def test_one_file_no_matches_various_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(grep("Gandalf", "-n -l -x -i", ["iliad.txt"]), "")
+
+    def test_one_file_one_match_file_flag_takes_precedence_over_line_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(grep("ten", "-n -l", ["iliad.txt"]), "iliad.txt\n")
+
+    def test_one_file_several_matches_inverted_and_match_entire_lines_flags(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep("Illustrious into Ades premature,", "-x -v", ["iliad.txt"]),
+            "Achilles sing, O Goddess! Peleus' son;\n"
+            "His wrath pernicious, who ten thousand woes\n"
+            "Caused to Achaia's host, sent many a soul\n"
+            "And Heroes gave (so stood the will of Jove)\n"
+            "To dogs and to all ravening fowls a prey,\n"
+            "When fierce dispute had separated once\n"
+            "The noble Chief Achilles from the son\n"
+            "Of Atreus, Agamemnon, King of men.\n",
+        )
+
+    # Test grepping multiples files at once
+    def test_multiple_files_one_match_no_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "Agamemnon",
+                "",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "iliad.txt:Of Atreus, Agamemnon, King of men.\n",
+        )
+
+    def test_multiple_files_several_matches_no_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("may", "", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]),
+            "midsummer-night.txt:Nor how it may concern my modesty,\n"
+            "midsummer-night.txt:But I beseech your grace that I may know\n"
+            "midsummer-night.txt:The worst that may befall me in this case,\n",
+        )
+
+    def test_multiple_files_several_matches_print_line_numbers_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep(
+                "that", "-n", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]
+            ),
+            "midsummer-night.txt:5:But I beseech your grace that I may know\n"
+            "midsummer-night.txt:6:The worst that may befall me in this case,\n"
+            "paradise-lost.txt:2:Of that Forbidden Tree, whose mortal tast\n"
+            "paradise-lost.txt:6:Sing Heav'nly Muse, that on the secret top\n",
+        )
+
+    def test_multiple_files_one_match_print_file_names_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "who", "-l", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]
+            ),
+            "iliad.txt\n" "paradise-lost.txt\n",
+        )
+
+    def test_multiple_files_several_matches_case_insensitive_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep("TO", "-i", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]),
+            "iliad.txt:Caused to Achaia's host, sent many a soul\n"
+            "iliad.txt:Illustrious into Ades premature,\n"
+            "iliad.txt:And Heroes gave (so stood the will of Jove)\n"
+            "iliad.txt:To dogs and to all ravening fowls a prey,\n"
+            "midsummer-night.txt:I do entreat your grace to pardon me.\n"
+            "midsummer-night.txt:In such a presence here to plead my thoughts;\n"
+            "midsummer-night.txt:If I refuse to wed Demetrius.\n"
+            "paradise-lost.txt:Brought Death into the World, and all our woe,\n"
+            "paradise-lost.txt:Restore us, and regain the blissful Seat,\n"
+            "paradise-lost.txt:Sing Heav'nly Muse, that on the secret top\n",
+        )
+
+    def test_multiple_files_several_matches_inverted_flag(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep("a", "-v", ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"]),
+            "iliad.txt:Achilles sing, O Goddess! Peleus' son;\n"
+            "iliad.txt:The noble Chief Achilles from the son\n"
+            "midsummer-night.txt:If I refuse to wed Demetrius.\n",
+        )
+
+    def test_multiple_files_one_match_match_entire_lines_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep(
+                "But I beseech your grace that I may know",
+                "-x",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "midsummer-night.txt:But I beseech your grace that I may know\n",
+        )
+
+    def test_multiple_files_one_match_multiple_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "WITH LOSS OF EDEN, TILL ONE GREATER MAN",
+                "-n -i -x",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "paradise-lost.txt:4:With loss of Eden, till one greater Man\n",
+        )
+
+    def test_multiple_files_no_matches_various_flags(self, mock_file, mock_open):
+        self.assertMultiLineEqual(
+            grep(
+                "Frodo",
+                "-n -l -x -i",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "",
+        )
+
+    def test_multiple_files_several_matches_file_flag_takes_precedence_over_line_number_flag(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep(
+                "who",
+                "-n -l",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "iliad.txt\n" "paradise-lost.txt\n",
+        )
+
+    def test_multiple_files_several_matches_inverted_and_match_entire_lines_flags(
+        self, mock_file, mock_open
+    ):
+        self.assertMultiLineEqual(
+            grep(
+                "Illustrious into Ades premature,",
+                "-x -v",
+                ["iliad.txt", "midsummer-night.txt", "paradise-lost.txt"],
+            ),
+            "iliad.txt:Achilles sing, O Goddess! Peleus' son;\n"
+            "iliad.txt:His wrath pernicious, who ten thousand woes\n"
+            "iliad.txt:Caused to Achaia's host, sent many a soul\n"
+            "iliad.txt:And Heroes gave (so stood the will of Jove)\n"
+            "iliad.txt:To dogs and to all ravening fowls a prey,\n"
+            "iliad.txt:When fierce dispute had separated once\n"
+            "iliad.txt:The noble Chief Achilles from the son\n"
+            "iliad.txt:Of Atreus, Agamemnon, King of men.\n"
+            "midsummer-night.txt:I do entreat your grace to pardon me.\n"
+            "midsummer-night.txt:I know not by what power I am made bold,\n"
+            "midsummer-night.txt:Nor how it may concern my modesty,\n"
+            "midsummer-night.txt:In such a presence here to plead my thoughts;\n"
+            "midsummer-night.txt:But I beseech your grace that I may know\n"
+            "midsummer-night.txt:The worst that may befall me in this case,\n"
+            "midsummer-night.txt:If I refuse to wed Demetrius.\n"
+            "paradise-lost.txt:Of Mans First Disobedience, and the Fruit\n"
+            "paradise-lost.txt:Of that Forbidden Tree, whose mortal tast\n"
+            "paradise-lost.txt:Brought Death into the World, and all our woe,\n"
+            "paradise-lost.txt:With loss of Eden, till one greater Man\n"
+            "paradise-lost.txt:Restore us, and regain the blissful Seat,\n"
+            "paradise-lost.txt:Sing Heav'nly Muse, that on the secret top\n"
+            "paradise-lost.txt:Of Oreb, or of Sinai, didst inspire\n"
+            "paradise-lost.txt:That Shepherd, who first taught the chosen Seed\n",
+        )
+
+
+=== Target Test Code ===
+package grep
+
+import (
+	"os"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+func createFiles(content []string) (filenames []string) {
+	// Parse fileContentData, making the list of filenames
+	// with their content.
+	var filename string
+	var f *os.File
+	for _, d := range content {
+		t := strings.TrimSpace(d)
+		if t == "" {
+			if filename == "" {
+				continue
+			}
+			// Close file
+			f.Close()
+			filenames = append(filenames, filename)
+			filename = ""
+			f = nil
+			continue
+		}
+		if strings.Contains(t, ".txt") {
+			filename = t
+			// Open file
+			var err error
+			f, err = os.Create(filename)
+			if err != nil {
+				panic(err)
+			}
+			continue
+		}
+		fields := strings.Split(t, "|")
+		if len(fields) == 3 {
+			// Write string into file with newline.
+			_, err := f.WriteString(strings.TrimRight(fields[1], " ") + "\n")
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	if f != nil {
+		f.Close()
+		filenames = append(filenames, filename)
+	}
+	return
+}
+
+func deleteFiles(filenames []string) {
+	for _, file := range filenames {
+		os.Remove(file)
+	}
+}
+
+func TestSearch(t *testing.T) {
+	files := createFiles(fileContentData)
+	defer deleteFiles(files)
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Search(tc.pattern, tc.flags, tc.files)
+
+			// We do not care whether the result is nil or an empty slice.
+			if len(tc.expected) == 0 && len(actual) == 0 {
+				return
+			}
+
+			if !reflect.DeepEqual(actual, tc.expected) {
+				t.Errorf("Search(%q,%v,%v)\ngot: %v\nwant: %v", tc.pattern, tc.flags, tc.files, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSearch(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	files := createFiles(fileContentData)
+	defer deleteFiles(files)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Search(tc.pattern, tc.flags, tc.files)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/grep/.meta/example.go
+package meta
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		// In Go, line is already trimmed of newline by scanner so we mimic rstrip
+		if len(pattern) != len(strings.TrimRight(line, "\n")) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			// For simplicity, if a file cannot be opened, we panic.
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		defer file.Close()
+
+		scanner := bufio.NewScanner(file)
+		lineNumber := 1
+		for scanner.Scan() {
+			line := scanner.Text()
+			if matches(line, pattern, flags) {
+				matchedLines = append(matchedLines, match{
+					fileName:   fileName,
+					lineNumber: lineNumber,
+					line:       line,
+				})
+			}
+			lineNumber++
+		}
+		if err := scanner.Err(); err != nil {
+			panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+		}
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (grep.go) and grep (grep_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/grep
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Ensure file is closed after processing; we don't use defer inside a loop to avoid
+		// keeping too many files open.
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Ensure file is closed after processing; using an anonymous function to scope defer
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+// It holds the file name, the line number, and the line content.
+
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Using an anonymous function to scope defer file.Close()
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+// It holds the file name, the line number, and the line content.
+
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Using an anonymous function to scope defer file.Close()
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+// It holds the file name, the line number, and the line content.
+
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Using an anonymous function to scope defer file.Close()
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+// It holds the file name, the line number, and the line content.
+
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Using an anonymous function to scope defer file.Close()
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+// It holds the file name, the line number, and the line content.
+
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Using an anonymous function to scope defer file.Close()
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+// It holds the file name, the line number, and the line content.
+
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Using an anonymous function to scope defer file.Close()
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+// It holds the file name, the line number, and the line content.
+
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Using an anonymous function to scope defer file.Close()
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/grep/.meta/example.go
+package grep
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+// match represents a matched line in a file.
+// It holds the file name, the line number, and the line content.
+
+type match struct {
+	fileName   string
+	lineNumber int
+	line       string
+}
+
+// containsFlag checks if a specific flag exists in the flags slice.
+func containsFlag(flags []string, flag string) bool {
+	for _, f := range flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// matches determines if a line matches the given pattern with the provided flags.
+// It implements case-insensitive matching (-i), full-line matching (-x), and inverted matching (-v).
+func matches(line string, pattern string, flags []string) bool {
+	// Handle case-insensitive flag
+	if containsFlag(flags, "-i") {
+		line = strings.ToLower(line)
+		pattern = strings.ToLower(pattern)
+	}
+
+	// Handle full line matching (-x)
+	if containsFlag(flags, "-x") {
+		trimmed := strings.TrimRight(line, "\n")
+		if len(pattern) != len(trimmed) {
+			return containsFlag(flags, "-v")
+		}
+	}
+
+	// Handle invert match (-v)
+	if containsFlag(flags, "-v") {
+		return !strings.Contains(line, pattern)
+	}
+
+	return strings.Contains(line, pattern)
+}
+
+// formatFiles returns a slice of unique file names from the matched lines.
+// Each file name appears only once in the order of first occurrence.
+func formatFiles(matchedLines []match) []string {
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matchedLines {
+		if !seen[m.fileName] {
+			result = append(result, m.fileName)
+			seen[m.fileName] = true
+		}
+	}
+	return result
+}
+
+// formatLines returns a slice of formatted matching lines based on flags and input files.
+// If multiple files are searched, the result includes the file name as a prefix.
+// If the -n flag is present, the line number is prefixed as well.
+func formatLines(matchedLines []match, flags []string, files []string) []string {
+	var result []string
+	multipleFiles := len(files) > 1
+	for _, m := range matchedLines {
+		lineResult := ""
+		if multipleFiles {
+			lineResult += m.fileName + ":"
+		}
+		if containsFlag(flags, "-n") {
+			lineResult += fmt.Sprintf("%d:", m.lineNumber)
+		}
+		lineResult += m.line
+		result = append(result, lineResult)
+	}
+	return result
+}
+
+// Search searches for the given pattern in the provided files applying the specified flags.
+// It returns a slice of strings that contain either the file names (if -l flag is used) or
+// the formatted matching lines.
+func Search(pattern string, flags, files []string) []string {
+	var matchedLines []match
+
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open file %s: %v", fileName, err))
+		}
+		// Using an anonymous function to scope defer file.Close()
+		func() {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			lineNumber := 1
+			for scanner.Scan() {
+				line := scanner.Text()
+				if matches(line, pattern, flags) {
+					matchedLines = append(matchedLines, match{
+						fileName:   fileName,
+						lineNumber: lineNumber,
+						line:       line,
+					})
+				}
+				lineNumber++
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("error reading file %s: %v", fileName, err))
+			}
+		}()
+	}
+
+	if containsFlag(flags, "-l") {
+		return formatFiles(matchedLines)
+	}
+
+	return formatLines(matchedLines, flags, files)
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grep [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grep [exercism/grep.test]
+./grep_test.go:61:23: undefined: fileContentData
+./grep_test.go:64:21: undefined: testCases
+./grep_test.go:84:23: undefined: fileContentData
+./grep_test.go:89:22: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

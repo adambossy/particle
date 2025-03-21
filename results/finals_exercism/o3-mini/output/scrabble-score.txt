@@ -1,0 +1,731 @@
+=== Initial Source Code ===
+Source file: exercises/practice/scrabble-score/.meta/example.py
+POINTS = {
+    'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+    'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+    'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+    'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+    'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+    'z': 10
+}
+
+
+def score(word):
+    if not word.isalpha():
+        return 0
+    return sum(POINTS[letter] for letter in word.lower())
+
+
+=== Source Interface ===
+def score(word):
+    pass
+
+
+=== Target Interface ===
+package scrabble
+
+func Score(word string) int {
+	panic("Please implement the Score function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/scrabble-score/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from scrabble_score import (
+    score,
+)
+
+
+class ScrabbleScoreTest(unittest.TestCase):
+    def test_lowercase_letter(self):
+        self.assertEqual(score("a"), 1)
+
+    def test_uppercase_letter(self):
+        self.assertEqual(score("A"), 1)
+
+    def test_valuable_letter(self):
+        self.assertEqual(score("f"), 4)
+
+    def test_short_word(self):
+        self.assertEqual(score("at"), 2)
+
+    def test_short_valuable_word(self):
+        self.assertEqual(score("zoo"), 12)
+
+    def test_medium_word(self):
+        self.assertEqual(score("street"), 6)
+
+    def test_medium_valuable_word(self):
+        self.assertEqual(score("quirky"), 22)
+
+    def test_long_mixed_case_word(self):
+        self.assertEqual(score("OxyphenButazone"), 41)
+
+    def test_english_like_word(self):
+        self.assertEqual(score("pinata"), 8)
+
+    def test_empty_input(self):
+        self.assertEqual(score(""), 0)
+
+    def test_entire_alphabet_available(self):
+        self.assertEqual(score("abcdefghijklmnopqrstuvwxyz"), 87)
+
+
+=== Target Test Code ===
+package scrabble
+
+import "testing"
+
+func TestScore(t *testing.T) {
+	for _, tc := range scrabbleScoreTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Score(tc.input); actual != tc.expected {
+				t.Errorf("Score(%q) = %d, want:%d", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range scrabbleScoreTests {
+			Score(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/scrabble-score/.meta/example.go
+package meta
+
+import (
+	"unicode"
+	"strings"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// If the word contains any non-alphabetic characters or is empty, it returns 0.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Check if all characters in the word are letters
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase to match the points keys
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (scrabble_score.go) and scrabble (scrabble_score_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/scrabble-score
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package meta
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or contains non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Verify that all characters are alphabetic
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert the word to lowercase
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (scrabble_score.go) and scrabble (scrabble_score_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/scrabble-score
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package meta
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or contains any non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Verify that all characters are alphabetic.
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase so we can lookup scores in points map
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (scrabble_score.go) and scrabble (scrabble_score_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/scrabble-score
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package meta
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or contains any non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Verify that all characters are alphabetic.
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase so we can lookup scores in points map
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (scrabble_score.go) and scrabble (scrabble_score_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/scrabble-score
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package meta
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or contains any non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Verify that all characters are alphabetic
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase so we can lookup scores in points map
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (scrabble_score.go) and scrabble (scrabble_score_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/scrabble-score
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package scrabble
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or contains any non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Ensure every character is an alphabetic letter
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase to align with keys in points map.
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scrabble-score [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scrabble-score [exercism/scrabble-score.test]
+./scrabble_score_test.go:6:21: undefined: scrabbleScoreTests
+./scrabble_score_test.go:20:24: undefined: scrabbleScoreTests
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package scrabble
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or contains any non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Ensure every character is an alphabetic letter.
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase to align with keys in points map.
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scrabble-score [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scrabble-score [exercism/scrabble-score.test]
+./scrabble_score_test.go:6:21: undefined: scrabbleScoreTests
+./scrabble_score_test.go:20:24: undefined: scrabbleScoreTests
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package scrabble
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or contains any non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Ensure every character is an alphabetic letter
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase so we can lookup scores in points map
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scrabble-score [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scrabble-score [exercism/scrabble-score.test]
+./scrabble_score_test.go:6:21: undefined: scrabbleScoreTests
+./scrabble_score_test.go:20:24: undefined: scrabbleScoreTests
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package meta
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or contains any non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Ensure every character is an alphabetic letter
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase so we can lookup scores in the points map
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (scrabble_score.go) and scrabble (scrabble_score_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/scrabble-score
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package scrabble
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or if it contains any non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Ensure every character is an alphabetic letter.
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase to align with the keys in points map.
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+// exercises/practice/scrabble-score/.meta/example_test.go
+package scrabble
+
+import (
+	"testing"
+)
+
+// scrabbleTest encapsulates a single test case.
+var scrabbleScoreTests = []struct {
+	description string
+	input       string
+	expected    int
+}{
+	{description: "empty string returns 0", input: "", expected: 0},
+	{description: "lowercase a scores 1", input: "a", expected: 1},
+	{description: "uppercase A scores 1", input: "A", expected: 1},
+	{description: "lowercase z scores 10", input: "z", expected: 10},
+	{description: "uppercase Z scores 10", input: "Z", expected: 10},
+	{description: "word 'street' scores 6", input: "street", expected: 6},
+	{description: "word 'quirky' scores 22", input: "quirky", expected: 22},
+	{description: "word with non-alphabet character returns 0", input: "hello!", expected: 0},
+}
+
+func TestScore(t *testing.T) {
+	for _, tc := range scrabbleScoreTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Score(tc.input); actual != tc.expected {
+				t.Errorf("Score(%q) = %d, want %d", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, test := range scrabbleScoreTests {
+			Score(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scrabble-score [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scrabble-score [exercism/scrabble-score.test]
+./scrabble_score.go:43:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/scrabble-score/.meta/example.go
+package scrabble
+
+import (
+	"strings"
+	"unicode"
+)
+
+// points maps each lowercase letter to its scrabble score.
+var points = map[rune]int{
+	'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+	'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+	'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+	'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+	'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+	'z': 10,
+}
+
+// Score calculates the scrabble score of the given word.
+// It returns 0 if the word is empty or contains any non-alphabetic characters.
+func Score(word string) int {
+	if word == "" {
+		return 0
+	}
+
+	// Verify that every character is an alphabetic letter.
+	for _, r := range word {
+		if !unicode.IsLetter(r) {
+			return 0
+		}
+	}
+
+	// Convert word to lowercase for consistent lookup in the points map.
+	word = strings.ToLower(word)
+	score := 0
+	for _, r := range word {
+		score += points[r]
+	}
+	return score
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/scrabble-score [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/scrabble-score [exercism/scrabble-score.test]
+./scrabble_score_test.go:6:21: undefined: scrabbleScoreTests
+./scrabble_score_test.go:20:24: undefined: scrabbleScoreTests
+
+
+=== FINAL STATUS: FAILED ===

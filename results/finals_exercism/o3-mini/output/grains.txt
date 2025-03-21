@@ -1,0 +1,525 @@
+=== Initial Source Code ===
+Source file: exercises/practice/grains/.meta/example.py
+def square(number):
+    if number == 0:
+        raise ValueError('square must be between 1 and 64')
+    elif number < 0:
+        raise ValueError('square must be between 1 and 64')
+    elif number > 64:
+        raise ValueError('square must be between 1 and 64')
+
+    return 2 ** (number - 1)
+
+
+def total():
+    return (2 ** 64) - 1
+
+
+=== Source Interface ===
+def square(number):
+    pass
+
+
+def total():
+    pass
+
+
+=== Target Interface ===
+package grains
+
+func Square(number int) (uint64, error) {
+	panic("Please implement the Square function")
+}
+
+func Total() uint64 {
+	panic("Please implement the Total function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/grains/canonical-data.json
+# File last updated on 2023-09-27
+
+import unittest
+
+from grains import (
+    square,
+    total,
+)
+
+
+class GrainsTest(unittest.TestCase):
+    def test_grains_on_square_1(self):
+        self.assertEqual(square(1), 1)
+
+    def test_grains_on_square_2(self):
+        self.assertEqual(square(2), 2)
+
+    def test_grains_on_square_3(self):
+        self.assertEqual(square(3), 4)
+
+    def test_grains_on_square_4(self):
+        self.assertEqual(square(4), 8)
+
+    def test_grains_on_square_16(self):
+        self.assertEqual(square(16), 32768)
+
+    def test_grains_on_square_32(self):
+        self.assertEqual(square(32), 2147483648)
+
+    def test_grains_on_square_64(self):
+        self.assertEqual(square(64), 9223372036854775808)
+
+    def test_square_0_is_invalid(self):
+        with self.assertRaises(ValueError) as err:
+            square(0)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "square must be between 1 and 64")
+
+    def test_negative_square_is_invalid(self):
+        with self.assertRaises(ValueError) as err:
+            square(-1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "square must be between 1 and 64")
+
+    def test_square_greater_than_64_is_invalid(self):
+        with self.assertRaises(ValueError) as err:
+            square(65)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "square must be between 1 and 64")
+
+    def test_returns_the_total_number_of_grains_on_the_board(self):
+        self.assertEqual(total(), 18446744073709551615)
+
+
+=== Target Test Code ===
+package grains
+
+import (
+	"testing"
+)
+
+func TestSquare(t *testing.T) {
+	for _, tc := range squareTests {
+		t.Run(tc.description, func(t *testing.T) {
+			actualVal, actualErr := Square(tc.input)
+			if tc.expectError {
+				if actualErr == nil {
+					t.Errorf("Square(%d) expected an error, got: %d", tc.input, actualVal)
+				}
+			} else {
+				if actualErr != nil {
+					t.Errorf("Square(%d) expected %d, but got error: %v", tc.input, actualVal, actualErr)
+				} else if actualVal != tc.expectedVal {
+					t.Errorf("Square(%d) = %d, want %d", tc.input, actualVal, tc.expectedVal)
+				}
+			}
+		})
+	}
+}
+
+func TestTotal(t *testing.T) {
+	var expected uint64 = 18446744073709551615
+	if actual := Total(); actual != expected {
+		t.Errorf("Total() = %d, want:%d", actual, expected)
+	}
+}
+
+func BenchmarkSquare(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, test := range squareTests {
+			Square(test.input)
+		}
+	}
+}
+
+func BenchmarkTotal(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Total()
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 9 ===
+// exercism/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/grains/.meta/example.go
+package grains
+
+import "fmt"
+
+// Square calculates the number of grains on a given square of a chessboard.
+// It returns an error if the input number is less than 1 or greater than 64.
+// Otherwise, it returns 2^(number - 1).
+func Square(number int) (uint64, error) {
+	if number < 1 || number > 64 {
+		return 0, fmt.Errorf("square must be between 1 and 64")
+	}
+	return 1 << (number - 1), nil
+}
+
+// Total returns the total number of grains on a chessboard, which is (2^64) - 1.
+func Total() uint64 {
+	return (1 << 64) - 1
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/grains [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/grains [exercism/grains.test]
+./grains_test.go:8:21: undefined: squareTests
+./grains_test.go:39:24: undefined: squareTests
+
+
+=== FINAL STATUS: FAILED ===

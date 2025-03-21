@@ -1,0 +1,1162 @@
+=== Initial Source Code ===
+Source file: exercises/practice/beer-song/.meta/example.py
+def recite(start, take=1):
+    results = []
+    for idx in range(start, start - take, -1):
+        results.extend(verse(idx))
+        if idx > start - take + 1:
+            results.append('')
+    return results
+
+
+def verse(number):
+    return [
+        f'{_bottles(number).capitalize()} of beer on the wall, {_bottles(number)} of beer.',
+        f'{_action(number)}{_next_bottle(number)}'
+    ]
+
+
+def _action(current_verse):
+    if current_verse == 0:
+        return 'Go to the store and buy some more, '
+    else:
+        return f'Take {"one" if current_verse > 1 else "it"} down and pass it around, '
+
+
+def _next_bottle(current_verse):
+    return f'{_bottles(_next_verse(current_verse))} of beer on the wall.'
+
+
+def _bottles(number):
+    if number == 0:
+        return 'no more bottles'
+    if number == 1:
+        return '1 bottle'
+    else:
+        return f'{number} bottles'
+
+
+def _next_verse(current_verse):
+    return current_verse - 1 if current_verse > 0 else 99
+
+
+=== Source Interface ===
+def recite(start, take=1):
+    pass
+
+
+=== Target Interface ===
+package beer
+
+func Song() string {
+	panic("Please implement the Song function")
+}
+
+func Verses(start, stop int) (string, error) {
+	panic("Please implement the Verses function")
+}
+
+func Verse(n int) (string, error) {
+	panic("Please implement the Verse function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/beer-song/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from beer_song import (
+    recite,
+)
+
+
+class BeerSongTest(unittest.TestCase):
+    def test_first_generic_verse(self):
+        expected = [
+            "99 bottles of beer on the wall, 99 bottles of beer.",
+            "Take one down and pass it around, 98 bottles of beer on the wall.",
+        ]
+        self.assertEqual(recite(start=99), expected)
+
+    def test_last_generic_verse(self):
+        expected = [
+            "3 bottles of beer on the wall, 3 bottles of beer.",
+            "Take one down and pass it around, 2 bottles of beer on the wall.",
+        ]
+        self.assertEqual(recite(start=3), expected)
+
+    def test_verse_with_2_bottles(self):
+        expected = [
+            "2 bottles of beer on the wall, 2 bottles of beer.",
+            "Take one down and pass it around, 1 bottle of beer on the wall.",
+        ]
+        self.assertEqual(recite(start=2), expected)
+
+    def test_verse_with_1_bottle(self):
+        expected = [
+            "1 bottle of beer on the wall, 1 bottle of beer.",
+            "Take it down and pass it around, no more bottles of beer on the wall.",
+        ]
+        self.assertEqual(recite(start=1), expected)
+
+    def test_verse_with_0_bottles(self):
+        expected = [
+            "No more bottles of beer on the wall, no more bottles of beer.",
+            "Go to the store and buy some more, 99 bottles of beer on the wall.",
+        ]
+        self.assertEqual(recite(start=0), expected)
+
+    def test_first_two_verses(self):
+        expected = [
+            "99 bottles of beer on the wall, 99 bottles of beer.",
+            "Take one down and pass it around, 98 bottles of beer on the wall.",
+            "",
+            "98 bottles of beer on the wall, 98 bottles of beer.",
+            "Take one down and pass it around, 97 bottles of beer on the wall.",
+        ]
+        self.assertEqual(recite(start=99, take=2), expected)
+
+    def test_last_three_verses(self):
+        expected = [
+            "2 bottles of beer on the wall, 2 bottles of beer.",
+            "Take one down and pass it around, 1 bottle of beer on the wall.",
+            "",
+            "1 bottle of beer on the wall, 1 bottle of beer.",
+            "Take it down and pass it around, no more bottles of beer on the wall.",
+            "",
+            "No more bottles of beer on the wall, no more bottles of beer.",
+            "Go to the store and buy some more, 99 bottles of beer on the wall.",
+        ]
+        self.assertEqual(recite(start=2, take=3), expected)
+
+    def test_all_verses(self):
+        expected = [
+            "99 bottles of beer on the wall, 99 bottles of beer.",
+            "Take one down and pass it around, 98 bottles of beer on the wall.",
+            "",
+            "98 bottles of beer on the wall, 98 bottles of beer.",
+            "Take one down and pass it around, 97 bottles of beer on the wall.",
+            "",
+            "97 bottles of beer on the wall, 97 bottles of beer.",
+            "Take one down and pass it around, 96 bottles of beer on the wall.",
+            "",
+            "96 bottles of beer on the wall, 96 bottles of beer.",
+            "Take one down and pass it around, 95 bottles of beer on the wall.",
+            "",
+            "95 bottles of beer on the wall, 95 bottles of beer.",
+            "Take one down and pass it around, 94 bottles of beer on the wall.",
+            "",
+            "94 bottles of beer on the wall, 94 bottles of beer.",
+            "Take one down and pass it around, 93 bottles of beer on the wall.",
+            "",
+            "93 bottles of beer on the wall, 93 bottles of beer.",
+            "Take one down and pass it around, 92 bottles of beer on the wall.",
+            "",
+            "92 bottles of beer on the wall, 92 bottles of beer.",
+            "Take one down and pass it around, 91 bottles of beer on the wall.",
+            "",
+            "91 bottles of beer on the wall, 91 bottles of beer.",
+            "Take one down and pass it around, 90 bottles of beer on the wall.",
+            "",
+            "90 bottles of beer on the wall, 90 bottles of beer.",
+            "Take one down and pass it around, 89 bottles of beer on the wall.",
+            "",
+            "89 bottles of beer on the wall, 89 bottles of beer.",
+            "Take one down and pass it around, 88 bottles of beer on the wall.",
+            "",
+            "88 bottles of beer on the wall, 88 bottles of beer.",
+            "Take one down and pass it around, 87 bottles of beer on the wall.",
+            "",
+            "87 bottles of beer on the wall, 87 bottles of beer.",
+            "Take one down and pass it around, 86 bottles of beer on the wall.",
+            "",
+            "86 bottles of beer on the wall, 86 bottles of beer.",
+            "Take one down and pass it around, 85 bottles of beer on the wall.",
+            "",
+            "85 bottles of beer on the wall, 85 bottles of beer.",
+            "Take one down and pass it around, 84 bottles of beer on the wall.",
+            "",
+            "84 bottles of beer on the wall, 84 bottles of beer.",
+            "Take one down and pass it around, 83 bottles of beer on the wall.",
+            "",
+            "83 bottles of beer on the wall, 83 bottles of beer.",
+            "Take one down and pass it around, 82 bottles of beer on the wall.",
+            "",
+            "82 bottles of beer on the wall, 82 bottles of beer.",
+            "Take one down and pass it around, 81 bottles of beer on the wall.",
+            "",
+            "81 bottles of beer on the wall, 81 bottles of beer.",
+            "Take one down and pass it around, 80 bottles of beer on the wall.",
+            "",
+            "80 bottles of beer on the wall, 80 bottles of beer.",
+            "Take one down and pass it around, 79 bottles of beer on the wall.",
+            "",
+            "79 bottles of beer on the wall, 79 bottles of beer.",
+            "Take one down and pass it around, 78 bottles of beer on the wall.",
+            "",
+            "78 bottles of beer on the wall, 78 bottles of beer.",
+            "Take one down and pass it around, 77 bottles of beer on the wall.",
+            "",
+            "77 bottles of beer on the wall, 77 bottles of beer.",
+            "Take one down and pass it around, 76 bottles of beer on the wall.",
+            "",
+            "76 bottles of beer on the wall, 76 bottles of beer.",
+            "Take one down and pass it around, 75 bottles of beer on the wall.",
+            "",
+            "75 bottles of beer on the wall, 75 bottles of beer.",
+            "Take one down and pass it around, 74 bottles of beer on the wall.",
+            "",
+            "74 bottles of beer on the wall, 74 bottles of beer.",
+            "Take one down and pass it around, 73 bottles of beer on the wall.",
+            "",
+            "73 bottles of beer on the wall, 73 bottles of beer.",
+            "Take one down and pass it around, 72 bottles of beer on the wall.",
+            "",
+            "72 bottles of beer on the wall, 72 bottles of beer.",
+            "Take one down and pass it around, 71 bottles of beer on the wall.",
+            "",
+            "71 bottles of beer on the wall, 71 bottles of beer.",
+            "Take one down and pass it around, 70 bottles of beer on the wall.",
+            "",
+            "70 bottles of beer on the wall, 70 bottles of beer.",
+            "Take one down and pass it around, 69 bottles of beer on the wall.",
+            "",
+            "69 bottles of beer on the wall, 69 bottles of beer.",
+            "Take one down and pass it around, 68 bottles of beer on the wall.",
+            "",
+            "68 bottles of beer on the wall, 68 bottles of beer.",
+            "Take one down and pass it around, 67 bottles of beer on the wall.",
+            "",
+            "67 bottles of beer on the wall, 67 bottles of beer.",
+            "Take one down and pass it around, 66 bottles of beer on the wall.",
+            "",
+            "66 bottles of beer on the wall, 66 bottles of beer.",
+            "Take one down and pass it around, 65 bottles of beer on the wall.",
+            "",
+            "65 bottles of beer on the wall, 65 bottles of beer.",
+            "Take one down and pass it around, 64 bottles of beer on the wall.",
+            "",
+            "64 bottles of beer on the wall, 64 bottles of beer.",
+            "Take one down and pass it around, 63 bottles of beer on the wall.",
+            "",
+            "63 bottles of beer on the wall, 63 bottles of beer.",
+            "Take one down and pass it around, 62 bottles of beer on the wall.",
+            "",
+            "62 bottles of beer on the wall, 62 bottles of beer.",
+            "Take one down and pass it around, 61 bottles of beer on the wall.",
+            "",
+            "61 bottles of beer on the wall, 61 bottles of beer.",
+            "Take one down and pass it around, 60 bottles of beer on the wall.",
+            "",
+            "60 bottles of beer on the wall, 60 bottles of beer.",
+            "Take one down and pass it around, 59 bottles of beer on the wall.",
+            "",
+            "59 bottles of beer on the wall, 59 bottles of beer.",
+            "Take one down and pass it around, 58 bottles of beer on the wall.",
+            "",
+            "58 bottles of beer on the wall, 58 bottles of beer.",
+            "Take one down and pass it around, 57 bottles of beer on the wall.",
+            "",
+            "57 bottles of beer on the wall, 57 bottles of beer.",
+            "Take one down and pass it around, 56 bottles of beer on the wall.",
+            "",
+            "56 bottles of beer on the wall, 56 bottles of beer.",
+            "Take one down and pass it around, 55 bottles of beer on the wall.",
+            "",
+            "55 bottles of beer on the wall, 55 bottles of beer.",
+            "Take one down and pass it around, 54 bottles of beer on the wall.",
+            "",
+            "54 bottles of beer on the wall, 54 bottles of beer.",
+            "Take one down and pass it around, 53 bottles of beer on the wall.",
+            "",
+            "53 bottles of beer on the wall, 53 bottles of beer.",
+            "Take one down and pass it around, 52 bottles of beer on the wall.",
+            "",
+            "52 bottles of beer on the wall, 52 bottles of beer.",
+            "Take one down and pass it around, 51 bottles of beer on the wall.",
+            "",
+            "51 bottles of beer on the wall, 51 bottles of beer.",
+            "Take one down and pass it around, 50 bottles of beer on the wall.",
+            "",
+            "50 bottles of beer on the wall, 50 bottles of beer.",
+            "Take one down and pass it around, 49 bottles of beer on the wall.",
+            "",
+            "49 bottles of beer on the wall, 49 bottles of beer.",
+            "Take one down and pass it around, 48 bottles of beer on the wall.",
+            "",
+            "48 bottles of beer on the wall, 48 bottles of beer.",
+            "Take one down and pass it around, 47 bottles of beer on the wall.",
+            "",
+            "47 bottles of beer on the wall, 47 bottles of beer.",
+            "Take one down and pass it around, 46 bottles of beer on the wall.",
+            "",
+            "46 bottles of beer on the wall, 46 bottles of beer.",
+            "Take one down and pass it around, 45 bottles of beer on the wall.",
+            "",
+            "45 bottles of beer on the wall, 45 bottles of beer.",
+            "Take one down and pass it around, 44 bottles of beer on the wall.",
+            "",
+            "44 bottles of beer on the wall, 44 bottles of beer.",
+            "Take one down and pass it around, 43 bottles of beer on the wall.",
+            "",
+            "43 bottles of beer on the wall, 43 bottles of beer.",
+            "Take one down and pass it around, 42 bottles of beer on the wall.",
+            "",
+            "42 bottles of beer on the wall, 42 bottles of beer.",
+            "Take one down and pass it around, 41 bottles of beer on the wall.",
+            "",
+            "41 bottles of beer on the wall, 41 bottles of beer.",
+            "Take one down and pass it around, 40 bottles of beer on the wall.",
+            "",
+            "40 bottles of beer on the wall, 40 bottles of beer.",
+            "Take one down and pass it around, 39 bottles of beer on the wall.",
+            "",
+            "39 bottles of beer on the wall, 39 bottles of beer.",
+            "Take one down and pass it around, 38 bottles of beer on the wall.",
+            "",
+            "38 bottles of beer on the wall, 38 bottles of beer.",
+            "Take one down and pass it around, 37 bottles of beer on the wall.",
+            "",
+            "37 bottles of beer on the wall, 37 bottles of beer.",
+            "Take one down and pass it around, 36 bottles of beer on the wall.",
+            "",
+            "36 bottles of beer on the wall, 36 bottles of beer.",
+            "Take one down and pass it around, 35 bottles of beer on the wall.",
+            "",
+            "35 bottles of beer on the wall, 35 bottles of beer.",
+            "Take one down and pass it around, 34 bottles of beer on the wall.",
+            "",
+            "34 bottles of beer on the wall, 34 bottles of beer.",
+            "Take one down and pass it around, 33 bottles of beer on the wall.",
+            "",
+            "33 bottles of beer on the wall, 33 bottles of beer.",
+            "Take one down and pass it around, 32 bottles of beer on the wall.",
+            "",
+            "32 bottles of beer on the wall, 32 bottles of beer.",
+            "Take one down and pass it around, 31 bottles of beer on the wall.",
+            "",
+            "31 bottles of beer on the wall, 31 bottles of beer.",
+            "Take one down and pass it around, 30 bottles of beer on the wall.",
+            "",
+            "30 bottles of beer on the wall, 30 bottles of beer.",
+            "Take one down and pass it around, 29 bottles of beer on the wall.",
+            "",
+            "29 bottles of beer on the wall, 29 bottles of beer.",
+            "Take one down and pass it around, 28 bottles of beer on the wall.",
+            "",
+            "28 bottles of beer on the wall, 28 bottles of beer.",
+            "Take one down and pass it around, 27 bottles of beer on the wall.",
+            "",
+            "27 bottles of beer on the wall, 27 bottles of beer.",
+            "Take one down and pass it around, 26 bottles of beer on the wall.",
+            "",
+            "26 bottles of beer on the wall, 26 bottles of beer.",
+            "Take one down and pass it around, 25 bottles of beer on the wall.",
+            "",
+            "25 bottles of beer on the wall, 25 bottles of beer.",
+            "Take one down and pass it around, 24 bottles of beer on the wall.",
+            "",
+            "24 bottles of beer on the wall, 24 bottles of beer.",
+            "Take one down and pass it around, 23 bottles of beer on the wall.",
+            "",
+            "23 bottles of beer on the wall, 23 bottles of beer.",
+            "Take one down and pass it around, 22 bottles of beer on the wall.",
+            "",
+            "22 bottles of beer on the wall, 22 bottles of beer.",
+            "Take one down and pass it around, 21 bottles of beer on the wall.",
+            "",
+            "21 bottles of beer on the wall, 21 bottles of beer.",
+            "Take one down and pass it around, 20 bottles of beer on the wall.",
+            "",
+            "20 bottles of beer on the wall, 20 bottles of beer.",
+            "Take one down and pass it around, 19 bottles of beer on the wall.",
+            "",
+            "19 bottles of beer on the wall, 19 bottles of beer.",
+            "Take one down and pass it around, 18 bottles of beer on the wall.",
+            "",
+            "18 bottles of beer on the wall, 18 bottles of beer.",
+            "Take one down and pass it around, 17 bottles of beer on the wall.",
+            "",
+            "17 bottles of beer on the wall, 17 bottles of beer.",
+            "Take one down and pass it around, 16 bottles of beer on the wall.",
+            "",
+            "16 bottles of beer on the wall, 16 bottles of beer.",
+            "Take one down and pass it around, 15 bottles of beer on the wall.",
+            "",
+            "15 bottles of beer on the wall, 15 bottles of beer.",
+            "Take one down and pass it around, 14 bottles of beer on the wall.",
+            "",
+            "14 bottles of beer on the wall, 14 bottles of beer.",
+            "Take one down and pass it around, 13 bottles of beer on the wall.",
+            "",
+            "13 bottles of beer on the wall, 13 bottles of beer.",
+            "Take one down and pass it around, 12 bottles of beer on the wall.",
+            "",
+            "12 bottles of beer on the wall, 12 bottles of beer.",
+            "Take one down and pass it around, 11 bottles of beer on the wall.",
+            "",
+            "11 bottles of beer on the wall, 11 bottles of beer.",
+            "Take one down and pass it around, 10 bottles of beer on the wall.",
+            "",
+            "10 bottles of beer on the wall, 10 bottles of beer.",
+            "Take one down and pass it around, 9 bottles of beer on the wall.",
+            "",
+            "9 bottles of beer on the wall, 9 bottles of beer.",
+            "Take one down and pass it around, 8 bottles of beer on the wall.",
+            "",
+            "8 bottles of beer on the wall, 8 bottles of beer.",
+            "Take one down and pass it around, 7 bottles of beer on the wall.",
+            "",
+            "7 bottles of beer on the wall, 7 bottles of beer.",
+            "Take one down and pass it around, 6 bottles of beer on the wall.",
+            "",
+            "6 bottles of beer on the wall, 6 bottles of beer.",
+            "Take one down and pass it around, 5 bottles of beer on the wall.",
+            "",
+            "5 bottles of beer on the wall, 5 bottles of beer.",
+            "Take one down and pass it around, 4 bottles of beer on the wall.",
+            "",
+            "4 bottles of beer on the wall, 4 bottles of beer.",
+            "Take one down and pass it around, 3 bottles of beer on the wall.",
+            "",
+            "3 bottles of beer on the wall, 3 bottles of beer.",
+            "Take one down and pass it around, 2 bottles of beer on the wall.",
+            "",
+            "2 bottles of beer on the wall, 2 bottles of beer.",
+            "Take one down and pass it around, 1 bottle of beer on the wall.",
+            "",
+            "1 bottle of beer on the wall, 1 bottle of beer.",
+            "Take it down and pass it around, no more bottles of beer on the wall.",
+            "",
+            "No more bottles of beer on the wall, no more bottles of beer.",
+            "Go to the store and buy some more, 99 bottles of beer on the wall.",
+        ]
+        self.assertEqual(recite(start=99, take=100), expected)
+
+
+=== Target Test Code ===
+package beer
+
+import (
+	"testing"
+)
+
+const verse8 = "8 bottles of beer on the wall, 8 bottles of beer.\nTake one down and pass it around, 7 bottles of beer on the wall.\n"
+const verse3 = "3 bottles of beer on the wall, 3 bottles of beer.\nTake one down and pass it around, 2 bottles of beer on the wall.\n"
+const verse2 = "2 bottles of beer on the wall, 2 bottles of beer.\nTake one down and pass it around, 1 bottle of beer on the wall.\n"
+const verse1 = "1 bottle of beer on the wall, 1 bottle of beer.\nTake it down and pass it around, no more bottles of beer on the wall.\n"
+const verse0 = "No more bottles of beer on the wall, no more bottles of beer.\nGo to the store and buy some more, 99 bottles of beer on the wall.\n"
+
+const verses86 = `8 bottles of beer on the wall, 8 bottles of beer.
+Take one down and pass it around, 7 bottles of beer on the wall.
+
+7 bottles of beer on the wall, 7 bottles of beer.
+Take one down and pass it around, 6 bottles of beer on the wall.
+
+6 bottles of beer on the wall, 6 bottles of beer.
+Take one down and pass it around, 5 bottles of beer on the wall.
+
+`
+
+const verses75 = `7 bottles of beer on the wall, 7 bottles of beer.
+Take one down and pass it around, 6 bottles of beer on the wall.
+
+6 bottles of beer on the wall, 6 bottles of beer.
+Take one down and pass it around, 5 bottles of beer on the wall.
+
+5 bottles of beer on the wall, 5 bottles of beer.
+Take one down and pass it around, 4 bottles of beer on the wall.
+
+`
+
+var verseTestCases = []struct {
+	description   string
+	verse         int
+	expectedVerse string
+	expectErr     bool
+}{
+	{"a typical verse", 8, verse8, false},
+	{"another typical verse", 3, verse3, false},
+	{"verse 2", 2, verse2, false},
+	{"verse 1", 1, verse1, false},
+	{"verse 0", 0, verse0, false},
+	{"invalid verse", 104, "", true},
+}
+
+func TestBottlesVerse(t *testing.T) {
+	for _, tc := range verseTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actualVerse, err := Verse(tc.verse)
+			if tc.expectErr {
+				if err == nil {
+					t.Fatalf("Verse(%d) expected an error, but error is nil", tc.verse)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Verse(%d) returned error: %v, want:%q", tc.verse, err, tc.expectedVerse)
+				}
+
+				if actualVerse != tc.expectedVerse {
+					t.Fatalf("Verse(%d)\n got:%q\nwant:%q", tc.verse, actualVerse, tc.expectedVerse)
+				}
+			}
+		})
+	}
+}
+
+var versesTestCases = []struct {
+	description   string
+	upperBound    int
+	lowerBound    int
+	expectedVerse string
+	expectErr     bool
+}{
+	{"multiple verses", 8, 6, verses86, false},
+	{"a different set of verses", 7, 5, verses75, false},
+	{"invalid start", 109, 5, "", true},
+	{"invalid stop", 99, -20, "", true},
+	{"start less than stop", 8, 14, "", true},
+}
+
+func TestSeveralVerses(t *testing.T) {
+	for _, tc := range versesTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actualVerse, err := Verses(tc.upperBound, tc.lowerBound)
+			if tc.expectErr {
+				if err == nil {
+					t.Fatalf("Verses(%d,%d) expected an error, but error is nil", tc.upperBound, tc.lowerBound)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Verses(%d,%d) returned error: %v, want:%q", tc.upperBound, tc.lowerBound, err, tc.expectedVerse)
+				}
+				if actualVerse != tc.expectedVerse {
+					t.Fatalf("Verse(%d,%d)\n got:%q\nwant:%q", tc.upperBound, tc.lowerBound, actualVerse, tc.expectedVerse)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkSeveralVerses(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+
+		for _, tt := range versesTestCases {
+			Verses(tt.upperBound, tt.lowerBound)
+		}
+
+	}
+}
+
+func TestEntireSong(t *testing.T) {
+	expected, err := Verses(99, 0)
+	if err != nil {
+		t.Fatalf("unexpected error calling Verses(99,0)")
+	}
+	actual := Song()
+
+	if expected != actual {
+		t.Fatalf(`
+		  Did not sing the whole song correctly.
+
+			Expected:
+			%v
+
+			Actual:
+			%v
+		`, expected, actual)
+	}
+}
+
+func BenchmarkEntireSong(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Song()
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/beer-song/.meta/example.go
+package beer
+
+import (
+	"fmt"
+	"strings"
+	"unicode"
+)
+
+// Song returns the entire beer song from 99 down to 0 verses.
+func Song() string {
+	verses, _ := Verses(99, 0)
+	return verses
+}
+
+// Verses returns the beer song verses from start down to stop (inclusive).
+// It returns a single string with each verse separated by a blank line.
+func Verses(start, stop int) (string, error) {
+	var verses []string
+	for i := start; i >= stop; i-- {
+		verseStr, err := Verse(i)
+		if err != nil {
+			return "", err
+		}
+		verses = append(verses, verseStr)
+	}
+	return strings.Join(verses, "\n\n"), nil
+}
+
+// Verse returns a single verse of the beer song for the given verse number.
+// The verse consists of two lines separated by a newline.
+func Verse(n int) (string, error) {
+	line1 := fmt.Sprintf("%s of beer on the wall, %s of beer.", capitalize(bottles(n)), bottles(n))
+	line2 := fmt.Sprintf("%s%s", action(n), nextBottle(n))
+	return line1 + "\n" + line2, nil
+}
+
+// capitalize returns the input string with its first character in uppercase.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+// bottles returns the appropriate string for the number of bottles.
+func bottles(n int) string {
+	switch n {
+	case 0:
+		return "no more bottles"
+	case 1:
+		return "1 bottle"
+	default:
+		return fmt.Sprintf("%d bottles", n)
+	}
+}
+
+// action returns the action string based on the current verse number.
+func action(n int) string {
+	if n == 0 {
+		return "Go to the store and buy some more, "
+	}
+	if n == 1 {
+		return "Take it down and pass it around, "
+	}
+	return "Take one down and pass it around, "
+}
+
+// nextBottle returns the string for the next bottle count on the wall.
+func nextBottle(n int) string {
+	return fmt.Sprintf("%s of beer on the wall.", bottles(nextVerse(n)))
+}
+
+// nextVerse calculates the next verse number. If the current verse is 0,
+// it wraps around to 99; otherwise, it decreases by 1.
+func nextVerse(n int) int {
+	if n > 0 {
+		return n - 1
+	}
+	return 99
+}
+
+// The following function recite is a translation of the Python recite function.
+// It returns a slice of strings representing the beer song verses.
+// The parameters are: start (the starting verse number) and take (the number of verses to recite).
+// It produces the verses from start down to (start - take + 1), inserting an empty string between verses.
+// Note: This function is provided for compatibility with the original Python interface.
+func recite(start, take int) []string {
+	var results []string
+	stop := start - take + 1
+	for i := start; i >= stop; i-- {
+		verseStr, _ := Verse(i) // Ignoring error as input is assumed valid
+		// Split the verse into its component lines
+		verseLines := strings.Split(verseStr, "\n")
+		results = append(results, verseLines...)
+		if i > stop {
+			results = append(results, "")
+		}
+	}
+	return results
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestBottlesVerse (0.00s)
+    --- FAIL: TestBottlesVerse/a_typical_verse (0.00s)
+        beer_song_test.go:63: Verse(8)
+             got:"8 bottles of beer on the wall, 8 bottles of beer.\nTake one down and pass it around, 7 bottles of beer on the wall."
+            want:"8 bottles of beer on the wall, 8 bottles of beer.\nTake one down and pass it around, 7 bottles of beer on the wall.\n"
+    --- FAIL: TestBottlesVerse/another_typical_verse (0.00s)
+        beer_song_test.go:63: Verse(3)
+             got:"3 bottles of beer on the wall, 3 bottles of beer.\nTake one down and pass it around, 2 bottles of beer on the wall."
+            want:"3 bottles of beer on the wall, 3 bottles of beer.\nTake one down and pass it around, 2 bottles of beer on the wall.\n"
+    --- FAIL: TestBottlesVerse/verse_2 (0.00s)
+        beer_song_test.go:63: Verse(2)
+             got:"2 bottles of beer on the wall, 2 bottles of beer.\nTake one down and pass it around, 1 bottle of beer on the wall."
+            want:"2 bottles of beer on the wall, 2 bottles of beer.\nTake one down and pass it around, 1 bottle of beer on the wall.\n"
+    --- FAIL: TestBottlesVerse/verse_1 (0.00s)
+        beer_song_test.go:63: Verse(1)
+             got:"1 bottle of beer on the wall, 1 bottle of beer.\nTake it down and pass it around, no more bottles of beer on the wall."
+            want:"1 bottle of beer on the wall, 1 bottle of beer.\nTake it down and pass it around, no more bottles of beer on the wall.\n"
+    --- FAIL: TestBottlesVerse/verse_0 (0.00s)
+        beer_song_test.go:63: Verse(0)
+             got:"No more bottles of beer on the wall, no more bottles of beer.\nGo to the store and buy some more, 99 bottles of beer on the wall."
+            want:"No more bottles of beer on the wall, no more bottles of beer.\nGo to the store and buy some more, 99 bottles of beer on the wall.\n"
+    --- FAIL: TestBottlesVerse/invalid_verse (0.00s)
+        beer_song_test.go:55: Verse(104) expected an error, but error is nil
+--- FAIL: TestSeveralVerses (0.00s)
+    --- FAIL: TestSeveralVerses/multiple_verses (0.00s)
+        beer_song_test.go:97: Verse(8,6)
+             got:"8 bottles of beer on the wall, 8 bottles of beer.\nTake one down and pass it around, 7 bottles of beer on the wall.\n\n7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall."
+            want:"8 bottles of beer on the wall, 8 bottles of beer.\nTake one down and pass it around, 7 bottles of beer on the wall.\n\n7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n"
+    --- FAIL: TestSeveralVerses/a_different_set_of_verses (0.00s)
+        beer_song_test.go:97: Verse(7,5)
+             got:"7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n5 bottles of beer on the wall, 5 bottles of beer.\nTake one down and pass it around, 4 bottles of beer on the wall."
+            want:"7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n5 bottles of beer on the wall, 5 bottles of beer.\nTake one down and pass it around, 4 bottles of beer on the wall.\n\n"
+    --- FAIL: TestSeveralVerses/invalid_start (0.00s)
+        beer_song_test.go:90: Verses(109,5) expected an error, but error is nil
+    --- FAIL: TestSeveralVerses/invalid_stop (0.00s)
+        beer_song_test.go:90: Verses(99,-20) expected an error, but error is nil
+    --- FAIL: TestSeveralVerses/start_less_than_stop (0.00s)
+        beer_song_test.go:90: Verses(8,14) expected an error, but error is nil
+FAIL
+FAIL	exercism/beer-song	0.269s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/beer-song/.meta/example.go
+package beer
+
+import (
+	"fmt"
+	"strings"
+	"unicode"
+	"errors"
+)
+
+// Song returns the entire beer song from 99 down to 0 verses.
+func Song() string {
+	verses, _ := Verses(99, 0)
+	return verses
+}
+
+// Verses returns the beer song verses from start down to stop (inclusive).
+// It returns a single string with each verse separated by a blank line and ending with a newline.
+func Verses(upperBound, lowerBound int) (string, error) {
+	if upperBound > 99 || upperBound < 0 {
+		return "", fmt.Errorf("invalid verse: %d", upperBound)
+	}
+	if lowerBound > 99 || lowerBound < 0 {
+		return "", fmt.Errorf("invalid verse: %d", lowerBound)
+	}
+	if upperBound < lowerBound {
+		return "", errors.New("upperBound must be greater than or equal to lowerBound")
+	}
+
+	var verses []string
+	for i := upperBound; i >= lowerBound; i-- {
+		verseStr, err := Verse(i)
+		if err != nil {
+			return "", err
+		}
+		verses = append(verses, verseStr)
+	}
+	result := strings.Join(verses, "\n\n") + "\n"
+	return result, nil
+}
+
+// Verse returns a single verse of the beer song for the given verse number.
+// The verse consists of two lines separated by a newline and ends with a newline.
+func Verse(n int) (string, error) {
+	if n < 0 || n > 99 {
+		return "", fmt.Errorf("invalid verse: %d", n)
+	}
+	line1 := fmt.Sprintf("%s of beer on the wall, %s of beer.", capitalize(bottles(n)), bottles(n))
+	line2 := fmt.Sprintf("%s%s", action(n), nextBottle(n))
+	return line1 + "\n" + line2 + "\n", nil
+}
+
+// capitalize returns the input string with its first character in uppercase.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+// bottles returns the appropriate string for the number of bottles.
+func bottles(n int) string {
+	switch n {
+	case 0:
+		return "no more bottles"
+	case 1:
+		return "1 bottle"
+	default:
+		return fmt.Sprintf("%d bottles", n)
+	}
+}
+
+// action returns the action string based on the current verse number.
+func action(n int) string {
+	if n == 0 {
+		return "Go to the store and buy some more, "
+	}
+	if n == 1 {
+		return "Take it down and pass it around, "
+	}
+	return "Take one down and pass it around, "
+}
+
+// nextBottle returns the string for the next bottle count on the wall.
+func nextBottle(n int) string {
+	return fmt.Sprintf("%s of beer on the wall.", bottles(nextVerse(n)))
+}
+
+// nextVerse calculates the next verse number. If the current verse is 0,
+// it wraps around to 99; otherwise, it decreases by 1.
+func nextVerse(n int) int {
+	if n > 0 {
+		return n - 1
+	}
+	return 99
+}
+
+// recite returns a slice of strings representing the beer song verses.
+// It produces the verses from start down to (start - take + 1), inserting an empty string between verses.
+// Note: This function is provided for compatibility with the original Python interface.
+func recite(start, take int) []string {
+	var results []string
+	stop := start - take + 1
+	for i := start; i >= stop; i-- {
+		verseStr, _ := Verse(i) // Assuming valid input
+		verseLines := strings.Split(verseStr, "\n")
+		// Remove the empty element from splitting the trailing newline
+		if len(verseLines) > 0 && verseLines[len(verseLines)-1] == "" {
+			verseLines = verseLines[:len(verseLines)-1]
+		}
+		results = append(results, verseLines...)
+		if i > stop {
+			results = append(results, "")
+		}
+	}
+	return results
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestSeveralVerses (0.00s)
+    --- FAIL: TestSeveralVerses/multiple_verses (0.00s)
+        beer_song_test.go:97: Verse(8,6)
+             got:"8 bottles of beer on the wall, 8 bottles of beer.\nTake one down and pass it around, 7 bottles of beer on the wall.\n\n\n7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n"
+            want:"8 bottles of beer on the wall, 8 bottles of beer.\nTake one down and pass it around, 7 bottles of beer on the wall.\n\n7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n"
+    --- FAIL: TestSeveralVerses/a_different_set_of_verses (0.00s)
+        beer_song_test.go:97: Verse(7,5)
+             got:"7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n\n5 bottles of beer on the wall, 5 bottles of beer.\nTake one down and pass it around, 4 bottles of beer on the wall.\n\n"
+            want:"7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n5 bottles of beer on the wall, 5 bottles of beer.\nTake one down and pass it around, 4 bottles of beer on the wall.\n\n"
+FAIL
+FAIL	exercism/beer-song	0.284s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/beer-song/.meta/example.go
+package beer
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"unicode"
+)
+
+// Song returns the entire beer song from 99 down to 0 verses.
+func Song() string {
+	verses, _ := Verses(99, 0)
+	return verses
+}
+
+// Verses returns the beer song verses from upperBound down to lowerBound (inclusive).
+// Each verse is separated by a single blank line. The final output ends with a newline.
+func Verses(upperBound, lowerBound int) (string, error) {
+	// Validate the bounds
+	if upperBound < 0 || upperBound > 99 {
+		return "", fmt.Errorf("invalid verse: %d", upperBound)
+	}
+	if lowerBound < 0 || lowerBound > 99 {
+		return "", fmt.Errorf("invalid verse: %d", lowerBound)
+	}
+	if upperBound < lowerBound {
+		return "", errors.New("upperBound must be greater than or equal to lowerBound")
+	}
+
+	var verses []string
+	for i := upperBound; i >= lowerBound; i-- {
+		verseStr, err := Verse(i)
+		if err != nil {
+			return "", err
+		}
+		verses = append(verses, verseStr)
+	}
+	// Each Verse already ends with a newline. Joining with "\n" inserts one more newline between verses,
+	// resulting in exactly a blank line between verses, and the final verse retains its ending newline.
+	result := strings.Join(verses, "\n")
+	return result, nil
+}
+
+// Verse returns a single verse of the beer song for the given verse number.
+// The output consists of two lines (separated by a newline) and ends with a newline.
+func Verse(n int) (string, error) {
+	if n < 0 || n > 99 {
+		return "", fmt.Errorf("invalid verse: %d", n)
+	}
+	line1 := fmt.Sprintf("%s of beer on the wall, %s of beer.", capitalize(bottles(n)), bottles(n))
+	line2 := fmt.Sprintf("%s%s", action(n), nextBottle(n))
+	// Append a trailing newline so that each verse ends with a newline
+	return line1 + "\n" + line2 + "\n", nil
+}
+
+// capitalize returns the input string with its first character in uppercase.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+// bottles returns the appropriate string for the number of bottles.
+func bottles(n int) string {
+	switch n {
+	case 0:
+		return "no more bottles"
+	case 1:
+		return "1 bottle"
+	default:
+		return fmt.Sprintf("%d bottles", n)
+	}
+}
+
+// action returns the action string based on the current verse number.
+func action(n int) string {
+	if n == 0 {
+		return "Go to the store and buy some more, "
+	}
+	if n == 1 {
+		return "Take it down and pass it around, "
+	}
+	return "Take one down and pass it around, "
+}
+
+// nextBottle returns the string for the next bottle count on the wall.
+func nextBottle(n int) string {
+	return fmt.Sprintf("%s of beer on the wall.", bottles(nextVerse(n)))
+}
+
+// nextVerse calculates the next verse number. If the current verse is 0, it wraps around to 99; otherwise, it decreases by 1.
+func nextVerse(n int) int {
+	if n > 0 {
+		return n - 1
+	}
+	return 99
+}
+
+// recite returns a slice of strings representing the beer song verses.
+// It produces the verses from start down to (start - take + 1) by splitting each verse into its component lines
+// and inserting an empty string between verses.
+func recite(start, take int) []string {
+	var results []string
+	stop := start - take + 1
+	for i := start; i >= stop; i-- {
+		verseStr, _ := Verse(i) // assuming input is valid
+		// Remove the final empty element if verseStr ends with a newline
+		verseLines := strings.Split(verseStr, "\n")
+		if len(verseLines) > 0 && verseLines[len(verseLines)-1] == "" {
+			verseLines = verseLines[:len(verseLines)-1]
+		}
+		results = append(results, verseLines...)
+		if i > stop {
+			results = append(results, "")
+		}
+	}
+	return results
+}
+
+// exercises/practice/beer-song/.meta/example_test.go
+// This file contains tests for the beer song implementation.
+
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestSeveralVerses (0.00s)
+    --- FAIL: TestSeveralVerses/multiple_verses (0.00s)
+        beer_song_test.go:97: Verse(8,6)
+             got:"8 bottles of beer on the wall, 8 bottles of beer.\nTake one down and pass it around, 7 bottles of beer on the wall.\n\n7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n"
+            want:"8 bottles of beer on the wall, 8 bottles of beer.\nTake one down and pass it around, 7 bottles of beer on the wall.\n\n7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n"
+    --- FAIL: TestSeveralVerses/a_different_set_of_verses (0.00s)
+        beer_song_test.go:97: Verse(7,5)
+             got:"7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n5 bottles of beer on the wall, 5 bottles of beer.\nTake one down and pass it around, 4 bottles of beer on the wall.\n"
+            want:"7 bottles of beer on the wall, 7 bottles of beer.\nTake one down and pass it around, 6 bottles of beer on the wall.\n\n6 bottles of beer on the wall, 6 bottles of beer.\nTake one down and pass it around, 5 bottles of beer on the wall.\n\n5 bottles of beer on the wall, 5 bottles of beer.\nTake one down and pass it around, 4 bottles of beer on the wall.\n\n"
+FAIL
+FAIL	exercism/beer-song	0.372s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/beer-song/.meta/example.go
+package beer
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"unicode"
+)
+
+// Song returns the entire beer song from 99 down to 0 verses.
+func Song() string {
+	verses, _ := Verses(99, 0)
+	return verses
+}
+
+// Verses returns the beer song verses from upperBound down to lowerBound (inclusive).
+// Each verse is separated by a single blank line and the final output ends with a newline.
+func Verses(upperBound, lowerBound int) (string, error) {
+	// Validate the bounds
+	if upperBound < 0 || upperBound > 99 {
+		return "", fmt.Errorf("invalid verse: %d", upperBound)
+	}
+	if lowerBound < 0 || lowerBound > 99 {
+		return "", fmt.Errorf("invalid verse: %d", lowerBound)
+	}
+	if upperBound < lowerBound {
+		return "", errors.New("upperBound must be greater than or equal to lowerBound")
+	}
+
+	var verses []string
+	for i := upperBound; i >= lowerBound; i-- {
+		verseStr, err := Verse(i)
+		if err != nil {
+			return "", err
+		}
+		verses = append(verses, verseStr)
+	}
+	// Join verses with a newline to create a blank line between them, then add an extra newline at the end
+	result := strings.Join(verses, "\n") + "\n"
+	return result, nil
+}
+
+// Verse returns a single verse of the beer song for the given verse number.
+// The output consists of two lines (separated by a newline) and ends with a newline.
+func Verse(n int) (string, error) {
+	if n < 0 || n > 99 {
+		return "", fmt.Errorf("invalid verse: %d", n)
+	}
+	line1 := fmt.Sprintf("%s of beer on the wall, %s of beer.", capitalize(bottles(n)), bottles(n))
+	line2 := fmt.Sprintf("%s%s", action(n), nextBottle(n))
+	// Append a trailing newline so that each verse ends with a newline
+	return line1 + "\n" + line2 + "\n", nil
+}
+
+// capitalize returns the input string with its first character in uppercase.
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+// bottles returns the appropriate string for the number of bottles.
+func bottles(n int) string {
+	switch n {
+	case 0:
+		return "no more bottles"
+	case 1:
+		return "1 bottle"
+	default:
+		return fmt.Sprintf("%d bottles", n)
+	}
+}
+
+// action returns the action string based on the current verse number.
+func action(n int) string {
+	if n == 0 {
+		return "Go to the store and buy some more, "
+	}
+	if n == 1 {
+		return "Take it down and pass it around, "
+	}
+	return "Take one down and pass it around, "
+}
+
+// nextBottle returns the string for the next bottle count on the wall.
+func nextBottle(n int) string {
+	return fmt.Sprintf("%s of beer on the wall.", bottles(nextVerse(n)))
+}
+
+// nextVerse calculates the next verse number. If the current verse is 0, it wraps around to 99; otherwise, it decreases by 1.
+func nextVerse(n int) int {
+	if n > 0 {
+		return n - 1
+	}
+	return 99
+}
+
+// recite returns a slice of strings representing the beer song verses.
+// It produces the verses from start down to (start - take + 1) by splitting each verse into its component lines
+// and inserting an empty string between verses.
+func recite(start, take int) []string {
+	var results []string
+	stop := start - take + 1
+	for i := start; i >= stop; i-- {
+		verseStr, _ := Verse(i) // assuming input is valid
+		// Remove the final empty element if verseStr ends with a newline
+		verseLines := strings.Split(verseStr, "\n")
+		if len(verseLines) > 0 && verseLines[len(verseLines)-1] == "" {
+			verseLines = verseLines[:len(verseLines)-1]
+		}
+		results = append(results, verseLines...)
+		if i > stop {
+			results = append(results, "")
+		}
+	}
+	return results
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/beer-song	0.285s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

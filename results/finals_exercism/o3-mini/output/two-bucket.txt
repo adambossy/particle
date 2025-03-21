@@ -1,0 +1,1930 @@
+=== Initial Source Code ===
+Source file: exercises/practice/two-bucket/.meta/example.py
+'''
+    This solution implements a breadth-first search of the graph
+    of possible valid states for the two buckets until it reaches a state
+    in which one of the two buckets contains the goal amount
+'''
+
+
+def measure(bucket_one, bucket_two, goal, start_bucket):
+    sizes = [bucket_one, bucket_two]
+    goal_index = 0 if start_bucket == 'one' else 1
+
+    def empty(buckets, idx):
+        return [0, buckets[1]] if idx == 0 else [buckets[0], 0]
+
+    def fill(buckets, idx):
+        return [sizes[0], buckets[1]] if idx == 0 else [buckets[0], sizes[1]]
+
+    def consolidate(buckets, idx):
+        amount = min(buckets[1 - idx], sizes[idx] - buckets[idx])
+        target = buckets[idx] + amount
+        source = buckets[1 - idx] - amount
+        return [target, source] if idx == 0 else [source, target]
+
+    def bucket_str(buckets):
+        return f'{buckets[0]},{buckets[1]}'
+
+    invalid = [0, 0]
+    invalid[1 - goal_index] = sizes[1 - goal_index]
+    invalid_string = bucket_str(invalid)
+    buckets = [0, 0]
+    buckets[goal_index] = sizes[goal_index]
+    to_visit = []
+    visited = set()
+    count = 1
+    while goal not in buckets:
+        key = bucket_str(buckets)
+        if key != invalid_string and key not in visited:
+            visited.add(key)
+            number_count = count + 1
+            for idx in range(2):
+                if buckets[idx] != 0:
+                    to_visit.append((empty(buckets, idx), number_count))
+                if buckets[idx] != sizes[idx]:
+                    to_visit.append((fill(buckets, idx), number_count))
+                    to_visit.append((consolidate(buckets, idx), number_count))
+        if not any(to_visit):
+            raise ValueError('No more moves!')
+        buckets, count = to_visit.pop(0)
+
+    goal_index = buckets.index(goal)
+    goal_bucket = ['one', 'two'][goal_index]
+    other_bucket = buckets[1 - goal_index]
+    return (count, goal_bucket, other_bucket)
+
+
+=== Source Interface ===
+def measure(bucket_one, bucket_two, goal, start_bucket):
+    pass
+
+
+=== Target Interface ===
+package twobucket
+
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	panic("Please implement the Solve function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/two-bucket/canonical-data.json
+# File last updated on 2023-07-21
+
+import unittest
+
+from two_bucket import (
+    measure,
+)
+
+
+class TwoBucketTest(unittest.TestCase):
+    def test_measure_using_bucket_one_of_size_3_and_bucket_two_of_size_5_start_with_bucket_one(
+        self,
+    ):
+        self.assertEqual(measure(3, 5, 1, "one"), (4, "one", 5))
+
+    def test_measure_using_bucket_one_of_size_3_and_bucket_two_of_size_5_start_with_bucket_two(
+        self,
+    ):
+        self.assertEqual(measure(3, 5, 1, "two"), (8, "two", 3))
+
+    def test_measure_using_bucket_one_of_size_7_and_bucket_two_of_size_11_start_with_bucket_one(
+        self,
+    ):
+        self.assertEqual(measure(7, 11, 2, "one"), (14, "one", 11))
+
+    def test_measure_using_bucket_one_of_size_7_and_bucket_two_of_size_11_start_with_bucket_two(
+        self,
+    ):
+        self.assertEqual(measure(7, 11, 2, "two"), (18, "two", 7))
+
+    def test_measure_one_step_using_bucket_one_of_size_1_and_bucket_two_of_size_3_start_with_bucket_two(
+        self,
+    ):
+        self.assertEqual(measure(1, 3, 3, "two"), (1, "two", 0))
+
+    def test_measure_using_bucket_one_of_size_2_and_bucket_two_of_size_3_start_with_bucket_one_and_end_with_bucket_two(
+        self,
+    ):
+        self.assertEqual(measure(2, 3, 3, "one"), (2, "two", 2))
+
+    def test_not_possible_to_reach_the_goal(self):
+        with self.assertRaisesWithMessage(ValueError):
+            measure(6, 15, 5, "one")
+
+    def test_with_the_same_buckets_but_a_different_goal_then_it_is_possible(self):
+        self.assertEqual(measure(6, 15, 9, "one"), (10, "two", 0))
+
+    def test_goal_larger_than_both_buckets_is_impossible(self):
+        with self.assertRaisesWithMessage(ValueError):
+            measure(5, 7, 8, "one")
+
+    # Utility functions
+    def assertRaisesWithMessage(self, exception):
+        return self.assertRaisesRegex(exception, r".+")
+
+
+=== Target Test Code ===
+package twobucket
+
+import "testing"
+
+func TestSolve(t *testing.T) {
+	for _, tc := range append(testCases, errorTestCases...) {
+		runTestCase(t, tc)
+	}
+}
+
+func runTestCase(t *testing.T, tc bucketTestCase) {
+	t.Run(tc.description, func(t *testing.T) {
+		g, m, other, err := Solve(tc.bucketOne, tc.bucketTwo, tc.goal, tc.startBucket)
+		switch {
+		case tc.expectedError != "":
+			if err == nil {
+				t.Fatalf("Solve(%d,%d,%d,%q) expected error, got:%q,%d,%d", tc.bucketOne, tc.bucketTwo, tc.goal, tc.startBucket, g, m, other)
+			}
+		case err != nil:
+			t.Fatalf("Solve(%d,%d,%d,%q) returned error: %v, want:%q,%d,%d", tc.bucketOne, tc.bucketTwo, tc.goal, tc.startBucket, err, tc.goalBucket, tc.moves, tc.otherBucket)
+		case g != tc.goalBucket || m != tc.moves || other != tc.otherBucket:
+			t.Fatalf("Solve(%d,%d,%d,%q) = %q,%d,%d, want:%q,%d,%d", tc.bucketOne, tc.bucketTwo, tc.goal, tc.startBucket, g, m, other, tc.goalBucket, tc.moves, tc.otherBucket)
+		}
+	})
+}
+
+func BenchmarkSolve(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range append(testCases, errorTestCases...) {
+			Solve(tc.bucketOne, tc.bucketTwo, tc.goal, tc.startBucket)
+		}
+	}
+}
+
+var errorTestCases = []bucketTestCase{
+	{
+		description:   "Invalid first bucket size",
+		bucketOne:     0,
+		bucketTwo:     5,
+		goal:          5,
+		startBucket:   "one",
+		goalBucket:    "one",
+		moves:         1,
+		otherBucket:   0,
+		expectedError: "invalid first bucket size",
+	},
+	{
+		description:   "Invalid second bucket size",
+		bucketOne:     3,
+		bucketTwo:     0,
+		goal:          3,
+		startBucket:   "one",
+		goalBucket:    "one",
+		moves:         1,
+		otherBucket:   0,
+		expectedError: "invalid second bucket size",
+	},
+	{
+		description:   "Invalid goal amount",
+		bucketOne:     1,
+		bucketTwo:     1,
+		goal:          0,
+		startBucket:   "one",
+		goalBucket:    "one",
+		moves:         0,
+		otherBucket:   1,
+		expectedError: "invalid goal amount",
+	},
+	{
+		description:   "Invalid start bucket name",
+		bucketOne:     3,
+		bucketTwo:     5,
+		goal:          1,
+		startBucket:   "three",
+		goalBucket:    "one",
+		moves:         4,
+		otherBucket:   5,
+		expectedError: "invalid start bucket name",
+	},
+}
+
+
+=== Initial Translation ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// Helper function: bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty, but in the wrong orientation.
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Define helper functions that operate on bucket states, capturing sizes from the outer scope.
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		// Transfer as much as possible from the other bucket to the current bucket
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// State represents the current state of the buckets along with the move count.
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize the starting state: both buckets start empty, then fill the goal bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		// Dequeue the first element
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if the current state reaches the goal
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		// Generate the key for the current state
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+
+				newCount := s.count + 1
+				// For each bucket, try the possible moves
+				for idx := 0; idx < 2; idx++ {
+					// If the bucket is not empty, try emptying it.
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					// If the bucket is not full, try filling it and consolidating from the other bucket.
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+
+		// If the queue is empty after processing, no solution exists.
+		if len(queue) == 0 {
+			return "", 0, 0, errors.New("No more moves!")
+		}
+	}
+
+	// Should never reach here since a solution is expected or an error is returned above.
+	return "", 0, 0, errors.New("Unexpected termination")
+}
+
+// Helper function to compute the minimum of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// Helper function: bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// Helper function to compute the minimum of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// Helper function: bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// Helper function to compute the minimum of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// Helper function: bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// Helper function to compute the minimum of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// Helper function: bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// Helper function to compute the minimum of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// Helper function: bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// Helper function to compute the minimum of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// Helper function: bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// Helper function to compute the minimum of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// Helper function: bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// Helper function to compute the minimum of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// Helper function: bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// Helper function to compute the minimum of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// min returns the smallest of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/two-bucket/.meta/example.go
+package twobucket
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Solve implements a breadth-first search of the graph
+// of possible valid states for the two buckets until it reaches a state
+// in which one of the two buckets contains the goal amount.
+// It returns the name of the bucket that ends with the goal amount ("one" or "two"),
+// the number of moves taken, and the amount in the other bucket, or an error if no solution exists.
+func Solve(sizeBucketOne, sizeBucketTwo, goalAmount int, startBucket string) (string, int, int, error) {
+	// Validate input parameters
+	if sizeBucketOne <= 0 {
+		return "", 0, 0, errors.New("invalid first bucket size")
+	}
+	if sizeBucketTwo <= 0 {
+		return "", 0, 0, errors.New("invalid second bucket size")
+	}
+	if goalAmount <= 0 {
+		return "", 0, 0, errors.New("invalid goal amount")
+	}
+	if startBucket != "one" && startBucket != "two" {
+		return "", 0, 0, errors.New("invalid start bucket name")
+	}
+
+	sizes := [2]int{sizeBucketOne, sizeBucketTwo}
+
+	var goalIndex int
+	if startBucket == "one" {
+		goalIndex = 0
+	} else {
+		goalIndex = 1
+	}
+
+	// bucketStr returns a string representation of a bucket state.
+	bucketStr := func(b [2]int) string {
+		return fmt.Sprintf("%d,%d", b[0], b[1])
+	}
+
+	// Define the invalid state: one bucket is full while the other is empty (in the complementary position)
+	invalid := [2]int{0, 0}
+	invalid[1-goalIndex] = sizes[1-goalIndex]
+	invalidStr := bucketStr(invalid)
+
+	// Helper functions for operations on buckets
+	empty := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{0, b[1]}
+		}
+		return [2]int{b[0], 0}
+	}
+
+	fill := func(b [2]int, idx int) [2]int {
+		if idx == 0 {
+			return [2]int{sizes[0], b[1]}
+		}
+		return [2]int{b[0], sizes[1]}
+	}
+
+	consolidate := func(b [2]int, idx int) [2]int {
+		amount := min(b[1-idx], sizes[idx]-b[idx])
+		if idx == 0 {
+			return [2]int{b[0] + amount, b[1] - amount}
+		}
+		return [2]int{b[0] - amount, b[1] + amount}
+	}
+
+	// state represents the state of the buckets with the current move count
+	type state struct {
+		buckets [2]int
+		count   int
+	}
+
+	// Initialize starting state: both buckets start at 0, then fill the starting bucket completely.
+	initial := state{buckets: [2]int{0, 0}, count: 1}
+	initial.buckets[goalIndex] = sizes[goalIndex]
+
+	// BFS queue and visited set
+	queue := []state{initial}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+
+		// Check if either bucket has the goal amount
+		if s.buckets[0] == goalAmount || s.buckets[1] == goalAmount {
+			var reachedIndex int
+			if s.buckets[0] == goalAmount {
+				reachedIndex = 0
+			} else {
+				reachedIndex = 1
+			}
+			var bucketName string
+			if reachedIndex == 0 {
+				bucketName = "one"
+			} else {
+				bucketName = "two"
+			}
+			other := s.buckets[1-reachedIndex]
+			return bucketName, s.count, other, nil
+		}
+
+		key := bucketStr(s.buckets)
+		if key != invalidStr {
+			if _, seen := visited[key]; !seen {
+				visited[key] = true
+				newCount := s.count + 1
+				// Try all possible moves for each bucket
+				for idx := 0; idx < 2; idx++ {
+					if s.buckets[idx] != 0 {
+						newBuckets := empty(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+					if s.buckets[idx] != sizes[idx] {
+						newBuckets := fill(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+
+						newBuckets = consolidate(s.buckets, idx)
+						queue = append(queue, state{buckets: newBuckets, count: newCount})
+					}
+				}
+			}
+		}
+	}
+
+	return "", 0, 0, errors.New("No more moves!")
+}
+
+// min returns the smallest of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/two-bucket [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/two-bucket [exercism/two-bucket.test]
+./two_bucket_test.go:6:28: undefined: testCases
+./two_bucket_test.go:11:35: undefined: bucketTestCase
+./two_bucket_test.go:32:29: undefined: testCases
+./two_bucket_test.go:38:24: undefined: bucketTestCase
+
+
+=== FINAL STATUS: FAILED ===

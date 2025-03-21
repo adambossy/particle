@@ -1,0 +1,601 @@
+=== Initial Source Code ===
+Source file: exercises/practice/phone-number/.meta/example.py
+import re
+from string import punctuation
+
+
+class PhoneNumber:
+    def __init__(self, number):
+        self.number = self._clean(number)
+        self.area_code = self.number[:3]
+        self.exchange_code = self.number[3:6]
+        self.subscriber_number = self.number[-4:]
+
+    def pretty(self):
+        return f'({self.area_code})-{self.exchange_code}-{self.subscriber_number}'
+
+    def _clean(self, number):
+        preprocess = re.sub(r'[() +-.]', '', number)
+
+        if any(item for item in preprocess if item.isalpha()):
+            raise ValueError('letters not permitted')
+
+        if any(item for item in preprocess if item in punctuation):
+            raise ValueError('punctuations not permitted')
+
+        return self._normalize(preprocess)
+
+    def _normalize(self, number):
+        if len(number) < 10:
+            raise ValueError('must not be fewer than 10 digits')
+
+        if len(number) > 11:
+            raise ValueError('must not be greater than 11 digits')
+
+        if len(number) == 10 or len(number) == 11 and number.startswith('1'):
+            if number[-10] == '0':
+                raise ValueError('area code cannot start with zero')
+            elif number[-10] == '1':
+                raise ValueError('area code cannot start with one')
+            elif number[-7] == '0':
+                raise ValueError('exchange code cannot start with zero')
+            elif number[-7] == '1':
+                raise ValueError('exchange code cannot start with one')
+            else:
+                valid = number[-10] in '23456789' and number[-7] in '23456789'
+
+        else:
+            valid = False
+            if number[0] in '023456789':
+                raise ValueError('11 digits must start with 1')
+
+        if valid:
+            return number[-10:]
+
+        return None # [Pylint]: R1710;
+
+
+=== Source Interface ===
+class PhoneNumber:
+    def __init__(self, number):
+        pass
+
+
+=== Target Interface ===
+package phonenumber
+
+func Number(phoneNumber string) (string, error) {
+	panic("Please implement the Number function")
+}
+
+func AreaCode(phoneNumber string) (string, error) {
+	panic("Please implement the AreaCode function")
+}
+
+func Format(phoneNumber string) (string, error) {
+	panic("Please implement the Format function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/phone-number/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from phone_number import (
+    PhoneNumber,
+)
+
+
+class PhoneNumberTest(unittest.TestCase):
+    def test_cleans_the_number(self):
+        number = PhoneNumber("(223) 456-7890").number
+        self.assertEqual(number, "2234567890")
+
+    def test_cleans_numbers_with_dots(self):
+        number = PhoneNumber("223.456.7890").number
+        self.assertEqual(number, "2234567890")
+
+    def test_cleans_numbers_with_multiple_spaces(self):
+        number = PhoneNumber("223 456   7890   ").number
+        self.assertEqual(number, "2234567890")
+
+    def test_invalid_when_9_digits(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("123456789")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "must not be fewer than 10 digits")
+
+    def test_invalid_when_11_digits_does_not_start_with_a_1(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("22234567890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "11 digits must start with 1")
+
+    def test_valid_when_11_digits_and_starting_with_1(self):
+        number = PhoneNumber("12234567890").number
+        self.assertEqual(number, "2234567890")
+
+    def test_valid_when_11_digits_and_starting_with_1_even_with_punctuation(self):
+        number = PhoneNumber("+1 (223) 456-7890").number
+        self.assertEqual(number, "2234567890")
+
+    def test_invalid_when_more_than_11_digits(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("321234567890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "must not be greater than 11 digits")
+
+    def test_invalid_with_letters(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("523-abc-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "letters not permitted")
+
+    def test_invalid_with_punctuations(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("523-@:!-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "punctuations not permitted")
+
+    def test_invalid_if_area_code_starts_with_0(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("(023) 456-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "area code cannot start with zero")
+
+    def test_invalid_if_area_code_starts_with_1(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("(123) 456-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "area code cannot start with one")
+
+    def test_invalid_if_exchange_code_starts_with_0(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("(223) 056-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "exchange code cannot start with zero")
+
+    def test_invalid_if_exchange_code_starts_with_1(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("(223) 156-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "exchange code cannot start with one")
+
+    def test_invalid_if_area_code_starts_with_0_on_valid_11_digit_number(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("1 (023) 456-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "area code cannot start with zero")
+
+    def test_invalid_if_area_code_starts_with_1_on_valid_11_digit_number(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("1 (123) 456-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "area code cannot start with one")
+
+    def test_invalid_if_exchange_code_starts_with_0_on_valid_11_digit_number(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("1 (223) 056-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "exchange code cannot start with zero")
+
+    def test_invalid_if_exchange_code_starts_with_1_on_valid_11_digit_number(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("1 (223) 156-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "exchange code cannot start with one")
+
+    # Additional tests for this track
+    def test_area_code(self):
+        number = PhoneNumber("2234567890")
+        self.assertEqual(number.area_code, "223")
+
+    def test_pretty_print(self):
+        number = PhoneNumber("2234567890")
+        self.assertEqual(number.pretty(), "(223)-456-7890")
+
+    def test_pretty_print_with_full_us_phone_number(self):
+        number = PhoneNumber("12234567890")
+        self.assertEqual(number.pretty(), "(223)-456-7890")
+
+
+=== Target Test Code ===
+package phonenumber
+
+import (
+	"testing"
+)
+
+func TestNumber(t *testing.T) {
+	runTests("Number", Number, func(tc testCase) string { return tc.expectedNumber }, t)
+}
+
+func BenchmarkNumber(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Number(test.input)
+		}
+	}
+}
+
+func TestAreaCode(t *testing.T) {
+	runTests("AreaCode", AreaCode, func(tc testCase) string { return tc.expectedAreaCode }, t)
+}
+
+func BenchmarkAreaCode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			AreaCode(test.input)
+		}
+	}
+}
+
+func TestFormat(t *testing.T) {
+	runTests("Format", Format, func(tc testCase) string { return tc.expectedFormatted }, t)
+}
+
+func BenchmarkFormat(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Format(test.input)
+		}
+	}
+}
+
+func runTests(
+	funcName string,
+	f func(s string) (string, error),
+	getExpected func(tc testCase) string,
+	t *testing.T,
+) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, actualErr := f(tc.input)
+			switch {
+			case tc.expectErr:
+				if actualErr == nil {
+					t.Fatalf("%s(%q) expected error, got: %q", funcName, tc.input, actual)
+				}
+			case actualErr != nil:
+				t.Fatalf("%s(%q) returned error: %v, want: %q", funcName, tc.input, actualErr, getExpected(tc))
+			case actual != getExpected(tc):
+				t.Fatalf("%s(%q) = %q, want: %q", funcName, tc.input, actual, getExpected(tc))
+			}
+		})
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+	"unicode"
+)
+
+// Number cleans the phone number and returns only the digits, or an error if invalid
+func Number(phoneNumber string) (string, error) {
+	// Clean the number by removing valid punctuation
+	cleaned := cleanNumber(phoneNumber)
+
+	// Check for letters
+	for _, char := range cleaned {
+		if unicode.IsLetter(char) {
+			return "", fmt.Errorf("letters not permitted")
+		}
+	}
+
+	// Check for punctuation (excluding the ones we removed in cleaning)
+	for _, char := range cleaned {
+		if !unicode.IsDigit(char) {
+			return "", fmt.Errorf("punctuations not permitted")
+		}
+	}
+
+	return normalizeNumber(cleaned)
+}
+
+// AreaCode returns the area code of the phone number
+func AreaCode(phoneNumber string) (string, error) {
+	num, err := Number(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return num[:3], nil
+}
+
+// Format returns the phone number in a pretty format
+func Format(phoneNumber string) (string, error) {
+	num, err := Number(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("(%s)-%s-%s", num[:3], num[3:6], num[6:]), nil
+}
+
+// cleanNumber removes spaces, parentheses, hyphens, dots and plus signs
+func cleanNumber(number string) string {
+	reg := regexp.MustCompile(`[() +.-]`)
+	return reg.ReplaceAllString(number, "")
+}
+
+// normalizeNumber validates the number and returns the normalized version
+func normalizeNumber(number string) (string, error) {
+	if len(number) < 10 {
+		return "", fmt.Errorf("must not be fewer than 10 digits")
+	}
+
+	if len(number) > 11 {
+		return "", fmt.Errorf("must not be greater than 11 digits")
+	}
+
+	// If 11 digits and starts with 1, trim the 1
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", fmt.Errorf("11 digits must start with 1")
+		}
+		number = number[1:]
+	}
+
+	// Check area code
+	if number[0] == '0' {
+		return "", fmt.Errorf("area code cannot start with zero")
+	}
+	if number[0] == '1' {
+		return "", fmt.Errorf("area code cannot start with one")
+	}
+
+	// Check exchange code
+	if number[3] == '0' {
+		return "", fmt.Errorf("exchange code cannot start with zero")
+	}
+	if number[3] == '1' {
+		return "", fmt.Errorf("exchange code cannot start with one")
+	}
+
+	return number, nil
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number.go:7:2: imported and not used: "strings"
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// Number cleans the phone number and returns only the digits, or an error if invalid
+func Number(phoneNumber string) (string, error) {
+	// Clean the number by removing valid punctuation
+	cleaned := cleanNumber(phoneNumber)
+
+	// Check for letters
+	for _, char := range cleaned {
+		if unicode.IsLetter(char) {
+			return "", fmt.Errorf("letters not permitted")
+		}
+	}
+
+	// Check for punctuation (excluding the ones we removed in cleaning)
+	for _, char := range cleaned {
+		if !unicode.IsDigit(char) {
+			return "", fmt.Errorf("punctuations not permitted")
+		}
+	}
+
+	return normalizeNumber(cleaned)
+}
+
+// AreaCode returns the area code of the phone number
+func AreaCode(phoneNumber string) (string, error) {
+	num, err := Number(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return num[:3], nil
+}
+
+// Format returns the phone number in a pretty format
+func Format(phoneNumber string) (string, error) {
+	num, err := Number(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("(%s)-%s-%s", num[:3], num[3:6], num[6:]), nil
+}
+
+// cleanNumber removes spaces, parentheses, hyphens, dots and plus signs
+func cleanNumber(number string) string {
+	reg := regexp.MustCompile(`[() +.-]`)
+	return reg.ReplaceAllString(number, "")
+}
+
+// normalizeNumber validates the number and returns the normalized version
+func normalizeNumber(number string) (string, error) {
+	if len(number) < 10 {
+		return "", fmt.Errorf("must not be fewer than 10 digits")
+	}
+
+	if len(number) > 11 {
+		return "", fmt.Errorf("must not be greater than 11 digits")
+	}
+
+	// If 11 digits and starts with 1, trim the 1
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", fmt.Errorf("11 digits must start with 1")
+		}
+		number = number[1:]
+	}
+
+	// Check area code
+	if number[0] == '0' {
+		return "", fmt.Errorf("area code cannot start with zero")
+	}
+	if number[0] == '1' {
+		return "", fmt.Errorf("area code cannot start with one")
+	}
+
+	// Check exchange code
+	if number[3] == '0' {
+		return "", fmt.Errorf("exchange code cannot start with zero")
+	}
+	if number[3] == '1' {
+		return "", fmt.Errorf("exchange code cannot start with one")
+	}
+
+	return number, nil
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestFormat (0.00s)
+    --- FAIL: TestFormat/cleans_the_number (0.00s)
+        phone_number_test.go:69: Format("(223) 456-7890") = "(223)-456-7890", want: "(223) 456-7890"
+    --- FAIL: TestFormat/cleans_numbers_with_dots (0.00s)
+        phone_number_test.go:69: Format("223.456.7890") = "(223)-456-7890", want: "(223) 456-7890"
+    --- FAIL: TestFormat/cleans_numbers_with_multiple_spaces (0.00s)
+        phone_number_test.go:69: Format("223 456   7890   ") = "(223)-456-7890", want: "(223) 456-7890"
+    --- FAIL: TestFormat/valid_when_11_digits_and_starting_with_1 (0.00s)
+        phone_number_test.go:69: Format("12234567890") = "(223)-456-7890", want: "(223) 456-7890"
+    --- FAIL: TestFormat/valid_when_11_digits_and_starting_with_1_even_with_punctuation (0.00s)
+        phone_number_test.go:69: Format("+1 (223) 456-7890") = "(223)-456-7890", want: "(223) 456-7890"
+FAIL
+FAIL	exercism/phone-number	0.314s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// Number cleans the phone number and returns only the digits, or an error if invalid
+func Number(phoneNumber string) (string, error) {
+	// Clean the number by removing valid punctuation
+	cleaned := cleanNumber(phoneNumber)
+
+	// Check for letters
+	for _, char := range cleaned {
+		if unicode.IsLetter(char) {
+			return "", fmt.Errorf("letters not permitted")
+		}
+	}
+
+	// Check for punctuation (excluding the ones we removed in cleaning)
+	for _, char := range cleaned {
+		if !unicode.IsDigit(char) {
+			return "", fmt.Errorf("punctuations not permitted")
+		}
+	}
+
+	return normalizeNumber(cleaned)
+}
+
+// AreaCode returns the area code of the phone number
+func AreaCode(phoneNumber string) (string, error) {
+	num, err := Number(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return num[:3], nil
+}
+
+// Format returns the phone number in a pretty format
+func Format(phoneNumber string) (string, error) {
+	num, err := Number(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("(%s) %s-%s", num[:3], num[3:6], num[6:]), nil
+}
+
+// cleanNumber removes spaces, parentheses, hyphens, dots and plus signs
+func cleanNumber(number string) string {
+	reg := regexp.MustCompile(`[() +.-]`)
+	return reg.ReplaceAllString(number, "")
+}
+
+// normalizeNumber validates the number and returns the normalized version
+func normalizeNumber(number string) (string, error) {
+	if len(number) < 10 {
+		return "", fmt.Errorf("must not be fewer than 10 digits")
+	}
+
+	if len(number) > 11 {
+		return "", fmt.Errorf("must not be greater than 11 digits")
+	}
+
+	// If 11 digits and starts with 1, trim the 1
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", fmt.Errorf("11 digits must start with 1")
+		}
+		number = number[1:]
+	}
+
+	// Check area code
+	if number[0] == '0' {
+		return "", fmt.Errorf("area code cannot start with zero")
+	}
+	if number[0] == '1' {
+		return "", fmt.Errorf("area code cannot start with one")
+	}
+
+	// Check exchange code
+	if number[3] == '0' {
+		return "", fmt.Errorf("exchange code cannot start with zero")
+	}
+	if number[3] == '1' {
+		return "", fmt.Errorf("exchange code cannot start with one")
+	}
+
+	return number, nil
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/phone-number	0.283s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

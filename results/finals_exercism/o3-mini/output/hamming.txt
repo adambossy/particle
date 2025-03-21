@@ -1,0 +1,903 @@
+=== Initial Source Code ===
+Source file: exercises/practice/hamming/.meta/example.py
+def distance(strand_a, strand_b):
+    if len(strand_a) != len(strand_b):
+        raise ValueError('Strands must be of equal length.')
+
+    return sum(a_part != b_part for a_part, b_part in zip(strand_a, strand_b))
+
+
+=== Source Interface ===
+def distance(strand_a, strand_b):
+    pass
+
+
+=== Target Interface ===
+package hamming
+
+func Distance(a, b string) (int, error) {
+	panic("Implement the Distance function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/hamming/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from hamming import (
+    distance,
+)
+
+
+class HammingTest(unittest.TestCase):
+    def test_empty_strands(self):
+        self.assertEqual(distance("", ""), 0)
+
+    def test_single_letter_identical_strands(self):
+        self.assertEqual(distance("A", "A"), 0)
+
+    def test_single_letter_different_strands(self):
+        self.assertEqual(distance("G", "T"), 1)
+
+    def test_long_identical_strands(self):
+        self.assertEqual(distance("GGACTGAAATCTG", "GGACTGAAATCTG"), 0)
+
+    def test_long_different_strands(self):
+        self.assertEqual(distance("GGACGGATTCTG", "AGGACGGATTCT"), 9)
+
+    def test_disallow_first_strand_longer(self):
+        with self.assertRaises(ValueError) as err:
+            distance("AATG", "AAA")
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Strands must be of equal length.")
+
+    def test_disallow_second_strand_longer(self):
+        with self.assertRaises(ValueError) as err:
+            distance("ATA", "AGTG")
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Strands must be of equal length.")
+
+    def test_disallow_empty_first_strand(self):
+        with self.assertRaises(ValueError) as err:
+            distance("", "G")
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Strands must be of equal length.")
+
+    def test_disallow_empty_second_strand(self):
+        with self.assertRaises(ValueError) as err:
+            distance("G", "")
+
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Strands must be of equal length.")
+
+
+=== Target Test Code ===
+package hamming
+
+import "testing"
+
+func TestHamming(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got, err := Distance(tc.s1, tc.s2)
+			switch {
+			case tc.expectError:
+				if err == nil {
+					t.Fatalf("Distance(%q, %q) expected error, got: %d", tc.s1, tc.s2, got)
+				}
+			case err != nil:
+				t.Fatalf("Distance(%q, %q) returned error: %v, want: %d", tc.s1, tc.s2, err, tc.want)
+			case got != tc.want:
+				t.Fatalf("Distance(%q, %q) = %d, want %d", tc.s1, tc.s2, got, tc.want)
+			}
+		})
+	}
+}
+
+func BenchmarkHamming(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_, _ = Distance(tc.s1, tc.s2)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/hamming/.meta/example.go
+package hamming
+
+import (
+	"errors"
+)
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+	return distance, nil
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming_test.go:6:21: undefined: testCases
+./hamming_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/hamming/.meta/example.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+	return distance, nil
+}
+
+// exercises/practice/hamming/hamming_test.go
+package hamming
+
+import "testing"
+
+// testCase defines a test case for the Hamming distance function.
+type testCase struct {
+	description string
+	s1          string
+	s2          string
+	want        int
+	expectError bool
+}
+
+var testCases = []testCase{
+	{"empty strands", "", "", 0, false},
+	{"single letter identical", "A", "A", 0, false},
+	{"single letter different", "G", "T", 1, false},
+	{"longer strands", "AGTC", "TGCA", 3, false},
+	{"disallow unequal lengths", "AATG", "AAA", 0, true},
+}
+
+func TestHamming(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got, err := Distance(tc.s1, tc.s2)
+			switch {
+			case tc.expectError:
+				if err == nil {
+					t.Fatalf("Distance(%q, %q) expected error, got: %d", tc.s1, tc.s2, got)
+				}
+			case err != nil:
+				t.Fatalf("Distance(%q, %q) returned error: %v, want: %d", tc.s1, tc.s2, err, tc.want)
+			case got != tc.want:
+				t.Fatalf("Distance(%q, %q) = %d, want %d", tc.s1, tc.s2, got, tc.want)
+			}
+		})
+	}
+}
+
+func BenchmarkHamming(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_, _ = Distance(tc.s1, tc.s2)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming.go:23:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/hamming/.meta/example.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+	return distance, nil
+}
+
+// exercises/practice/hamming/hamming_test.go
+package hamming
+
+import "testing"
+
+// testCase defines a test case for the Hamming distance function.
+type testCase struct {
+	description string
+	s1          string
+	s2          string
+	want        int
+	expectError bool
+}
+
+// testCases is a list of test cases to validate the Hamming distance implementation.
+var testCases = []testCase{
+	{"empty strands", "", "", 0, false},
+	{"single letter identical", "A", "A", 0, false},
+	{"single letter different", "G", "T", 1, false},
+	{"longer strands", "AGTC", "TGCA", 3, false},
+	{"disallow unequal lengths", "AATG", "AAA", 0, true},
+}
+
+func TestHamming(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got, err := Distance(tc.s1, tc.s2)
+			switch {
+			case tc.expectError:
+				if err == nil {
+					t.Fatalf("Distance(%q, %q) expected error, got: %d", tc.s1, tc.s2, got)
+				}
+			case err != nil:
+				t.Fatalf("Distance(%q, %q) returned error: %v, want: %d", tc.s1, tc.s2, err, tc.want)
+			case got != tc.want:
+				t.Fatalf("Distance(%q, %q) = %d, want %d", tc.s1, tc.s2, got, tc.want)
+			}
+		})
+	}
+}
+
+func BenchmarkHamming(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_, _ = Distance(tc.s1, tc.s2)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming.go:23:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/hamming/.meta/example.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+	return distance, nil
+}
+
+// exercises/practice/hamming/hamming_test.go
+package hamming
+
+import "testing"
+
+// testCase defines a test case for the Hamming distance function.
+// description: a brief description of the test case
+// s1, s2: the two DNA strands
+// want: expected Hamming distance
+// expectError: indicates if an error is expected
+//
+// The test suite verifies the behavior of the Distance function.
+type testCase struct {
+	description string
+	s1          string
+	s2          string
+	want        int
+	expectError bool
+}
+
+var testCases = []testCase{
+	{"empty strands", "", "", 0, false},
+	{"single letter identical", "A", "A", 0, false},
+	{"single letter different", "G", "T", 1, false},
+	{"longer strands", "AGTC", "TGCA", 3, false},
+	{"disallow unequal lengths", "AATG", "AAA", 0, true},
+}
+
+func TestHamming(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got, err := Distance(tc.s1, tc.s2)
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Distance(%q, %q) expected error, got: %d", tc.s1, tc.s2, got)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Distance(%q, %q) returned error: %v, want: %d", tc.s1, tc.s2, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("Distance(%q, %q) = %d, want %d", tc.s1, tc.s2, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkHamming(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_, _ = Distance(tc.s1, tc.s2)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming.go:23:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/hamming/.meta/example.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+
+	return distance, nil
+}
+
+// exercises/practice/hamming/hamming_test.go
+package hamming
+
+import "testing"
+
+// testCase defines a test case for the Hamming distance function.
+// description: a brief description of the test case
+// s1, s2: the two DNA strands
+// want: expected Hamming distance
+// expectError: indicates if an error is expected
+//
+// The test suite verifies the behavior of the Distance function.
+type testCase struct {
+	description string
+	s1          string
+	s2          string
+	want        int
+	expectError bool
+}
+
+// testCases is a list of test cases to validate the Hamming distance implementation.
+var testCases = []testCase{
+	{"empty strands", "", "", 0, false},
+	{"single letter identical", "A", "A", 0, false},
+	{"single letter different", "G", "T", 1, false},
+	{"longer strands", "AGTC", "TGCA", 3, false},
+	{"disallow unequal lengths", "AATG", "AAA", 0, true},
+}
+
+func TestHamming(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got, err := Distance(tc.s1, tc.s2)
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Distance(%q, %q) expected error, got: %d", tc.s1, tc.s2, got)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Distance(%q, %q) returned error: %v, want: %d", tc.s1, tc.s2, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("Distance(%q, %q) = %d, want %d", tc.s1, tc.s2, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkHamming(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_, _ = Distance(tc.s1, tc.s2)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/hamming/.meta/example.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+
+	return distance, nil
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming_test.go:6:21: undefined: testCases
+./hamming_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/hamming/.meta/example.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+
+	return distance, nil
+}
+
+// exercises/practice/hamming/hamming_test.go
+package hamming
+
+import "testing"
+
+// testCase defines a test case for the Hamming distance function.
+// description: a brief description of the test case
+// s1, s2: the two DNA strands
+// want: expected Hamming distance
+// expectError: indicates if an error is expected
+//
+// The test suite verifies the behavior of the Distance function.
+type testCase struct {
+	description string
+	s1          string
+	s2          string
+	want        int
+	expectError bool
+}
+
+// testCases is a list of test cases to validate the Hamming distance implementation.
+var testCases = []testCase{
+	{"empty strands", "", "", 0, false},
+	{"single letter identical", "A", "A", 0, false},
+	{"single letter different", "G", "T", 1, false},
+	{"longer strands", "AGTC", "TGCA", 3, false},
+	{"disallow unequal lengths", "AATG", "AAA", 0, true},
+}
+
+func TestHamming(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got, err := Distance(tc.s1, tc.s2)
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Distance(%q, %q) expected error, got: %d", tc.s1, tc.s2, got)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Distance(%q, %q) returned error: %v, want: %d", tc.s1, tc.s2, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("Distance(%q, %q) = %d, want %d", tc.s1, tc.s2, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkHamming(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_, _ = Distance(tc.s1, tc.s2)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/hamming/hamming.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+
+	return distance, nil
+}
+
+// exercises/practice/hamming/hamming_test.go
+package hamming
+
+import "testing"
+
+// testCase defines a test case for the Hamming distance function.
+// description: a brief description of the test case
+// s1, s2: the two DNA strands
+// want: expected Hamming distance
+// expectError: indicates if an error is expected
+//
+// The test suite verifies the behavior of the Distance function.
+type testCase struct {
+	description string
+	s1          string
+	s2          string
+	want        int
+	expectError bool
+}
+
+// testCases is a list of test cases to validate the Hamming distance implementation.
+var testCases = []testCase{
+	{"empty strands", "", "", 0, false},
+	{"single letter identical", "A", "A", 0, false},
+	{"single letter different", "G", "T", 1, false},
+	{"longer strands", "AGTC", "TGCA", 3, false},
+	{"disallow unequal lengths", "AATG", "AAA", 0, true},
+}
+
+func TestHamming(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got, err := Distance(tc.s1, tc.s2)
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Distance(%q, %q) expected error, got: %d", tc.s1, tc.s2, got)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Distance(%q, %q) returned error: %v, want: %d", tc.s1, tc.s2, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("Distance(%q, %q) = %d, want %d", tc.s1, tc.s2, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkHamming(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_, _ = Distance(tc.s1, tc.s2)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/hamming/.meta/example.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+
+	return distance, nil
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming_test.go:6:21: undefined: testCases
+./hamming_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/hamming/hamming.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+	return distance, nil
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming_test.go:6:21: undefined: testCases
+./hamming_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/hamming/hamming.go
+package hamming
+
+import "errors"
+
+// Distance calculates the Hamming distance between two DNA strands.
+// It returns an error if the strands are of unequal length.
+func Distance(a, b string) (int, error) {
+	if len(a) != len(b) {
+		return 0, errors.New("strands must be of equal length")
+	}
+
+	distance := 0
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			distance++
+		}
+	}
+
+	return distance, nil
+}
+
+// exercises/practice/hamming/hamming_test.go
+package hamming
+
+import "testing"
+
+// testCase defines a test case for the Hamming distance function.
+// description: a brief description of the test case
+// s1, s2: the two DNA strands
+// want: expected Hamming distance
+// expectError: indicates if an error is expected
+//
+// The test suite verifies the behavior of the Distance function.
+type testCase struct {
+	description string
+	s1          string
+	s2          string
+	want        int
+	expectError bool
+}
+
+// testCases is a list of test cases to validate the Hamming distance implementation.
+var testCases = []testCase{
+	{"empty strands", "", "", 0, false},
+	{"single letter identical", "A", "A", 0, false},
+	{"single letter different", "G", "T", 1, false},
+	{"longer strands", "AGTC", "TGCA", 3, false},
+	{"disallow unequal lengths", "AATG", "AAA", 0, true},
+}
+
+func TestHamming(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got, err := Distance(tc.s1, tc.s2)
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Distance(%q, %q) expected error, got: %d", tc.s1, tc.s2, got)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Distance(%q, %q) returned error: %v, want: %d", tc.s1, tc.s2, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("Distance(%q, %q) = %d, want %d", tc.s1, tc.s2, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkHamming(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			_, _ = Distance(tc.s1, tc.s2)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/hamming [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/hamming [exercism/hamming.test]
+./hamming.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== FINAL STATUS: FAILED ===

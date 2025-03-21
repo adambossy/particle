@@ -1,0 +1,1654 @@
+=== Initial Source Code ===
+Source file: exercises/practice/poker/.meta/example.py
+def best_hands(hands):
+    return allmax(hands, key=hand_rank)
+
+
+def allmax(iterable, key=None):
+    result, maxval = [], None
+    key = key or (lambda idx: idx)
+    for idx in iterable:
+        xval = key(idx)
+        if not result or xval > maxval:
+            result, maxval = [idx], xval
+        elif xval == maxval:
+            result.append(idx)
+    return result
+
+
+def hand_rank(hand):
+    hand = hand.replace('10', 'T').split()
+    card_ranks = ['..23456789TJQKA'.index(idx) for idx, _ in hand]
+    groups = [(card_ranks.count(idx), idx) for idx in set(card_ranks)]
+    groups.sort(reverse=True)
+    counts, ranks = zip(*groups)
+    if ranks == (14, 5, 4, 3, 2):
+        ranks = (5, 4, 3, 2, 1)
+    straight = (len(counts) == 5) and (max(ranks) - min(ranks) == 4)
+    flush = len({idx for _, idx in hand}) == 1
+    return (9 if counts == (5,) else
+            8 if straight and flush else
+            7 if counts == (4, 1) else
+            6 if counts == (3, 2) else
+            5 if flush else
+            4 if straight else
+            3 if counts == (3, 1, 1) else
+            2 if counts == (2, 2, 1) else
+            1 if counts == (2, 1, 1, 1) else
+            0, ranks)
+
+
+=== Source Interface ===
+def best_hands(hands):
+    pass
+
+
+=== Target Interface ===
+package poker
+
+func BestHand(hands []string) ([]string, error) {
+	panic("Please implement the BestHand function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/poker/canonical-data.json
+# File last updated on 2023-12-27
+
+import unittest
+
+from poker import (
+    best_hands,
+)
+
+
+class PokerTest(unittest.TestCase):
+    def test_single_hand_always_wins(self):
+        self.assertEqual(best_hands(["4S 5S 7H 8D JC"]), ["4S 5S 7H 8D JC"])
+
+    def test_highest_card_out_of_all_hands_wins(self):
+        self.assertEqual(
+            best_hands(["4D 5S 6S 8D 3C", "2S 4C 7S 9H 10H", "3S 4S 5D 6H JH"]),
+            ["3S 4S 5D 6H JH"],
+        )
+
+    def test_a_tie_has_multiple_winners(self):
+        self.assertEqual(
+            best_hands(
+                [
+                    "4D 5S 6S 8D 3C",
+                    "2S 4C 7S 9H 10H",
+                    "3S 4S 5D 6H JH",
+                    "3H 4H 5C 6C JD",
+                ]
+            ),
+            ["3S 4S 5D 6H JH", "3H 4H 5C 6C JD"],
+        )
+
+    def test_multiple_hands_with_the_same_high_cards_tie_compares_next_highest_ranked_down_to_last_card(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["3S 5H 6S 8D 7H", "2S 5D 6D 8C 7S"]), ["3S 5H 6S 8D 7H"]
+        )
+
+    def test_winning_high_card_hand_also_has_the_lowest_card(self):
+        self.assertEqual(
+            best_hands(["2S 5H 6S 8D 7H", "3S 4D 6D 8C 7S"]), ["2S 5H 6S 8D 7H"]
+        )
+
+    def test_one_pair_beats_high_card(self):
+        self.assertEqual(
+            best_hands(["4S 5H 6C 8D KH", "2S 4H 6S 4D JH"]), ["2S 4H 6S 4D JH"]
+        )
+
+    def test_highest_pair_wins(self):
+        self.assertEqual(
+            best_hands(["4S 2H 6S 2D JH", "2S 4H 6C 4D JD"]), ["2S 4H 6C 4D JD"]
+        )
+
+    def test_both_hands_have_the_same_pair_high_card_wins(self):
+        self.assertEqual(
+            best_hands(["4H 4S AH JC 3D", "4C 4D AS 5D 6C"]), ["4H 4S AH JC 3D"]
+        )
+
+    def test_two_pairs_beats_one_pair(self):
+        self.assertEqual(
+            best_hands(["2S 8H 6S 8D JH", "4S 5H 4C 8C 5C"]), ["4S 5H 4C 8C 5C"]
+        )
+
+    def test_both_hands_have_two_pairs_highest_ranked_pair_wins(self):
+        self.assertEqual(
+            best_hands(["2S 8H 2D 8D 3H", "4S 5H 4C 8S 5D"]), ["2S 8H 2D 8D 3H"]
+        )
+
+    def test_both_hands_have_two_pairs_with_the_same_highest_ranked_pair_tie_goes_to_low_pair(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["2S QS 2C QD JH", "JD QH JS 8D QC"]), ["JD QH JS 8D QC"]
+        )
+
+    def test_both_hands_have_two_identically_ranked_pairs_tie_goes_to_remaining_card_kicker(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["JD QH JS 8D QC", "JS QS JC 2D QD"]), ["JD QH JS 8D QC"]
+        )
+
+    def test_both_hands_have_two_pairs_that_add_to_the_same_value_win_goes_to_highest_pair(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["6S 6H 3S 3H AS", "7H 7S 2H 2S AC"]), ["7H 7S 2H 2S AC"]
+        )
+
+    def test_two_pairs_first_ranked_by_largest_pair(self):
+        self.assertEqual(
+            best_hands(["5C 2S 5S 4H 4C", "6S 2S 6H 7C 2C"]), ["6S 2S 6H 7C 2C"]
+        )
+
+    def test_three_of_a_kind_beats_two_pair(self):
+        self.assertEqual(
+            best_hands(["2S 8H 2H 8D JH", "4S 5H 4C 8S 4H"]), ["4S 5H 4C 8S 4H"]
+        )
+
+    def test_both_hands_have_three_of_a_kind_tie_goes_to_highest_ranked_triplet(self):
+        self.assertEqual(
+            best_hands(["2S 2H 2C 8D JH", "4S AH AS 8C AD"]), ["4S AH AS 8C AD"]
+        )
+
+    def test_with_multiple_decks_two_players_can_have_same_three_of_a_kind_ties_go_to_highest_remaining_cards(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["5S AH AS 7C AD", "4S AH AS 8C AD"]), ["4S AH AS 8C AD"]
+        )
+
+    def test_a_straight_beats_three_of_a_kind(self):
+        self.assertEqual(
+            best_hands(["4S 5H 4C 8D 4H", "3S 4D 2S 6D 5C"]), ["3S 4D 2S 6D 5C"]
+        )
+
+    def test_aces_can_end_a_straight_10_j_q_k_a(self):
+        self.assertEqual(
+            best_hands(["4S 5H 4C 8D 4H", "10D JH QS KD AC"]), ["10D JH QS KD AC"]
+        )
+
+    def test_aces_can_start_a_straight_a_2_3_4_5(self):
+        self.assertEqual(
+            best_hands(["4S 5H 4C 8D 4H", "4D AH 3S 2D 5C"]), ["4D AH 3S 2D 5C"]
+        )
+
+    def test_aces_cannot_be_in_the_middle_of_a_straight_q_k_a_2_3(self):
+        self.assertEqual(
+            best_hands(["2C 3D 7H 5H 2S", "QS KH AC 2D 3S"]), ["2C 3D 7H 5H 2S"]
+        )
+
+    def test_both_hands_with_a_straight_tie_goes_to_highest_ranked_card(self):
+        self.assertEqual(
+            best_hands(["4S 6C 7S 8D 5H", "5S 7H 8S 9D 6H"]), ["5S 7H 8S 9D 6H"]
+        )
+
+    def test_even_though_an_ace_is_usually_high_a_5_high_straight_is_the_lowest_scoring_straight(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["2H 3C 4D 5D 6H", "4S AH 3S 2D 5H"]), ["2H 3C 4D 5D 6H"]
+        )
+
+    def test_flush_beats_a_straight(self):
+        self.assertEqual(
+            best_hands(["4C 6H 7D 8D 5H", "2S 4S 5S 6S 7S"]), ["2S 4S 5S 6S 7S"]
+        )
+
+    def test_both_hands_have_a_flush_tie_goes_to_high_card_down_to_the_last_one_if_necessary(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["2H 7H 8H 9H 6H", "3S 5S 6S 7S 8S"]), ["2H 7H 8H 9H 6H"]
+        )
+
+    def test_full_house_beats_a_flush(self):
+        self.assertEqual(
+            best_hands(["3H 6H 7H 8H 5H", "4S 5H 4C 5D 4H"]), ["4S 5H 4C 5D 4H"]
+        )
+
+    def test_both_hands_have_a_full_house_tie_goes_to_highest_ranked_triplet(self):
+        self.assertEqual(
+            best_hands(["4H 4S 4D 9S 9D", "5H 5S 5D 8S 8D"]), ["5H 5S 5D 8S 8D"]
+        )
+
+    def test_with_multiple_decks_both_hands_have_a_full_house_with_the_same_triplet_tie_goes_to_the_pair(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["5H 5S 5D 9S 9D", "5H 5S 5D 8S 8D"]), ["5H 5S 5D 9S 9D"]
+        )
+
+    def test_four_of_a_kind_beats_a_full_house(self):
+        self.assertEqual(
+            best_hands(["4S 5H 4D 5D 4H", "3S 3H 2S 3D 3C"]), ["3S 3H 2S 3D 3C"]
+        )
+
+    def test_both_hands_have_four_of_a_kind_tie_goes_to_high_quad(self):
+        self.assertEqual(
+            best_hands(["2S 2H 2C 8D 2D", "4S 5H 5S 5D 5C"]), ["4S 5H 5S 5D 5C"]
+        )
+
+    def test_with_multiple_decks_both_hands_with_identical_four_of_a_kind_tie_determined_by_kicker(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["3S 3H 2S 3D 3C", "3S 3H 4S 3D 3C"]), ["3S 3H 4S 3D 3C"]
+        )
+
+    def test_straight_flush_beats_four_of_a_kind(self):
+        self.assertEqual(
+            best_hands(["4S 5H 5S 5D 5C", "7S 8S 9S 6S 10S"]), ["7S 8S 9S 6S 10S"]
+        )
+
+    def test_aces_can_end_a_straight_flush_10_j_q_k_a(self):
+        self.assertEqual(
+            best_hands(["KC AH AS AD AC", "10C JC QC KC AC"]), ["10C JC QC KC AC"]
+        )
+
+    def test_aces_can_start_a_straight_flush_a_2_3_4_5(self):
+        self.assertEqual(
+            best_hands(["KS AH AS AD AC", "4H AH 3H 2H 5H"]), ["4H AH 3H 2H 5H"]
+        )
+
+    def test_aces_cannot_be_in_the_middle_of_a_straight_flush_q_k_a_2_3(self):
+        self.assertEqual(
+            best_hands(["2C AC QC 10C KC", "QH KH AH 2H 3H"]), ["2C AC QC 10C KC"]
+        )
+
+    def test_both_hands_have_a_straight_flush_tie_goes_to_highest_ranked_card(self):
+        self.assertEqual(
+            best_hands(["4H 6H 7H 8H 5H", "5S 7S 8S 9S 6S"]), ["5S 7S 8S 9S 6S"]
+        )
+
+    def test_even_though_an_ace_is_usually_high_a_5_high_straight_flush_is_the_lowest_scoring_straight_flush(
+        self,
+    ):
+        self.assertEqual(
+            best_hands(["2H 3H 4H 5H 6H", "4D AD 3D 2D 5D"]), ["2H 3H 4H 5H 6H"]
+        )
+
+
+=== Target Test Code ===
+package poker
+
+import (
+	"reflect"
+	"testing"
+)
+
+var invalidTestCases = []struct {
+	description string
+	hand        string
+}{
+	{
+		description: "1 is an invalid card rank",
+		hand:        "1♢ 2♡ 3♡ 4♡ 5♡",
+	},
+	{
+		description: "11 is an invalid card rank",
+		hand:        "11♢ 2♡ 3♡ 4♡ 5♡",
+	},
+	{
+		description: "too few cards",
+		hand:        "2♡ 3♡ 4♡ 5♡",
+	},
+	{
+		description: "too many cards",
+		hand:        "2♡ 3♡ 4♡ 5♡ 6♡ 7♡",
+	},
+	{
+		description: "lack of rank",
+		hand:        "11♢ 2♡ ♡ 4♡ 5♡",
+	},
+	{
+		description: "lack of suit",
+		hand:        "2♡ 3♡ 4 5♡ 7♡",
+	},
+	{
+		description: "H is an invalid suit",
+		hand:        "2♡ 3♡ 4H 5♡ 7♡",
+	},
+	{
+		description: "♥ is an invalid suit",
+		hand:        "2♡ 3♡ 4♥ 5♡ 7♡",
+	},
+	{
+		description: "lack of spacing",
+		hand:        "2♡ 3♡ 5♡7♡ 8♡",
+	},
+	{
+		description: "double suits after rank",
+		hand:        "2♡ 3♡ 5♡♡ 8♡ 9♡",
+	},
+}
+
+func TestBestHandValid(t *testing.T) {
+	for _, tc := range validTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := BestHand(tc.hands)
+			if err != nil {
+				t.Fatalf("BestHand(%v) returned error: %v, want: %v", tc.hands, err, tc.expected)
+			}
+			if !reflect.DeepEqual(actual, tc.expected) {
+				t.Fatalf("BestHand(%v) = %v, want: %v", tc.hands, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestBestHandInvalid(t *testing.T) {
+	for _, tc := range invalidTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := BestHand([]string{tc.hand})
+			if err == nil {
+				t.Fatalf("BestHand(%v) expected error, got: %v", []string{tc.hand}, actual)
+			}
+		})
+	}
+}
+
+func BenchmarkBestHand(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tt := range validTestCases {
+			BestHand(tt.hands)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/poker/.meta/example.go
+package poker
+
+import (
+	"sort"
+	"strings"
+)
+
+// BestHand returns the best poker hand(s) from the given hands
+func BestHand(hands []string) ([]string, error) {
+	return allmax(hands, handRank), nil
+}
+
+// allmax returns all items in the iterable that have the maximum value according to the key function
+func allmax(iterable []string, key func(string) interface{}) []string {
+	var result []string
+	var maxval interface{}
+	
+	for _, item := range iterable {
+		xval := key(item)
+		
+		// If this is the first item or we found a better value
+		if len(result) == 0 || compareValues(xval, maxval) > 0 {
+			result = []string{item}
+			maxval = xval
+		} else if compareValues(xval, maxval) == 0 {
+			// If we found an equal value
+			result = append(result, item)
+		}
+	}
+	
+	return result
+}
+
+// compareValues compares two handRank return values
+func compareValues(a, b interface{}) int {
+	if b == nil {
+		return 1
+	}
+	
+	aValues := a.([]interface{})
+	bValues := b.([]interface{})
+	
+	// Compare first element (hand type)
+	aType := aValues[0].(int)
+	bType := bValues[0].(int)
+	if aType != bType {
+		if aType > bType {
+			return 1
+		}
+		return -1
+	}
+	
+	// Compare ranks
+	aRanks := aValues[1].([]int)
+	bRanks := bValues[1].([]int)
+	
+	for i := 0; i < len(aRanks) && i < len(bRanks); i++ {
+		if aRanks[i] != bRanks[i] {
+			if aRanks[i] > bRanks[i] {
+				return 1
+			}
+			return -1
+		}
+	}
+	
+	return 0
+}
+
+// handRank calculates the rank of a poker hand
+func handRank(hand string) interface{} {
+	// Replace "10" with "T" for easier processing
+	handStr := strings.Replace(hand, "10", "T", -1)
+	cards := strings.Fields(handStr)
+	
+	// Get card ranks
+	cardRanks := make([]int, len(cards))
+	for i, card := range cards {
+		// Get first character (rank) and convert to numeric value
+		rankChar := card[0]
+		var rankValue int
+		switch rankChar {
+		case 'T':
+			rankValue = 10
+		case 'J':
+			rankValue = 11
+		case 'Q':
+			rankValue = 12
+		case 'K':
+			rankValue = 13
+		case 'A':
+			rankValue = 14
+		default:
+			rankValue = int(rankChar - '0')
+		}
+		cardRanks[i] = rankValue
+	}
+	
+	// Count occurrences of each rank
+	rankCounts := make(map[int]int)
+	for _, rank := range cardRanks {
+		rankCounts[rank]++
+	}
+	
+	// Create groups of (count, rank)
+	groups := make([][2]int, 0, len(rankCounts))
+	for rank, count := range rankCounts {
+		groups = append(groups, [2]int{count, rank})
+	}
+	
+	// Sort groups by count (descending), then by rank (descending)
+	sort.Slice(groups, func(i, j int) bool {
+		if groups[i][0] != groups[j][0] {
+			return groups[i][0] > groups[j][0]
+		}
+		return groups[i][1] > groups[j][1]
+	})
+	
+	// Extract counts and ranks
+	counts := make([]int, len(groups))
+	ranks := make([]int, len(groups))
+	for i, group := range groups {
+		counts[i] = group[0]
+		ranks[i] = group[1]
+	}
+	
+	// Special case for A-5 straight
+	if len(ranks) == 5 && ranks[0] == 14 && ranks[1] == 5 && ranks[2] == 4 && ranks[3] == 3 && ranks[4] == 2 {
+		ranks = []int{5, 4, 3, 2, 1}
+	}
+	
+	// Check for straight and flush
+	straight := len(counts) == 5 && (maxInt(ranks) - minInt(ranks) == 4)
+	
+	// Check for flush (all cards of the same suit)
+	flush := true
+	firstSuit := cards[0][len(cards[0])-1]
+	for _, card := range cards {
+		if card[len(card)-1] != firstSuit {
+			flush = false
+			break
+		}
+	}
+	
+	// Determine hand type
+	handType := 0
+	if len(counts) == 1 { // Five of a kind
+		handType = 9
+	} else if straight && flush {
+		handType = 8
+	} else if len(counts) == 2 && counts[0] == 4 { // Four of a kind
+		handType = 7
+	} else if len(counts) == 2 && counts[0] == 3 && counts[1] == 2 { // Full house
+		handType = 6
+	} else if flush {
+		handType = 5
+	} else if straight {
+		handType = 4
+	} else if len(counts) == 3 && counts[0] == 3 { // Three of a kind
+		handType = 3
+	} else if len(counts) == 3 && counts[0] == 2 && counts[1] == 2 { // Two pair
+		handType = 2
+	} else if len(counts) == 4 && counts[0] == 2 { // One pair
+		handType = 1
+	}
+	
+	return []interface{}{handType, ranks}
+}
+
+// helper functions
+
+func minInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	min := values[0]
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+	}
+	return min
+}
+
+func maxInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	max := values[0]
+	for _, v := range values {
+		if v > max {
+			max = v
+		}
+	}
+	return max
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestBestHandInvalid (0.00s)
+    --- FAIL: TestBestHandInvalid/1_is_an_invalid_card_rank (0.00s)
+        poker_test.go:73: BestHand([1♢ 2♡ 3♡ 4♡ 5♡]) expected error, got: [1♢ 2♡ 3♡ 4♡ 5♡]
+    --- FAIL: TestBestHandInvalid/11_is_an_invalid_card_rank (0.00s)
+        poker_test.go:73: BestHand([11♢ 2♡ 3♡ 4♡ 5♡]) expected error, got: [11♢ 2♡ 3♡ 4♡ 5♡]
+    --- FAIL: TestBestHandInvalid/too_few_cards (0.00s)
+        poker_test.go:73: BestHand([2♡ 3♡ 4♡ 5♡]) expected error, got: [2♡ 3♡ 4♡ 5♡]
+    --- FAIL: TestBestHandInvalid/too_many_cards (0.00s)
+        poker_test.go:73: BestHand([2♡ 3♡ 4♡ 5♡ 6♡ 7♡]) expected error, got: [2♡ 3♡ 4♡ 5♡ 6♡ 7♡]
+    --- FAIL: TestBestHandInvalid/lack_of_rank (0.00s)
+        poker_test.go:73: BestHand([11♢ 2♡ ♡ 4♡ 5♡]) expected error, got: [11♢ 2♡ ♡ 4♡ 5♡]
+    --- FAIL: TestBestHandInvalid/lack_of_suit (0.00s)
+        poker_test.go:73: BestHand([2♡ 3♡ 4 5♡ 7♡]) expected error, got: [2♡ 3♡ 4 5♡ 7♡]
+    --- FAIL: TestBestHandInvalid/H_is_an_invalid_suit (0.00s)
+        poker_test.go:73: BestHand([2♡ 3♡ 4H 5♡ 7♡]) expected error, got: [2♡ 3♡ 4H 5♡ 7♡]
+    --- FAIL: TestBestHandInvalid/♥_is_an_invalid_suit (0.00s)
+        poker_test.go:73: BestHand([2♡ 3♡ 4♥ 5♡ 7♡]) expected error, got: [2♡ 3♡ 4♥ 5♡ 7♡]
+    --- FAIL: TestBestHandInvalid/lack_of_spacing (0.00s)
+        poker_test.go:73: BestHand([2♡ 3♡ 5♡7♡ 8♡]) expected error, got: [2♡ 3♡ 5♡7♡ 8♡]
+    --- FAIL: TestBestHandInvalid/double_suits_after_rank (0.00s)
+        poker_test.go:73: BestHand([2♡ 3♡ 5♡♡ 8♡ 9♡]) expected error, got: [2♡ 3♡ 5♡♡ 8♡ 9♡]
+FAIL
+FAIL	exercism/poker	0.293s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/poker/.meta/example.go
+package poker
+
+import (
+	"errors"
+	"regexp"
+	"sort"
+	"strings"
+)
+
+// BestHand returns the best poker hand(s) from the given hands
+func BestHand(hands []string) ([]string, error) {
+	// Validate all hands first
+	for _, hand := range hands {
+		if err := validateHand(hand); err != nil {
+			return nil, err
+		}
+	}
+	
+	return allmax(hands, handRank), nil
+}
+
+// validateHand checks if a hand is valid according to the rules
+func validateHand(hand string) error {
+	cards := strings.Fields(hand)
+	
+	// Check card count
+	if len(cards) != 5 {
+		return errors.New("hand must contain exactly 5 cards")
+	}
+	
+	// Basic format validation with regex
+	cardPattern := regexp.MustCompile(`^([2-9]|10|[JQKA])[♢♡♠♣]$`)
+	
+	for _, card := range cards {
+		if !cardPattern.MatchString(card) {
+			return errors.New("invalid card format")
+		}
+	}
+	
+	return nil
+}
+
+// allmax returns all items in the iterable that have the maximum value according to the key function
+func allmax(iterable []string, key func(string) interface{}) []string {
+	var result []string
+	var maxval interface{}
+	
+	for _, item := range iterable {
+		xval := key(item)
+		
+		// If this is the first item or we found a better value
+		if len(result) == 0 || compareValues(xval, maxval) > 0 {
+			result = []string{item}
+			maxval = xval
+		} else if compareValues(xval, maxval) == 0 {
+			// If we found an equal value
+			result = append(result, item)
+		}
+	}
+	
+	return result
+}
+
+// compareValues compares two handRank return values
+func compareValues(a, b interface{}) int {
+	if b == nil {
+		return 1
+	}
+	
+	aValues := a.([]interface{})
+	bValues := b.([]interface{})
+	
+	// Compare first element (hand type)
+	aType := aValues[0].(int)
+	bType := bValues[0].(int)
+	if aType != bType {
+		if aType > bType {
+			return 1
+		}
+		return -1
+	}
+	
+	// Compare ranks
+	aRanks := aValues[1].([]int)
+	bRanks := bValues[1].([]int)
+	
+	for i := 0; i < len(aRanks) && i < len(bRanks); i++ {
+		if aRanks[i] != bRanks[i] {
+			if aRanks[i] > bRanks[i] {
+				return 1
+			}
+			return -1
+		}
+	}
+	
+	return 0
+}
+
+// handRank calculates the rank of a poker hand
+func handRank(hand string) interface{} {
+	// Replace "10" with "T" for easier processing
+	handStr := strings.Replace(hand, "10", "T", -1)
+	cards := strings.Fields(handStr)
+	
+	// Get card ranks
+	cardRanks := make([]int, len(cards))
+	for i, card := range cards {
+		// Get first character (rank) and convert to numeric value
+		var rankValue int
+		if card[0] == 'T' {
+			rankValue = 10
+		} else if card[0] == 'J' {
+			rankValue = 11
+		} else if card[0] == 'Q' {
+			rankValue = 12
+		} else if card[0] == 'K' {
+			rankValue = 13
+		} else if card[0] == 'A' {
+			rankValue = 14
+		} else {
+			rankValue = int(card[0] - '0')
+		}
+		cardRanks[i] = rankValue
+	}
+	
+	// Count occurrences of each rank
+	rankCounts := make(map[int]int)
+	for _, rank := range cardRanks {
+		rankCounts[rank]++
+	}
+	
+	// Create groups of (count, rank)
+	groups := make([][2]int, 0, len(rankCounts))
+	for rank, count := range rankCounts {
+		groups = append(groups, [2]int{count, rank})
+	}
+	
+	// Sort groups by count (descending), then by rank (descending)
+	sort.Slice(groups, func(i, j int) bool {
+		if groups[i][0] != groups[j][0] {
+			return groups[i][0] > groups[j][0]
+		}
+		return groups[i][1] > groups[j][1]
+	})
+	
+	// Extract counts and ranks
+	counts := make([]int, len(groups))
+	ranks := make([]int, len(groups))
+	for i, group := range groups {
+		counts[i] = group[0]
+		ranks[i] = group[1]
+	}
+	
+	// Special case for A-5 straight
+	if len(ranks) == 5 && ranks[0] == 14 && ranks[1] == 5 && ranks[2] == 4 && ranks[3] == 3 && ranks[4] == 2 {
+		ranks = []int{5, 4, 3, 2, 1}
+	}
+	
+	// Check for straight and flush
+	straight := len(counts) == 5 && (maxInt(ranks) - minInt(ranks) == 4)
+	
+	// Check for flush (all cards of the same suit)
+	suits := make(map[rune]bool)
+	for _, card := range cards {
+		// Get the last character (suit)
+		suit := rune(card[len(card)-1])
+		suits[suit] = true
+	}
+	flush := len(suits) == 1
+	
+	// Determine hand type
+	handType := 0
+	if len(counts) == 1 { // Five of a kind
+		handType = 9
+	} else if straight && flush {
+		handType = 8
+	} else if len(counts) == 2 && counts[0] == 4 { // Four of a kind
+		handType = 7
+	} else if len(counts) == 2 && counts[0] == 3 && counts[1] == 2 { // Full house
+		handType = 6
+	} else if flush {
+		handType = 5
+	} else if straight {
+		handType = 4
+	} else if len(counts) == 3 && counts[0] == 3 { // Three of a kind
+		handType = 3
+	} else if len(counts) == 3 && counts[0] == 2 && counts[1] == 2 { // Two pair
+		handType = 2
+	} else if len(counts) == 4 && counts[0] == 2 { // One pair
+		handType = 1
+	}
+	
+	return []interface{}{handType, ranks}
+}
+
+// helper functions
+
+func minInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	min := values[0]
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+	}
+	return min
+}
+
+func maxInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	max := values[0]
+	for _, v := range values {
+		if v > max {
+			max = v
+		}
+	}
+	return max
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestBestHandValid (0.00s)
+    --- FAIL: TestBestHandValid/single_hand_always_wins (0.00s)
+        poker_test.go:59: BestHand([4♤ 5♤ 7♡ 8♢ J♧]) returned error: invalid card format, want: [4♤ 5♤ 7♡ 8♢ J♧]
+    --- FAIL: TestBestHandValid/highest_card_out_of_all_hands_wins (0.00s)
+        poker_test.go:59: BestHand([4♢ 5♤ 6♤ 8♢ 3♧ 2♤ 4♧ 7♤ 9♡ 10♡ 3♤ 4♤ 5♢ 6♡ J♡]) returned error: invalid card format, want: [3♤ 4♤ 5♢ 6♡ J♡]
+    --- FAIL: TestBestHandValid/a_tie_has_multiple_winners (0.00s)
+        poker_test.go:59: BestHand([4♢ 5♤ 6♤ 8♢ 3♧ 2♤ 4♧ 7♤ 9♡ 10♡ 3♤ 4♤ 5♢ 6♡ J♡ 3♡ 4♡ 5♧ 6♧ J♢]) returned error: invalid card format, want: [3♤ 4♤ 5♢ 6♡ J♡ 3♡ 4♡ 5♧ 6♧ J♢]
+    --- FAIL: TestBestHandValid/multiple_hands_with_the_same_high_cards,_tie_compares_next_highest_ranked,_down_to_last_card (0.00s)
+        poker_test.go:59: BestHand([3♤ 5♡ 6♤ 8♢ 7♡ 2♤ 5♢ 6♢ 8♧ 7♤]) returned error: invalid card format, want: [3♤ 5♡ 6♤ 8♢ 7♡]
+    --- FAIL: TestBestHandValid/one_pair_beats_high_card (0.00s)
+        poker_test.go:59: BestHand([4♤ 5♡ 6♧ 8♢ K♡ 2♤ 4♡ 6♤ 4♢ J♡]) returned error: invalid card format, want: [2♤ 4♡ 6♤ 4♢ J♡]
+    --- FAIL: TestBestHandValid/highest_pair_wins (0.00s)
+        poker_test.go:59: BestHand([4♤ 2♡ 6♤ 2♢ J♡ 2♤ 4♡ 6♧ 4♢ J♢]) returned error: invalid card format, want: [2♤ 4♡ 6♧ 4♢ J♢]
+    --- FAIL: TestBestHandValid/two_pairs_beats_one_pair (0.00s)
+        poker_test.go:59: BestHand([2♤ 8♡ 6♤ 8♢ J♡ 4♤ 5♡ 4♧ 8♧ 5♧]) returned error: invalid card format, want: [4♤ 5♡ 4♧ 8♧ 5♧]
+    --- FAIL: TestBestHandValid/both_hands_have_two_pairs,_highest_ranked_pair_wins (0.00s)
+        poker_test.go:59: BestHand([2♤ 8♡ 2♢ 8♢ 3♡ 4♤ 5♡ 4♧ 8♤ 5♢]) returned error: invalid card format, want: [2♤ 8♡ 2♢ 8♢ 3♡]
+    --- FAIL: TestBestHandValid/both_hands_have_two_pairs,_with_the_same_highest_ranked_pair,_tie_goes_to_low_pair (0.00s)
+        poker_test.go:59: BestHand([2♤ Q♤ 2♧ Q♢ J♡ J♢ Q♡ J♤ 8♢ Q♧]) returned error: invalid card format, want: [J♢ Q♡ J♤ 8♢ Q♧]
+    --- FAIL: TestBestHandValid/both_hands_have_two_identically_ranked_pairs,_tie_goes_to_remaining_card_(kicker) (0.00s)
+        poker_test.go:59: BestHand([J♢ Q♡ J♤ 8♢ Q♧ J♤ Q♤ J♧ 2♢ Q♢]) returned error: invalid card format, want: [J♢ Q♡ J♤ 8♢ Q♧]
+    --- FAIL: TestBestHandValid/both_hands_have_two_pairs_that_add_to_the_same_value,_win_goes_to_highest_pair (0.00s)
+        poker_test.go:59: BestHand([6♤ 6♡ 3♤ 3♡ A♤ 7♡ 7♤ 2♡ 2♤ A♧]) returned error: invalid card format, want: [7♡ 7♤ 2♡ 2♤ A♧]
+    --- FAIL: TestBestHandValid/two_pairs_first_ranked_by_largest_pair (0.00s)
+        poker_test.go:59: BestHand([5♧ 2♤ 5♤ 4♡ 4♧ 6♤ 2♤ 6♡ 7♧ 2♧]) returned error: invalid card format, want: [6♤ 2♤ 6♡ 7♧ 2♧]
+    --- FAIL: TestBestHandValid/three_of_a_kind_beats_two_pair (0.00s)
+        poker_test.go:59: BestHand([2♤ 8♡ 2♡ 8♢ J♡ 4♤ 5♡ 4♧ 8♤ 4♡]) returned error: invalid card format, want: [4♤ 5♡ 4♧ 8♤ 4♡]
+    --- FAIL: TestBestHandValid/both_hands_have_three_of_a_kind,_tie_goes_to_highest_ranked_triplet (0.00s)
+        poker_test.go:59: BestHand([2♤ 2♡ 2♧ 8♢ J♡ 4♤ A♡ A♤ 8♧ A♢]) returned error: invalid card format, want: [4♤ A♡ A♤ 8♧ A♢]
+    --- FAIL: TestBestHandValid/with_multiple_decks,_two_players_can_have_same_three_of_a_kind,_ties_go_to_highest_remaining_cards (0.00s)
+        poker_test.go:59: BestHand([4♤ A♡ A♤ 7♧ A♢ 4♤ A♡ A♤ 8♧ A♢]) returned error: invalid card format, want: [4♤ A♡ A♤ 8♧ A♢]
+    --- FAIL: TestBestHandValid/a_straight_beats_three_of_a_kind (0.00s)
+        poker_test.go:59: BestHand([4♤ 5♡ 4♧ 8♢ 4♡ 3♤ 4♢ 2♤ 6♢ 5♧]) returned error: invalid card format, want: [3♤ 4♢ 2♤ 6♢ 5♧]
+    --- FAIL: TestBestHandValid/aces_can_end_a_straight_(10_J_Q_K_A) (0.00s)
+        poker_test.go:59: BestHand([4♤ 5♡ 4♧ 8♢ 4♡ 10♢ J♡ Q♤ K♢ A♧]) returned error: invalid card format, want: [10♢ J♡ Q♤ K♢ A♧]
+    --- FAIL: TestBestHandValid/aces_can_start_a_straight_(A_2_3_4_5) (0.00s)
+        poker_test.go:59: BestHand([4♤ 5♡ 4♧ 8♢ 4♡ 4♢ A♡ 3♤ 2♢ 5♧]) returned error: invalid card format, want: [4♢ A♡ 3♤ 2♢ 5♧]
+    --- FAIL: TestBestHandValid/both_hands_with_a_straight,_tie_goes_to_highest_ranked_card (0.00s)
+        poker_test.go:59: BestHand([4♤ 6♧ 7♤ 8♢ 5♡ 5♤ 7♡ 8♤ 9♢ 6♡]) returned error: invalid card format, want: [5♤ 7♡ 8♤ 9♢ 6♡]
+    --- FAIL: TestBestHandValid/even_though_an_ace_is_usually_high,_a_5-high_straight_is_the_lowest-scoring_straight (0.00s)
+        poker_test.go:59: BestHand([2♡ 3♧ 4♢ 5♢ 6♡ 4♤ A♡ 3♤ 2♢ 5♡]) returned error: invalid card format, want: [2♡ 3♧ 4♢ 5♢ 6♡]
+    --- FAIL: TestBestHandValid/flush_beats_a_straight (0.00s)
+        poker_test.go:59: BestHand([4♧ 6♡ 7♢ 8♢ 5♡ 2♤ 4♤ 5♤ 6♤ 7♤]) returned error: invalid card format, want: [2♤ 4♤ 5♤ 6♤ 7♤]
+    --- FAIL: TestBestHandValid/both_hands_have_a_flush,_tie_goes_to_high_card,_down_to_the_last_one_if_necessary (0.00s)
+        poker_test.go:59: BestHand([4♡ 7♡ 8♡ 9♡ 6♡ 2♤ 4♤ 5♤ 6♤ 7♤]) returned error: invalid card format, want: [4♡ 7♡ 8♡ 9♡ 6♡]
+    --- FAIL: TestBestHandValid/full_house_beats_a_flush (0.00s)
+        poker_test.go:59: BestHand([3♡ 6♡ 7♡ 8♡ 5♡ 4♤ 5♡ 4♧ 5♢ 4♡]) returned error: invalid card format, want: [4♤ 5♡ 4♧ 5♢ 4♡]
+    --- FAIL: TestBestHandValid/both_hands_have_a_full_house,_tie_goes_to_highest-ranked_triplet (0.00s)
+        poker_test.go:59: BestHand([4♡ 4♤ 4♢ 9♤ 9♢ 5♡ 5♤ 5♢ 8♤ 8♢]) returned error: invalid card format, want: [5♡ 5♤ 5♢ 8♤ 8♢]
+    --- FAIL: TestBestHandValid/with_multiple_decks,_both_hands_have_a_full_house_with_the_same_triplet,_tie_goes_to_the_pair (0.00s)
+        poker_test.go:59: BestHand([5♡ 5♤ 5♢ 9♤ 9♢ 5♡ 5♤ 5♢ 8♤ 8♢]) returned error: invalid card format, want: [5♡ 5♤ 5♢ 9♤ 9♢]
+    --- FAIL: TestBestHandValid/four_of_a_kind_beats_a_full_house (0.00s)
+        poker_test.go:59: BestHand([4♤ 5♡ 4♢ 5♢ 4♡ 3♤ 3♡ 2♤ 3♢ 3♧]) returned error: invalid card format, want: [3♤ 3♡ 2♤ 3♢ 3♧]
+    --- FAIL: TestBestHandValid/both_hands_have_four_of_a_kind,_tie_goes_to_high_quad (0.00s)
+        poker_test.go:59: BestHand([2♤ 2♡ 2♧ 8♢ 2♢ 4♤ 5♡ 5♤ 5♢ 5♧]) returned error: invalid card format, want: [4♤ 5♡ 5♤ 5♢ 5♧]
+    --- FAIL: TestBestHandValid/with_multiple_decks,_both_hands_with_identical_four_of_a_kind,_tie_determined_by_kicker (0.00s)
+        poker_test.go:59: BestHand([3♤ 3♡ 2♤ 3♢ 3♧ 3♤ 3♡ 4♤ 3♢ 3♧]) returned error: invalid card format, want: [3♤ 3♡ 4♤ 3♢ 3♧]
+    --- FAIL: TestBestHandValid/straight_flush_beats_four_of_a_kind (0.00s)
+        poker_test.go:59: BestHand([4♤ 5♡ 5♤ 5♢ 5♧ 7♤ 8♤ 9♤ 6♤ 10♤]) returned error: invalid card format, want: [7♤ 8♤ 9♤ 6♤ 10♤]
+    --- FAIL: TestBestHandValid/both_hands_have_straight_flush,_tie_goes_to_highest-ranked_card (0.00s)
+        poker_test.go:59: BestHand([4♡ 6♡ 7♡ 8♡ 5♡ 5♤ 7♤ 8♤ 9♤ 6♤]) returned error: invalid card format, want: [5♤ 7♤ 8♤ 9♤ 6♤]
+FAIL
+FAIL	exercism/poker	0.294s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/poker/.meta/example.go
+package poker
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// BestHand returns the best poker hand(s) from the given hands
+func BestHand(hands []string) ([]string, error) {
+	return allmax(hands, handRank), nil
+}
+
+// allmax returns all items in the iterable that have the maximum value according to the key function
+func allmax(iterable []string, key func(string) interface{}) []string {
+	var result []string
+	var maxval interface{}
+	
+	for _, item := range iterable {
+		xval := key(item)
+		
+		// If this is the first item or we found a better value
+		if len(result) == 0 || compareValues(xval, maxval) > 0 {
+			result = []string{item}
+			maxval = xval
+		} else if compareValues(xval, maxval) == 0 {
+			// If we found an equal value
+			result = append(result, item)
+		}
+	}
+	
+	return result
+}
+
+// compareValues compares two handRank return values
+func compareValues(a, b interface{}) int {
+	if b == nil {
+		return 1
+	}
+	
+	aValues := a.([]interface{})
+	bValues := b.([]interface{})
+	
+	// Compare first element (hand type)
+	aType := aValues[0].(int)
+	bType := bValues[0].(int)
+	if aType != bType {
+		if aType > bType {
+			return 1
+		}
+		return -1
+	}
+	
+	// Compare ranks
+	aRanks := aValues[1].([]int)
+	bRanks := bValues[1].([]int)
+	
+	for i := 0; i < len(aRanks) && i < len(bRanks); i++ {
+		if aRanks[i] != bRanks[i] {
+			if aRanks[i] > bRanks[i] {
+				return 1
+			}
+			return -1
+		}
+	}
+	
+	return 0
+}
+
+// handRank calculates the rank of a poker hand
+func handRank(hand string) interface{} {
+	// Replace "10" with "T" for easier processing
+	handStr := strings.Replace(hand, "10", "T", -1)
+	cards := strings.Fields(handStr)
+	
+	// Get card ranks and suits
+	cardRanks := make([]int, len(cards))
+	for i, card := range cards {
+		// Get rank and convert to numeric value
+		var rankValue int
+		if len(card) == 2 {
+			// Single character rank
+			r := card[0]
+			switch r {
+			case 'T':
+				rankValue = 10
+			case 'J':
+				rankValue = 11
+			case 'Q':
+				rankValue = 12
+			case 'K':
+				rankValue = 13
+			case 'A':
+				rankValue = 14
+			default:
+				rankValue = int(r - '0')
+			}
+		} else {
+			// Must be "10"
+			rankValue = 10
+		}
+		cardRanks[i] = rankValue
+	}
+	
+	// Count occurrences of each rank
+	rankCounts := make(map[int]int)
+	for _, rank := range cardRanks {
+		rankCounts[rank]++
+	}
+	
+	// Create groups of (count, rank)
+	groups := make([][2]int, 0, len(rankCounts))
+	for rank, count := range rankCounts {
+		groups = append(groups, [2]int{count, rank})
+	}
+	
+	// Sort groups by count (descending), then by rank (descending)
+	sort.Slice(groups, func(i, j int) bool {
+		if groups[i][0] != groups[j][0] {
+			return groups[i][0] > groups[j][0]
+		}
+		return groups[i][1] > groups[j][1]
+	})
+	
+	// Extract counts and ranks
+	counts := make([]int, len(groups))
+	ranks := make([]int, len(groups))
+	for i, group := range groups {
+		counts[i] = group[0]
+		ranks[i] = group[1]
+	}
+	
+	// Special case for A-5 straight
+	if len(ranks) == 5 && ranks[0] == 14 && ranks[1] == 5 && ranks[2] == 4 && ranks[3] == 3 && ranks[4] == 2 {
+		ranks = []int{5, 4, 3, 2, 1}
+	}
+	
+	// Check for straight and flush
+	straight := len(counts) == 5 && (maxInt(ranks) - minInt(ranks) == 4)
+	
+	// Check for flush (all cards of the same suit)
+	suits := make(map[rune]bool)
+	for _, card := range cards {
+		// Get the last character (suit)
+		suit := rune(card[len(card)-1])
+		suits[suit] = true
+	}
+	flush := len(suits) == 1
+	
+	// Determine hand type
+	handType := 0
+	if len(counts) == 1 { // Five of a kind
+		handType = 9
+	} else if straight && flush {
+		handType = 8
+	} else if len(counts) == 2 && counts[0] == 4 { // Four of a kind
+		handType = 7
+	} else if len(counts) == 2 && counts[0] == 3 && counts[1] == 2 { // Full house
+		handType = 6
+	} else if flush {
+		handType = 5
+	} else if straight {
+		handType = 4
+	} else if len(counts) == 3 && counts[0] == 3 { // Three of a kind
+		handType = 3
+	} else if len(counts) == 3 && counts[0] == 2 && counts[1] == 2 { // Two pair
+		handType = 2
+	} else if len(counts) == 4 && counts[0] == 2 { // One pair
+		handType = 1
+	}
+	
+	return []interface{}{handType, ranks}
+}
+
+// helper functions
+
+func minInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	min := values[0]
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+	}
+	return min
+}
+
+func maxInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	max := values[0]
+	for _, v := range values {
+		if v > max {
+			max = v
+		}
+	}
+	return max
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/poker [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/poker [exercism/poker.test]
+./poker.go:5:2: imported and not used: "fmt"
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/poker/.meta/example.go
+package poker
+
+import (
+	"errors"
+	"sort"
+	"strings"
+)
+
+// BestHand returns the best poker hand(s) from the given hands
+func BestHand(hands []string) ([]string, error) {
+	// Validate all hands first
+	for _, hand := range hands {
+		if err := validateHand(hand); err != nil {
+			return nil, err
+		}
+	}
+	
+	return allmax(hands, handRank), nil
+}
+
+// validateHand checks if a hand is valid according to the rules
+func validateHand(hand string) error {
+	cards := strings.Fields(hand)
+	
+	// Check card count
+	if len(cards) != 5 {
+		return errors.New("hand must contain exactly 5 cards")
+	}
+	
+	// Check each card format
+	for _, card := range cards {
+		// Check rank
+		if len(card) < 2 {
+			return errors.New("invalid card format")
+		}
+		
+		var rankEnd int
+		if strings.HasPrefix(card, "10") {
+			rankEnd = 2
+		} else {
+			rankEnd = 1
+		}
+		
+		rankChar := card[0]
+		if rankEnd == 1 {
+			// Single character rank must be 2-9, A, K, Q, J
+			if !((rankChar >= '2' && rankChar <= '9') || 
+				 rankChar == 'A' || rankChar == 'K' || 
+				 rankChar == 'Q' || rankChar == 'J') {
+				return errors.New("invalid card rank")
+			}
+		} else if rankEnd == 2 && card[0:2] != "10" {
+			return errors.New("invalid card rank")
+		}
+		
+		// Check suit - must be ♢, ♡, ♤, or ♧
+		if len(card) != rankEnd+1 {
+			return errors.New("invalid card format")
+		}
+		
+		suit := card[rankEnd]
+		if suit != '♢' && suit != '♡' && suit != '♤' && suit != '♧' {
+			return errors.New("invalid card suit")
+		}
+	}
+	
+	return nil
+}
+
+// allmax returns all items in the iterable that have the maximum value according to the key function
+func allmax(iterable []string, key func(string) interface{}) []string {
+	var result []string
+	var maxval interface{}
+	
+	for _, item := range iterable {
+		xval := key(item)
+		
+		// If this is the first item or we found a better value
+		if len(result) == 0 || compareValues(xval, maxval) > 0 {
+			result = []string{item}
+			maxval = xval
+		} else if compareValues(xval, maxval) == 0 {
+			// If we found an equal value
+			result = append(result, item)
+		}
+	}
+	
+	return result
+}
+
+// compareValues compares two handRank return values
+func compareValues(a, b interface{}) int {
+	if b == nil {
+		return 1
+	}
+	
+	aValues := a.([]interface{})
+	bValues := b.([]interface{})
+	
+	// Compare first element (hand type)
+	aType := aValues[0].(int)
+	bType := bValues[0].(int)
+	if aType != bType {
+		if aType > bType {
+			return 1
+		}
+		return -1
+	}
+	
+	// Compare ranks
+	aRanks := aValues[1].([]int)
+	bRanks := bValues[1].([]int)
+	
+	for i := 0; i < len(aRanks) && i < len(bRanks); i++ {
+		if aRanks[i] != bRanks[i] {
+			if aRanks[i] > bRanks[i] {
+				return 1
+			}
+			return -1
+		}
+	}
+	
+	return 0
+}
+
+// handRank calculates the rank of a poker hand
+func handRank(hand string) interface{} {
+	// Replace "10" with "T" for easier processing
+	handStr := strings.Replace(hand, "10", "T", -1)
+	cards := strings.Fields(handStr)
+	
+	// Get card ranks
+	cardRanks := make([]int, len(cards))
+	for i, card := range cards {
+		// Get rank and convert to numeric value
+		var rankValue int
+		if card[0] == 'T' {
+			rankValue = 10
+		} else if card[0] == 'J' {
+			rankValue = 11
+		} else if card[0] == 'Q' {
+			rankValue = 12
+		} else if card[0] == 'K' {
+			rankValue = 13
+		} else if card[0] == 'A' {
+			rankValue = 14
+		} else {
+			rankValue = int(card[0] - '0')
+		}
+		cardRanks[i] = rankValue
+	}
+	
+	// Count occurrences of each rank
+	rankCounts := make(map[int]int)
+	for _, rank := range cardRanks {
+		rankCounts[rank]++
+	}
+	
+	// Create groups of (count, rank)
+	groups := make([][2]int, 0, len(rankCounts))
+	for rank, count := range rankCounts {
+		groups = append(groups, [2]int{count, rank})
+	}
+	
+	// Sort groups by count (descending), then by rank (descending)
+	sort.Slice(groups, func(i, j int) bool {
+		if groups[i][0] != groups[j][0] {
+			return groups[i][0] > groups[j][0]
+		}
+		return groups[i][1] > groups[j][1]
+	})
+	
+	// Extract counts and ranks
+	counts := make([]int, len(groups))
+	ranks := make([]int, len(groups))
+	for i, group := range groups {
+		counts[i] = group[0]
+		ranks[i] = group[1]
+	}
+	
+	// Special case for A-5 straight
+	if len(ranks) == 5 && ranks[0] == 14 && ranks[1] == 5 && ranks[2] == 4 && ranks[3] == 3 && ranks[4] == 2 {
+		ranks = []int{5, 4, 3, 2, 1}
+	}
+	
+	// Check for straight and flush
+	straight := len(counts) == 5 && (maxInt(ranks) - minInt(ranks) == 4)
+	
+	// Check for flush (all cards of the same suit)
+	suits := make(map[rune]bool)
+	for _, card := range cards {
+		// Get the last character (suit)
+		suit := rune(card[len(card)-1])
+		suits[suit] = true
+	}
+	flush := len(suits) == 1
+	
+	// Determine hand type
+	handType := 0
+	if len(counts) == 1 { // Five of a kind
+		handType = 9
+	} else if straight && flush {
+		handType = 8
+	} else if len(counts) == 2 && counts[0] == 4 { // Four of a kind
+		handType = 7
+	} else if len(counts) == 2 && counts[0] == 3 && counts[1] == 2 { // Full house
+		handType = 6
+	} else if flush {
+		handType = 5
+	} else if straight {
+		handType = 4
+	} else if len(counts) == 3 && counts[0] == 3 { // Three of a kind
+		handType = 3
+	} else if len(counts) == 3 && counts[0] == 2 && counts[1] == 2 { // Two pair
+		handType = 2
+	} else if len(counts) == 4 && counts[0] == 2 { // One pair
+		handType = 1
+	}
+	
+	return []interface{}{handType, ranks}
+}
+
+// helper functions
+
+func minInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	min := values[0]
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+	}
+	return min
+}
+
+func maxInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	max := values[0]
+	for _, v := range values {
+		if v > max {
+			max = v
+		}
+	}
+	return max
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/poker [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/poker [exercism/poker.test]
+./poker.go:63:14: '♢' (untyped rune constant 9826) overflows byte
+./poker.go:63:31: '♡' (untyped rune constant 9825) overflows byte
+./poker.go:63:48: '♤' (untyped rune constant 9828) overflows byte
+./poker.go:63:65: '♧' (untyped rune constant 9831) overflows byte
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/poker/.meta/example.go
+package poker
+
+import (
+	"errors"
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
+
+// BestHand returns the best poker hand(s) from the given hands
+func BestHand(hands []string) ([]string, error) {
+	// Validate all hands first
+	for _, hand := range hands {
+		if err := validateHand(hand); err != nil {
+			return nil, err
+		}
+	}
+	
+	return allmax(hands, handRank), nil
+}
+
+// validateHand checks if a hand is valid according to the rules
+func validateHand(hand string) error {
+	cards := strings.Fields(hand)
+	
+	// Check card count
+	if len(cards) != 5 {
+		return errors.New("hand must contain exactly 5 cards")
+	}
+	
+	// Check each card format
+	for _, card := range cards {
+		// Check rank
+		if len(card) < 2 {
+			return errors.New("invalid card format")
+		}
+		
+		var rankEnd int
+		if strings.HasPrefix(card, "10") {
+			rankEnd = 2
+		} else {
+			rankEnd = 1
+		}
+		
+		rankChar := card[0]
+		if rankEnd == 1 {
+			// Single character rank must be 2-9, A, K, Q, J
+			if !((rankChar >= '2' && rankChar <= '9') || 
+				 rankChar == 'A' || rankChar == 'K' || 
+				 rankChar == 'Q' || rankChar == 'J') {
+				return errors.New("invalid card rank")
+			}
+		} else if rankEnd == 2 && card[0:2] != "10" {
+			return errors.New("invalid card rank")
+		}
+		
+		// Check suit - must be ♢, ♡, ♤, or ♧
+		if len(card) <= rankEnd {
+			return errors.New("invalid card format")
+		}
+		
+		// Get last rune which is the suit
+		suitRune, _ := utf8.DecodeLastRuneInString(card)
+		validSuits := []rune{'♢', '♡', '♤', '♧'}
+		
+		valid := false
+		for _, s := range validSuits {
+			if suitRune == s {
+				valid = true
+				break
+			}
+		}
+		
+		if !valid {
+			return errors.New("invalid card suit")
+		}
+		
+		// Check if there's anything between the rank and suit
+		expectedLen := rankEnd + utf8.RuneLen(suitRune)
+		if len(card) != expectedLen {
+			return errors.New("invalid card format")
+		}
+	}
+	
+	return nil
+}
+
+// allmax returns all items in the iterable that have the maximum value according to the key function
+func allmax(iterable []string, key func(string) interface{}) []string {
+	var result []string
+	var maxval interface{}
+	
+	for _, item := range iterable {
+		xval := key(item)
+		
+		// If this is the first item or we found a better value
+		if len(result) == 0 || compareValues(xval, maxval) > 0 {
+			result = []string{item}
+			maxval = xval
+		} else if compareValues(xval, maxval) == 0 {
+			// If we found an equal value
+			result = append(result, item)
+		}
+	}
+	
+	return result
+}
+
+// compareValues compares two handRank return values
+func compareValues(a, b interface{}) int {
+	if b == nil {
+		return 1
+	}
+	
+	aValues := a.([]interface{})
+	bValues := b.([]interface{})
+	
+	// Compare first element (hand type)
+	aType := aValues[0].(int)
+	bType := bValues[0].(int)
+	if aType != bType {
+		if aType > bType {
+			return 1
+		}
+		return -1
+	}
+	
+	// Compare ranks
+	aRanks := aValues[1].([]int)
+	bRanks := bValues[1].([]int)
+	
+	for i := 0; i < len(aRanks) && i < len(bRanks); i++ {
+		if aRanks[i] != bRanks[i] {
+			if aRanks[i] > bRanks[i] {
+				return 1
+			}
+			return -1
+		}
+	}
+	
+	return 0
+}
+
+// handRank calculates the rank of a poker hand
+func handRank(hand string) interface{} {
+	// Replace "10" with "T" for easier processing
+	handStr := strings.Replace(hand, "10", "T", -1)
+	cards := strings.Fields(handStr)
+	
+	// Get card ranks
+	cardRanks := make([]int, len(cards))
+	for i, card := range cards {
+		// Get rank and convert to numeric value
+		var rankValue int
+		if card[0] == 'T' {
+			rankValue = 10
+		} else if card[0] == 'J' {
+			rankValue = 11
+		} else if card[0] == 'Q' {
+			rankValue = 12
+		} else if card[0] == 'K' {
+			rankValue = 13
+		} else if card[0] == 'A' {
+			rankValue = 14
+		} else {
+			rankValue = int(card[0] - '0')
+		}
+		cardRanks[i] = rankValue
+	}
+	
+	// Count occurrences of each rank
+	rankCounts := make(map[int]int)
+	for _, rank := range cardRanks {
+		rankCounts[rank]++
+	}
+	
+	// Create groups of (count, rank)
+	groups := make([][2]int, 0, len(rankCounts))
+	for rank, count := range rankCounts {
+		groups = append(groups, [2]int{count, rank})
+	}
+	
+	// Sort groups by count (descending), then by rank (descending)
+	sort.Slice(groups, func(i, j int) bool {
+		if groups[i][0] != groups[j][0] {
+			return groups[i][0] > groups[j][0]
+		}
+		return groups[i][1] > groups[j][1]
+	})
+	
+	// Extract counts and ranks
+	counts := make([]int, len(groups))
+	ranks := make([]int, len(groups))
+	for i, group := range groups {
+		counts[i] = group[0]
+		ranks[i] = group[1]
+	}
+	
+	// Special case for A-5 straight
+	if len(ranks) == 5 && ranks[0] == 14 && ranks[1] == 5 && ranks[2] == 4 && ranks[3] == 3 && ranks[4] == 2 {
+		ranks = []int{5, 4, 3, 2, 1}
+	}
+	
+	// Check for straight and flush
+	straight := len(counts) == 5 && (maxInt(ranks) - minInt(ranks) == 4)
+	
+	// Check for flush (all cards of the same suit)
+	suits := make(map[rune]bool)
+	for _, card := range cards {
+		suitRune, _ := utf8.DecodeLastRuneInString(card)
+		suits[suitRune] = true
+	}
+	flush := len(suits) == 1
+	
+	// Determine hand type
+	handType := 0
+	if len(counts) == 1 { // Five of a kind
+		handType = 9
+	} else if straight && flush {
+		handType = 8
+	} else if len(counts) == 2 && counts[0] == 4 { // Four of a kind
+		handType = 7
+	} else if len(counts) == 2 && counts[0] == 3 && counts[1] == 2 { // Full house
+		handType = 6
+	} else if flush {
+		handType = 5
+	} else if straight {
+		handType = 4
+	} else if len(counts) == 3 && counts[0] == 3 { // Three of a kind
+		handType = 3
+	} else if len(counts) == 3 && counts[0] == 2 && counts[1] == 2 { // Two pair
+		handType = 2
+	} else if len(counts) == 4 && counts[0] == 2 { // One pair
+		handType = 1
+	}
+	
+	return []interface{}{handType, ranks}
+}
+
+// helper functions
+
+func minInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	min := values[0]
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+	}
+	return min
+}
+
+func maxInt(values []int) int {
+	if len(values) == 0 {
+		return 0
+	}
+	max := values[0]
+	for _, v := range values {
+		if v > max {
+			max = v
+		}
+	}
+	return max
+}
+
+=== Test Results (Attempt 4) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/poker	0.282s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

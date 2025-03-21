@@ -1,0 +1,1920 @@
+=== Initial Source Code ===
+Source file: exercises/practice/wordy/.meta/example.py
+from operator import add, mul, sub
+from operator import floordiv as div
+
+
+VALID_OPERATIONS = {'plus': add, 'minus': sub, 'multiplied by': mul, 'divided by': div}
+
+
+def answer(question):
+    if not bool(question[8:-1].strip().lower().split()):
+        raise ValueError('syntax error')
+
+    elif not question.startswith('What is '):
+        raise ValueError('unknown operation')
+
+    else:
+        words = question[8:-1].strip().lower().split()
+        words.reverse()
+
+    try:
+        main_value = int(words.pop())
+    except ValueError as error:
+        raise ValueError('syntax error') from error
+
+    while words:
+        operation = [words.pop()]
+        while words:
+            try:
+                next_to_evaluate = words.pop()
+                second_value = int(next_to_evaluate)
+                break
+            except ValueError as error:
+                if next_to_evaluate == operation[-1]:
+                    raise ValueError('syntax error') from error
+                else:
+                    operation.append(next_to_evaluate)
+        else:
+            if operation[-1] not in VALID_OPERATIONS and not operation[-1].isdigit() :
+                raise ValueError('unknown operation')
+            else:
+                raise ValueError('syntax error')
+
+        operation = ' '.join(operation)
+
+        try:
+            main_value = VALID_OPERATIONS[operation](main_value, second_value)
+        except KeyError as error:
+            raise ValueError('syntax error') from error
+
+    return main_value
+
+
+=== Source Interface ===
+def answer(question):
+    pass
+
+
+=== Target Interface ===
+package wordy
+
+func Answer(question string) (int, bool) {
+	panic("Please implement the Answer function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/wordy/canonical-data.json
+# File last updated on 2025-02-15
+
+import unittest
+
+from wordy import (
+    answer,
+)
+
+
+class WordyTest(unittest.TestCase):
+    def test_just_a_number(self):
+        self.assertEqual(answer("What is 5?"), 5)
+
+    def test_addition(self):
+        self.assertEqual(answer("What is 1 plus 1?"), 2)
+
+    def test_more_addition(self):
+        self.assertEqual(answer("What is 53 plus 2?"), 55)
+
+    def test_addition_with_negative_numbers(self):
+        self.assertEqual(answer("What is -1 plus -10?"), -11)
+
+    def test_large_addition(self):
+        self.assertEqual(answer("What is 123 plus 45678?"), 45801)
+
+    def test_subtraction(self):
+        self.assertEqual(answer("What is 4 minus -12?"), 16)
+
+    def test_multiplication(self):
+        self.assertEqual(answer("What is -3 multiplied by 25?"), -75)
+
+    def test_division(self):
+        self.assertEqual(answer("What is 33 divided by -3?"), -11)
+
+    def test_multiple_additions(self):
+        self.assertEqual(answer("What is 1 plus 1 plus 1?"), 3)
+
+    def test_addition_and_subtraction(self):
+        self.assertEqual(answer("What is 1 plus 5 minus -2?"), 8)
+
+    def test_multiple_subtraction(self):
+        self.assertEqual(answer("What is 20 minus 4 minus 13?"), 3)
+
+    def test_subtraction_then_addition(self):
+        self.assertEqual(answer("What is 17 minus 6 plus 3?"), 14)
+
+    def test_multiple_multiplication(self):
+        self.assertEqual(answer("What is 2 multiplied by -2 multiplied by 3?"), -12)
+
+    def test_addition_and_multiplication(self):
+        self.assertEqual(answer("What is -3 plus 7 multiplied by -2?"), -8)
+
+    def test_multiple_division(self):
+        self.assertEqual(answer("What is -12 divided by 2 divided by -3?"), 2)
+
+    def test_unknown_operation(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 52 cubed?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "unknown operation")
+
+    def test_reject_problem_missing_an_operand(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 1 plus?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_problem_with_no_operands_or_operators(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_two_operations_in_a_row(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 1 plus plus 2?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_two_numbers_in_a_row(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 1 plus 2 1?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_postfix_notation(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 1 2 plus?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_prefix_notation(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is plus 1 2?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    # Additional tests for this track
+
+    def test_missing_operation(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 2 2 minus 3?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_missing_number(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 7 plus multiplied by -2?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+
+=== Target Test Code ===
+package wordy
+
+import "testing"
+
+func TestAnswer(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Answer(tc.question)
+			switch {
+			case tc.expectError:
+				if ok {
+					t.Fatalf("Answer(%q) expected error, got: %d", tc.question, actual)
+				}
+			case !ok:
+				t.Fatalf("Answer(%q) returned ok=%t, want: %d", tc.question, ok, tc.expected)
+			case actual != tc.expected:
+				t.Fatalf("Answer(%q) = %d, want: %d", tc.question, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark combined time to answer all questions.
+func BenchmarkAnswer(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			Answer(test.question)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/wordy/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int {
+		return a + b
+	},
+	"minus": func(a, b int) int {
+		return a - b
+	},
+	"multiplied by": func(a, b int) int {
+		return a * b
+	},
+	"divided by": func(a, b int) int {
+		return a / b
+	},
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer along with a boolean indicating success.
+// It returns (0, false) if there is a syntax error or unknown operation.
+func Answer(question string) (int, bool) {
+	// The original Python implementation expects the question to be in a specific format.
+	// Check if the question is long enough to contain meaningful content.
+	if len(question) < 9 {
+		return 0, false // syntax error
+	}
+
+	// Extract the content between "What is " and the final character.
+	// According to the Python code, it uses question[8:-1].
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+
+	// If no words remain, it's a syntax error.
+	if content == "" {
+		return 0, false // syntax error
+	}
+
+	// If the question does not start with "What is ", it's an unknown operation error.
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false // unknown operation
+	}
+
+	// Split the content into words and reverse the slice.
+	words := strings.Fields(content)
+	reverse(words)
+
+	// Pop the last element as the main value.
+	if len(words) == 0 {
+		return 0, false // syntax error
+	}
+
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false // syntax error
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Start building the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecondValue := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			// Try to convert the word to an integer.
+			if candidate, convErr := strconv.Atoi(nextWord); convErr == nil {
+				secondVal = candidate
+				foundSecondValue = true
+				break
+			} else {
+				// If we encounter the same word twice in a row within the operation, it's a syntax error.
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false // syntax error
+				} else {
+					opSlice = append(opSlice, nextWord)
+				}
+			}
+		}
+
+		if !foundSecondValue {
+			// No number was found after the operation words.
+			opStr := strings.Join(opSlice, " ")
+			lastOpWord := opSlice[len(opSlice)-1]
+			if _, convErr := strconv.Atoi(lastOpWord); convErr != nil {
+				// If the last word isn't numeric and the operation is not valid, it's an unknown operation.
+				if _, ok := operations[opStr]; !ok {
+					return 0, false // unknown operation
+				}
+			}
+			return 0, false // syntax error
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false // syntax error
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (wordy.go) and wordy (wordy_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/wordy
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/wordy/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int {
+		return a + b
+	},
+	"minus": func(a, b int) int {
+		return a - b
+	},
+	"multiplied by": func(a, b int) int {
+		return a * b
+	},
+	"divided by": func(a, b int) int {
+		return a / b
+	},
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or unknown operation.
+func Answer(question string) (int, bool) {
+	// Check if the question is long enough.
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	// Check if the question starts with "What is ".
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (expected to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse the slice.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// Pop the last element as the main value.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecondValue := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			if candidate, convErr := strconv.Atoi(nextWord); convErr == nil {
+				secondVal = candidate
+				foundSecondValue = true
+				break
+			} else {
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				} else {
+					opSlice = append(opSlice, nextWord)
+				}
+			}
+		}
+
+		if !foundSecondValue {
+			opStr := strings.Join(opSlice, " ")
+			lastOpWord := opSlice[len(opSlice)-1]
+			if _, convErr := strconv.Atoi(lastOpWord); convErr != nil {
+				if _, ok := operations[opStr]; !ok {
+					return 0, false
+				}
+			}
+			return 0, false
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+// exercises/practice/wordy/.meta/example_test.go
+package meta
+
+import "testing"
+
+// testCase defines a single test case for the Answer function.
+type testCase struct {
+	description string
+	question    string
+	expected    int
+	expectError bool
+}
+
+var tests = []testCase{
+	{"simple addition", "What is 1 plus 1?", 2, false},
+	{"addition and subtraction", "What is 1 plus 3 minus 2?", 2, false},
+	{"multiplication", "What is 2 multiplied by 3?", 6, false},
+	{"division", "What is 8 divided by 2?", 4, false},
+	{"complex", "What is 1 plus 2 multiplied by 3?", 9, false},
+	{"syntax error", "What is plus 2?", 0, true},
+	{"unknown operation", "How much is 1 plus 1?", 0, true},
+}
+
+func TestAnswer(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Answer(tc.question)
+			if tc.expectError {
+				if ok {
+					t.Fatalf("Answer(%q) expected error, got: %d", tc.question, actual)
+				}
+			} else {
+				if !ok {
+					t.Fatalf("Answer(%q) returned ok=%t, want: %d", tc.question, ok, tc.expected)
+				}
+				if actual != tc.expected {
+					t.Fatalf("Answer(%q) = %d, want: %d", tc.question, actual, tc.expected)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkAnswer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range tests {
+			Answer(tc.question)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (wordy.go) and wordy (wordy_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/wordy
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/wordy/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int {
+		return a + b
+	},
+	"minus": func(a, b int) int {
+		return a - b
+	},
+	"multiplied by": func(a, b int) int {
+		return a * b
+	},
+	"divided by": func(a, b int) int {
+		return a / b
+	},
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or unknown operation.
+func Answer(question string) (int, bool) {
+	// Check if the question is long enough.
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	// Check if the question starts with "What is ".
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (assumed to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse the slice.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// Pop the last element as the main value.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecondValue := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+			if candidate, convErr := strconv.Atoi(nextWord); convErr == nil {
+				secondVal = candidate
+				foundSecondValue = true
+				break
+			} else {
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				} else {
+					opSlice = append(opSlice, nextWord)
+				}
+			}
+		}
+
+		if !foundSecondValue {
+			opStr := strings.Join(opSlice, " ")
+			lastOpWord := opSlice[len(opSlice)-1]
+			if _, convErr := strconv.Atoi(lastOpWord); convErr != nil {
+				if _, ok := operations[opStr]; !ok {
+					return 0, false
+				}
+			}
+			return 0, false
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+// exercises/practice/wordy/.meta/example_test.go
+package meta
+
+import "testing"
+
+// testCase defines a single test case for Answer.
+type testCase struct {
+	description string
+	question    string
+	expected    int
+	expectError bool
+}
+
+var tests = []testCase{
+	{"simple addition", "What is 1 plus 1?", 2, false},
+	{"addition and subtraction", "What is 1 plus 3 minus 2?", 2, false},
+	{"multiplication", "What is 2 multiplied by 3?", 6, false},
+	{"division", "What is 8 divided by 2?", 4, false},
+	{"complex", "What is 1 plus 2 multiplied by 3?", 9, false},
+	{"syntax error", "What is plus 2?", 0, true},
+	{"unknown operation", "How much is 1 plus 1?", 0, true},
+}
+
+// TestAnswer tests the Answer function.
+func TestAnswer(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Answer(tc.question)
+			if tc.expectError {
+				if ok {
+					t.Fatalf("Answer(%q) expected error, got: %d", tc.question, actual)
+				}
+			} else {
+				if !ok {
+					t.Fatalf("Answer(%q) returned ok=%t, want valid result %d", tc.question, ok, tc.expected)
+				}
+				if actual != tc.expected {
+					t.Fatalf("Answer(%q) = %d, want: %d", tc.question, actual, tc.expected)
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkAnswer benchmarks the Answer function.
+func BenchmarkAnswer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range tests {
+			Answer(tc.question)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (wordy.go) and wordy (wordy_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/wordy
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int {
+		return a + b
+	},
+	"minus": func(a, b int) int {
+		return a - b
+	},
+	"multiplied by": func(a, b int) int {
+		return a * b
+	},
+	"divided by": func(a, b int) int {
+		return a / b
+	},
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or unknown operation.
+func Answer(question string) (int, bool) {
+	// Check if the question is long enough.
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	// Check if the question starts with "What is ".
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (assumed to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse the slice.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// Pop the last element as the main value.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecondValue := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			if candidate, convErr := strconv.Atoi(nextWord); convErr == nil {
+				secondVal = candidate
+				foundSecondValue = true
+				break
+			} else {
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				} else {
+					opSlice = append(opSlice, nextWord)
+				}
+			}
+		}
+
+		if !foundSecondValue {
+			return 0, false
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+// exercises/practice/wordy/.meta/example_test.go
+package wordy
+
+import "testing"
+
+// testCase defines a single test case for Answer.
+type testCase struct {
+	description string
+	question    string
+	expected    int
+	expectError bool
+}
+
+var tests = []testCase{
+	{"simple addition", "What is 1 plus 1?", 2, false},
+	{"addition and subtraction", "What is 1 plus 3 minus 2?", 2, false},
+	{"multiplication", "What is 2 multiplied by 3?", 6, false},
+	{"division", "What is 8 divided by 2?", 4, false},
+	{"complex", "What is 1 plus 2 multiplied by 3?", 9, false},
+	{"syntax error", "What is plus 2?", 0, true},
+	{"unknown operation", "How much is 1 plus 1?", 0, true},
+}
+
+// TestAnswer tests the Answer function.
+func TestAnswer(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Answer(tc.question)
+			if tc.expectError {
+				if ok {
+					t.Fatalf("Answer(%q) expected error, got: %d", tc.question, actual)
+				}
+			} else {
+				if !ok {
+					t.Fatalf("Answer(%q) returned ok=%t, want valid result %d", tc.question, ok, tc.expected)
+				}
+				if actual != tc.expected {
+					t.Fatalf("Answer(%q) = %d, want: %d", tc.question, actual, tc.expected)
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkAnswer benchmarks the Answer function.
+func BenchmarkAnswer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range tests {
+			Answer(tc.question)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy.go:111:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int {
+		return a + b
+	},
+	"minus": func(a, b int) int {
+		return a - b
+	},
+	"multiplied by": func(a, b int) int {
+		return a * b
+	},
+	"divided by": func(a, b int) int {
+		return a / b
+	},
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or unknown operation.
+func Answer(question string) (int, bool) {
+	// Check if the question is long enough.
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	// Check if the question starts with "What is ".
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (assumed to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse the slice.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// Pop the last element as the main value.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecondValue := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			if candidate, convErr := strconv.Atoi(nextWord); convErr == nil {
+				secondVal = candidate
+				foundSecondValue = true
+				break
+			} else {
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				}
+				opSlice = append(opSlice, nextWord)
+			}
+		}
+
+		if !foundSecondValue {
+			return 0, false
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy_test.go:6:21: undefined: tests
+./wordy_test.go:29:24: undefined: tests
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int {
+		return a + b
+	},
+	"minus": func(a, b int) int {
+		return a - b
+	},
+	"multiplied by": func(a, b int) int {
+		return a * b
+	},
+	"divided by": func(a, b int) int {
+		return a / b
+	},
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or an unknown operation.
+func Answer(question string) (int, bool) {
+	// Check if the question is long enough.
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	// Check if the question starts with "What is ".
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (assumed to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse the slice.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// Pop the last element as the main value.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecondValue := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			if candidate, convErr := strconv.Atoi(nextWord); convErr == nil {
+				secondVal = candidate
+				foundSecondValue = true
+				break
+			} else {
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				}
+				opSlice = append(opSlice, nextWord)
+			}
+		}
+
+		if !foundSecondValue {
+			return 0, false
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+// exercises/practice/wordy/.meta/example_test.go
+package wordy
+
+import "testing"
+
+// testCase defines a single test case for Answer.
+type testCase struct {
+	description string
+	question    string
+	expected    int
+	expectError bool
+}
+
+// tests is a list of test cases for the Answer function.
+var tests = []testCase{
+	{"simple addition", "What is 1 plus 1?", 2, false},
+	{"addition and subtraction", "What is 1 plus 3 minus 2?", 2, false},
+	{"multiplication", "What is 2 multiplied by 3?", 6, false},
+	{"division", "What is 8 divided by 2?", 4, false},
+	{"complex", "What is 1 plus 2 multiplied by 3?", 9, false},
+	{"syntax error", "What is plus 2?", 0, true},
+	{"unknown operation", "How much is 1 plus 1?", 0, true},
+}
+
+// TestAnswer tests the Answer function.
+func TestAnswer(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Answer(tc.question)
+			if tc.expectError {
+				if ok {
+					t.Fatalf("Answer(%q) expected error, got: %d", tc.question, actual)
+				}
+			} else {
+				if !ok {
+					t.Fatalf("Answer(%q) returned ok=%t, want valid result %d", tc.question, ok, tc.expected)
+				}
+				if actual != tc.expected {
+					t.Fatalf("Answer(%q) = %d, want: %d", tc.question, actual, tc.expected)
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkAnswer benchmarks the Answer function.
+func BenchmarkAnswer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range tests {
+			Answer(tc.question)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy.go:110:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int {
+		return a + b
+	},
+	"minus": func(a, b int) int {
+		return a - b
+	},
+	"multiplied by": func(a, b int) int {
+		return a * b
+	},
+	"divided by": func(a, b int) int {
+		return a / b
+	},
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or an unknown operation.
+func Answer(question string) (int, bool) {
+	// Check if the question is long enough.
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	// Check if the question starts with "What is ".
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (assumed to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse the slice.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// Pop the last element as the main value.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecondValue := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			if candidate, convErr := strconv.Atoi(nextWord); convErr == nil {
+				secondVal = candidate
+				foundSecondValue = true
+				break
+			} else {
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				}
+				opSlice = append(opSlice, nextWord)
+			}
+		}
+
+		if !foundSecondValue {
+			return 0, false
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+// exercises/practice/wordy/.meta/example_test.go
+package wordy
+
+import "testing"
+
+// testCase defines a single test case for the Answer function.
+type testCase struct {
+	description string
+	question    string
+	expected    int
+	expectError bool
+}
+
+// tests is a list of test cases for the Answer function.
+var tests = []testCase{
+	{"simple addition", "What is 1 plus 1?", 2, false},
+	{"addition and subtraction", "What is 1 plus 3 minus 2?", 2, false},
+	{"multiplication", "What is 2 multiplied by 3?", 6, false},
+	{"division", "What is 8 divided by 2?", 4, false},
+	{"complex", "What is 1 plus 2 multiplied by 3?", 9, false},
+	{"syntax error", "What is plus 2?", 0, true},
+	{"unknown operation", "How much is 1 plus 1?", 0, true},
+}
+
+// TestAnswer tests the Answer function.
+func TestAnswer(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Answer(tc.question)
+			if tc.expectError {
+				if ok {
+					t.Fatalf("Answer(%q) expected error, got: %d", tc.question, actual)
+				}
+			} else {
+				if !ok {
+					t.Fatalf("Answer(%q) returned ok=%t, want valid result %d", tc.question, ok, tc.expected)
+				}
+				if actual != tc.expected {
+					t.Fatalf("Answer(%q) = %d, want: %d", tc.question, actual, tc.expected)
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkAnswer benchmarks the Answer function.
+func BenchmarkAnswer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range tests {
+			Answer(tc.question)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy.go:110:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int {
+		return a + b
+	},
+	"minus": func(a, b int) int {
+		return a - b
+	},
+	"multiplied by": func(a, b int) int {
+		return a * b
+	},
+	"divided by": func(a, b int) int {
+		return a / b
+	},
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or an unknown operation.
+func Answer(question string) (int, bool) {
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (assumed to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse the order of words.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// Get the main value from the end of the reversed slice.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecond := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			if val, convErr := strconv.Atoi(nextWord); convErr == nil {
+				secondVal = val
+				foundSecond = true
+				break
+			} else {
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				}
+				opSlice = append(opSlice, nextWord)
+			}
+		}
+
+		if !foundSecond {
+			return 0, false
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+// exercises/practice/wordy/.meta/example_test.go
+package wordy
+
+import "testing"
+
+// testCase defines a single test case for the Answer function.
+type testCase struct {
+	description string
+	question    string
+	expected    int
+	expectError bool
+}
+
+// tests is a list of test cases for the Answer function.
+var tests = []testCase{
+	{"simple addition", "What is 1 plus 1?", 2, false},
+	{"addition and subtraction", "What is 1 plus 3 minus 2?", 2, false},
+	{"multiplication", "What is 2 multiplied by 3?", 6, false},
+	{"division", "What is 8 divided by 2?", 4, false},
+	{"complex", "What is 1 plus 2 multiplied by 3?", 9, false},
+	{"syntax error", "What is plus 2?", 0, true},
+	{"unknown operation", "How much is 1 plus 1?", 0, true},
+}
+
+// TestAnswer tests the Answer function.
+func TestAnswer(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Answer(tc.question)
+			if tc.expectError {
+				if ok {
+					t.Fatalf("Answer(%q) expected error, got: %d", tc.question, actual)
+				}
+			} else {
+				if !ok {
+					t.Fatalf("Answer(%q) returned ok=%t, want valid result %d", tc.question, ok, tc.expected)
+				}
+				if actual != tc.expected {
+					t.Fatalf("Answer(%q) = %d, want: %d", tc.question, actual, tc.expected)
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkAnswer benchmarks the Answer function.
+func BenchmarkAnswer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range tests {
+			Answer(tc.question)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy.go:108:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int { return a + b },
+	"minus": func(a, b int) int { return a - b },
+	"multiplied by": func(a, b int) int { return a * b },
+	"divided by": func(a, b int) int { return a / b },
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or an unknown operation.
+func Answer(question string) (int, bool) {
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (assumed to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse their order.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// The last word in the reversed list should be the main value.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecond := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			if val, err := strconv.Atoi(nextWord); err == nil {
+				secondVal = val
+				foundSecond = true
+				break
+			} else {
+				// If the same word appears consecutively in constructing the operation, it's a syntax error.
+				if opSlice := opSlice; len(opSlice) > 0 && opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				}
+				opSlice = append(opSlice, nextWord)
+			}
+		}
+
+		if !foundSecond {
+			return 0, false
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy_test.go:6:21: undefined: tests
+./wordy_test.go:29:24: undefined: tests
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int { return a + b },
+	"minus": func(a, b int) int { return a - b },
+	"multiplied by": func(a, b int) int { return a * b },
+	"divided by": func(a, b int) int { return a / b },
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or an unknown operation.
+func Answer(question string) (int, bool) {
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (assumed to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse their order.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// The last word in the reversed list should be the main value.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondVal int
+		foundSecond := false
+
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			if val, err := strconv.Atoi(nextWord); err == nil {
+				secondVal = val
+				foundSecond = true
+				break
+			} else {
+				// If the same word appears consecutively in constructing the operation, it's a syntax error.
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				}
+				opSlice = append(opSlice, nextWord)
+			}
+		}
+
+		if !foundSecond {
+			return 0, false
+		}
+
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+
+		mainVal = opFunc(mainVal, secondVal)
+	}
+
+	return mainVal, true
+}
+
+// exercises/practice/wordy/.meta/example_test.go
+package wordy
+
+import "testing"
+
+// testCase defines a single test case for the Answer function.
+type testCase struct {
+	description string
+	question    string
+	expected    int
+	expectError bool
+}
+
+// tests is a list of test cases for the Answer function.
+var tests = []testCase{
+	{"simple addition", "What is 1 plus 1?", 2, false},
+	{"addition and subtraction", "What is 1 plus 3 minus 2?", 2, false},
+	{"multiplication", "What is 2 multiplied by 3?", 6, false},
+	{"division", "What is 8 divided by 2?", 4, false},
+	{"complex", "What is 1 plus 2 multiplied by 3?", 9, false},
+	{"syntax error", "What is plus 2?", 0, true},
+	{"unknown operation", "How much is 1 plus 1?", 0, true},
+}
+
+// TestAnswer tests the Answer function.
+func TestAnswer(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Answer(tc.question)
+			if tc.expectError {
+				if ok {
+					t.Fatalf("Answer(%q) expected error, got: %d", tc.question, actual)
+				}
+			} else {
+				if !ok {
+					t.Fatalf("Answer(%q) returned ok=%t, want valid result %d", tc.question, ok, tc.expected)
+				}
+				if actual != tc.expected {
+					t.Fatalf("Answer(%q) = %d, want: %d", tc.question, actual, tc.expected)
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkAnswer benchmarks the Answer function.
+func BenchmarkAnswer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range tests {
+			Answer(tc.question)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy.go:101:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"strconv"
+	"strings"
+)
+
+// operations maps valid operation strings to their corresponding functions.
+var operations = map[string]func(int, int) int{
+	"plus": func(a, b int) int { return a + b },
+	"minus": func(a, b int) int { return a - b },
+	"multiplied by": func(a, b int) int { return a * b },
+	"divided by": func(a, b int) int { return a / b },
+}
+
+// reverse reverses a slice of strings in place.
+func reverse(slice []string) {
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+}
+
+// Answer processes a word problem question and returns the answer.
+// The second return value is false if there is a syntax error or an unknown operation.
+func Answer(question string) (int, bool) {
+	if len(question) < 9 {
+		return 0, false
+	}
+
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	// Extract the content between "What is " and the final character (assumed to be a question mark).
+	content := question[8 : len(question)-1]
+	content = strings.TrimSpace(strings.ToLower(content))
+	if content == "" {
+		return 0, false
+	}
+
+	// Split the content into words and reverse their order.
+	words := strings.Fields(content)
+	reverse(words)
+	if len(words) == 0 {
+		return 0, false
+	}
+
+	// The last word in the reversed slice should be the main value.
+	mainValStr := words[len(words)-1]
+	words = words[:len(words)-1]
+	mainVal, err := strconv.Atoi(mainValStr)
+	if err != nil {
+		return 0, false
+	}
+
+	// Process remaining words to compute the final answer.
+	for len(words) > 0 {
+		// Build the operation from the next word.
+		opSlice := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+	
+		var secondVal int
+		foundSecond := false
+	
+		// Continue to build the operation until a number is encountered.
+		for len(words) > 0 {
+			nextWord := words[len(words)-1]
+			words = words[:len(words)-1]
+			if val, err := strconv.Atoi(nextWord); err == nil {
+				secondVal = val
+				foundSecond = true
+				break
+			} else {
+				// If the same word appears consecutively in constructing the operation, it's a syntax error.
+				if opSlice[len(opSlice)-1] == nextWord {
+					return 0, false
+				}
+				opSlice = append(opSlice, nextWord)
+			}
+		}
+	
+		if !foundSecond {
+			return 0, false
+		}
+	
+		opStr := strings.Join(opSlice, " ")
+		opFunc, ok := operations[opStr]
+		if !ok {
+			return 0, false
+		}
+	
+		mainVal = opFunc(mainVal, secondVal)
+	}
+	
+	return mainVal, true
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy_test.go:6:21: undefined: tests
+./wordy_test.go:29:24: undefined: tests
+
+
+=== FINAL STATUS: FAILED ===

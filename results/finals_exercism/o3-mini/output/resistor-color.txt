@@ -1,0 +1,1786 @@
+=== Initial Source Code ===
+Source file: exercises/practice/resistor-color/.meta/example.py
+COLORS = [
+    'black',
+    'brown',
+    'red',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'violet',
+    'grey',
+    'white'
+]
+
+
+def color_code(color):
+    return COLORS.index(color)
+
+
+def colors():
+    return COLORS
+
+
+=== Source Interface ===
+def color_code(color):
+    pass
+
+
+def colors():
+    pass
+
+
+=== Target Interface ===
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	panic("Please implement the Colors function")
+}
+
+// ColorCode returns the resistance value of the given color.
+func ColorCode(color string) int {
+	panic("Please implement the ColorCode function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/resistor-color/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from resistor_color import (
+    color_code,
+    colors,
+)
+
+
+class ResistorColorTest(unittest.TestCase):
+    def test_black(self):
+        self.assertEqual(color_code("black"), 0)
+
+    def test_white(self):
+        self.assertEqual(color_code("white"), 9)
+
+    def test_orange(self):
+        self.assertEqual(color_code("orange"), 3)
+
+    def test_colors(self):
+        expected = [
+            "black",
+            "brown",
+            "red",
+            "orange",
+            "yellow",
+            "green",
+            "blue",
+            "violet",
+            "grey",
+            "white",
+        ]
+        self.assertEqual(colors(), expected)
+
+
+=== Target Test Code ===
+package resistorcolor
+
+import "testing"
+
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected %+v, actual %+v", tc.expected, actual)
+			}
+
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %+v, actual %+v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// colorCodeBench is intended to be used in BenchmarkColorCode to avoid compiler optimizations.
+var colorCodeBench int
+
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// colorsBench is intended to be used in BenchmarkColors to avoid compiler optimizations.
+var colorsBench []string
+
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Initial Translation ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	// Define the resistor color codes in order.
+	colors := []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+	return colors
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color_test.go:6:21: undefined: colorCodeTestCases
+./resistor_color_test.go:18:21: undefined: colorsTestCases
+./resistor_color_test.go:41:22: undefined: colorCodeTestCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	// Define the resistor color codes in order.
+	colors := []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+	return colors
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// exercises/practice/resistor-color/resistor_color_test.go
+package resistorcolor
+
+import (
+	"reflect"
+	"testing"
+)
+
+// Define test case structures for ColorCode
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// Define test case structure for Colors
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, actual %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// Benchmarks and helper functions below
+
+// colorCodeBench is used to avoid compiler optimizations in BenchmarkColorCode.
+var colorCodeBench int
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// colorsBench is used to avoid compiler optimizations in BenchmarkColors.
+var colorsBench []string
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for comparison purposes.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:35:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	return []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// --------------------------------------------------------------------------------
+// exercises/practice/resistor-color/resistor_color_test.go
+// --------------------------------------------------------------------------------
+
+// To run tests and benchmarks, this file should be placed separately as shown above.
+
+package resistorcolor
+
+import (
+	"testing"
+)
+
+// colorCodeTestCase defines a test case for the ColorCode function.
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// colorsTestCase defines a test case for the Colors function.
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, actual %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// colorCodeBench is used to avoid compiler optimizations in BenchmarkColorCode.
+var colorCodeBench int
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// colorsBench is used to avoid compiler optimizations in BenchmarkColors.
+var colorsBench []string
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for comparison purposes.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:38:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	return []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// --------------------------------------------------------------------------------
+// exercises/practice/resistor-color/resistor_color_test.go
+package resistorcolor
+
+import "testing"
+
+// colorCodeTestCase defines a test case for the ColorCode function.
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// colorsTestCase defines a test case for the Colors function.
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, actual %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// colorCodeBench is used to avoid compiler optimizations in BenchmarkColorCode.
+var colorCodeBench int
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// colorsBench is used to avoid compiler optimizations in BenchmarkColors.
+var colorsBench []string
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for comparison purposes.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:34:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	return []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// --------------------------------------------------------------------------------
+// exercises/practice/resistor-color/resistor_color_test.go
+package resistorcolor
+
+import "testing"
+
+// colorCodeTestCase defines a test case for the ColorCode function.
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// colorsTestCase defines a test case for the Colors function.
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, actual %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// colorCodeBench is used to avoid compiler optimizations in BenchmarkColorCode.
+var colorCodeBench int
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// colorsBench is used to avoid compiler optimizations in BenchmarkColors.
+var colorsBench []string
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for comparison purposes.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:34:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	return []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// --------------------------------------------------------------------------------
+// exercises/practice/resistor-color/resistor_color_test.go
+package resistorcolor
+
+import "testing"
+
+// colorCodeTestCase defines a test case for the ColorCode function.
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// colorsTestCase defines a test case for the Colors function.
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, actual %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// Benchmarks to avoid compiler optimizations
+var colorCodeBench int
+var colorsBench []string
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for comparison purposes.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:34:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	return []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// --------------------------------------------------------------------------------
+// exercises/practice/resistor-color/resistor_color_test.go
+package resistorcolor
+
+import "testing"
+
+// colorCodeTestCase defines a test case for the ColorCode function.
+//
+// Each test case consists of a color description, input string, and expected resistance value.
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// colorsTestCase defines a test case for the Colors function.
+//
+// It contains a description and the expected list of colors.
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, actual %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// Benchmarks to avoid compiler optimizations in benchmarks
+var colorCodeBench int
+var colorsBench []string
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for comparison purposes.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:34:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	return []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// --------------------------------------------------------------------------------
+// exercises/practice/resistor-color/resistor_color_test.go
+package resistorcolor
+
+import "testing"
+
+// colorCodeTestCase defines a test case for the ColorCode function.
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// colorsTestCase defines a test case for the Colors function.
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+			
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, actual %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// Benchmarks and helper functions
+var colorCodeBench int
+var colorsBench []string
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for easier comparison.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two string maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:34:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	return []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// --------------------------------------------------------------------------------
+// exercises/practice/resistor-color/resistor_color_test.go
+package resistorcolor
+
+import "testing"
+
+// colorCodeTestCase defines a test case for the ColorCode function.
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// colorsTestCase defines a test case for the Colors function.
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+			
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, actual %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// Benchmarks and helper functions to avoid compiler optimizations
+var colorCodeBench int
+var colorsBench []string
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for easier comparison.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two string maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:34:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	return []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// --------------------------------------------------------------------------------
+// exercises/practice/resistor-color/resistor_color_test.go
+package resistorcolor
+
+import "testing"
+
+// colorCodeTestCase defines a test case for the ColorCode function.
+// Each test case consists of a description, an input color, and the expected resistance value.
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// colorsTestCase defines a test case for the Colors function.
+// It contains a description and the expected list of colors.
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, got %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+			
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, got %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// Benchmark helpers to avoid compiler optimizations
+var colorCodeBench int
+var colorsBench []string
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for easier comparison.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:34:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/resistor-color/.meta/example.go
+package resistorcolor
+
+// Colors returns the list of all colors.
+func Colors() []string {
+	return []string{
+		"black",
+		"brown",
+		"red",
+		"orange",
+		"yellow",
+		"green",
+		"blue",
+		"violet",
+		"grey",
+		"white",
+	}
+}
+
+// ColorCode returns the resistance value of the given color.
+// It panics if the color is not found.
+func ColorCode(color string) int {
+	colors := Colors()
+	for idx, col := range colors {
+		if col == color {
+			return idx
+		}
+	}
+	panic("color not found: " + color)
+}
+
+// --------------------------------------------------------------
+// exercises/practice/resistor-color/resistor_color_test.go
+package resistorcolor
+
+import "testing"
+
+// colorCodeTestCase defines a test case for the ColorCode function.
+type colorCodeTestCase struct {
+	description string
+	input       string
+	expected    int
+}
+
+var colorCodeTestCases = []colorCodeTestCase{
+	{description: "black", input: "black", expected: 0},
+	{description: "brown", input: "brown", expected: 1},
+	{description: "red", input: "red", expected: 2},
+	{description: "orange", input: "orange", expected: 3},
+	{description: "yellow", input: "yellow", expected: 4},
+	{description: "green", input: "green", expected: 5},
+	{description: "blue", input: "blue", expected: 6},
+	{description: "violet", input: "violet", expected: 7},
+	{description: "grey", input: "grey", expected: 8},
+	{description: "white", input: "white", expected: 9},
+}
+
+// colorsTestCase defines a test case for the Colors function.
+type colorsTestCase struct {
+	description string
+	expected    []string
+}
+
+var colorsTestCases = []colorsTestCase{
+	{
+		description: "default colors",
+		expected:    []string{"black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "grey", "white"},
+	},
+}
+
+// TestColorCode tests the ColorCode function.
+func TestColorCode(t *testing.T) {
+	for _, tc := range colorCodeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := ColorCode(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("ColorCode(%q): expected %d, got %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// TestColors tests the Colors function.
+func TestColors(t *testing.T) {
+	for _, tc := range colorsTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Colors()
+			if len(actual) != len(tc.expected) {
+				t.Fatalf("Colors(): expected length %d, got %d", len(tc.expected), len(actual))
+			}
+			
+			expectedMap := makeMap(tc.expected)
+			actualMap := makeMap(actual)
+			if !mapsEqual(expectedMap, actualMap) {
+				t.Fatalf("Colors(): expected %v, got %v", tc.expected, actual)
+			}
+		})
+	}
+}
+
+// Benchmark helpers to avoid compiler optimizations
+var colorCodeBench int
+var colorsBench []string
+
+// BenchmarkColorCode benchmarks the ColorCode function.
+func BenchmarkColorCode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range colorCodeTestCases {
+			colorCodeBench = ColorCode(tc.input)
+		}
+	}
+}
+
+// BenchmarkColors benchmarks the Colors function.
+func BenchmarkColors(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		colorsBench = Colors()
+	}
+}
+
+// makeMap converts a slice of strings to a map for easier comparison.
+func makeMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range s {
+		m[v] = true
+	}
+	return m
+}
+
+// mapsEqual checks if two maps are equal.
+func mapsEqual(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color [exercism/resistor-color.test]
+./resistor_color.go:34:1: syntax error: non-declaration statement outside function body
+
+
+=== FINAL STATUS: FAILED ===

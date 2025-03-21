@@ -1,0 +1,215 @@
+=== Initial Source Code ===
+Source file: exercises/practice/accumulate/.meta/example.py
+# [collection(x) for x in collection] would be nice but trivial
+
+
+def accumulate(collection, operation):
+    response = []
+    for ellement in collection:
+        response.append(operation(ellement))
+    return response
+
+
+=== Source Interface ===
+def accumulate(collection, operation):
+    pass
+
+
+=== Target Interface ===
+package accumulate
+
+func Accumulate(list []string, transform func(string) string) []string {
+	panic("Please implement the Accumulate function")
+}
+
+
+=== Source Test Code ===
+import unittest
+
+from accumulate import accumulate
+
+
+class AccumulateTest(unittest.TestCase):
+    def test_empty_sequence(self):
+        self.assertEqual(accumulate([], lambda x: x / 2), [])
+
+    def test_pow(self):
+        self.assertEqual(
+            accumulate([1, 2, 3, 4, 5], lambda x: x * x), [1, 4, 9, 16, 25])
+
+    def test_divmod(self):
+        self.assertEqual(
+            accumulate([10, 17, 23], lambda x: divmod(x, 7)),
+            [(1, 3), (2, 3), (3, 2)])
+
+    def test_composition(self):
+        inp = [10, 17, 23]
+        self.assertEqual(
+            accumulate(
+                accumulate(inp, lambda x: divmod(x, 7)),
+                lambda x: 7 * x[0] + x[1]), inp)
+
+    def test_capitalize(self):
+        self.assertEqual(
+            accumulate(['hello', 'world'], str.upper), ['HELLO', 'WORLD'])
+
+    def test_recursive(self):
+        inp = ['a', 'b', 'c']
+        out = [['a1', 'a2', 'a3'], ['b1', 'b2', 'b3'], ['c1', 'c2', 'c3']]
+        self.assertEqual(
+            accumulate(
+                inp, lambda x: accumulate(list('123'), lambda y: x + y)), out)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+=== Target Test Code ===
+package accumulate
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"unicode"
+)
+
+// Title is a copy of strings.Title function of the stdlib.
+// The copy is here because strings.Title is deprecated but we still
+// want to use this function as the alternative would require us to support
+// external dependencies which we don't yet (tracking issue https://github.com/exercism/go/issues/2379).
+// Students should still be able to use strings.Title if they want.
+// Since this exercise is currently deprecated, this shouldn't matter too much.
+func Title(s string) string {
+	// Use a closure here to remember state.
+	// Hackish but effective. Depends on Map scanning in order and calling
+	// the closure once per rune.
+	prev := ' '
+	return strings.Map(
+		func(r rune) rune {
+			if isSeparator(prev) {
+				prev = r
+				return unicode.ToTitle(r)
+			}
+			prev = r
+			return r
+		},
+		s)
+}
+
+// Copy of strings.isSeparator function of the stdlib.
+func isSeparator(r rune) bool {
+	// ASCII alphanumerics and underscore are not separators
+	if r <= 0x7F {
+		switch {
+		case '0' <= r && r <= '9':
+			return false
+		case 'a' <= r && r <= 'z':
+			return false
+		case 'A' <= r && r <= 'Z':
+			return false
+		case r == '_':
+			return false
+		}
+		return true
+	}
+	// Letters and digits are not separators
+	if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		return false
+	}
+	// Otherwise, all we can do for now is treat spaces as separators.
+	return unicode.IsSpace(r)
+}
+
+func echo(c string) string {
+	return c
+}
+
+func capitalize(word string) string {
+	return Title(word)
+}
+
+var tests = []struct {
+	expected    []string
+	given       []string
+	converter   func(string) string
+	description string
+}{
+	{[]string{}, []string{}, echo, "echo"},
+	{
+		[]string{"echo", "echo", "echo", "echo"},
+		[]string{"echo", "echo", "echo", "echo"},
+		echo,
+		"echo",
+	},
+	{
+		[]string{"First", "Letter", "Only"},
+		[]string{"first", "letter", "only"},
+		capitalize,
+		"capitalize",
+	},
+	{
+		[]string{"HELLO", "WORLD"},
+		[]string{"hello", "world"},
+		strings.ToUpper,
+		"strings.ToUpper",
+	},
+}
+
+func TestAccumulate(t *testing.T) {
+	for _, test := range tests {
+		in := make([]string, len(test.given))
+		copy(in, test.given)
+		actual := Accumulate(in, test.converter)
+		if fmt.Sprintf("%q", actual) != fmt.Sprintf("%q", test.expected) {
+			t.Fatalf("Accumulate(%q, %q): expected %q, actual %q",
+				test.given, test.description, test.expected, actual)
+		}
+
+		// check in place replacement
+		for i, s := range in {
+			if test.given[i] != s {
+				t.Fatalf("Accumulate should return a new slice")
+			}
+		}
+	}
+}
+
+func BenchmarkAccumulate(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+
+		for _, test := range tests {
+			Accumulate(test.given, test.converter)
+		}
+
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/accumulate/.meta/example.go
+package accumulate
+
+// Accumulate applies a transform function to each element in the list and returns a new list with the results.
+func Accumulate(list []string, transform func(string) string) []string {
+    response := make([]string, 0, len(list))
+    for _, element := range list {
+        response = append(response, transform(element))
+    }
+    return response
+}
+
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/accumulate	0.400s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,516 @@
+=== Initial Source Code ===
+Source file: exercises/practice/series/.meta/example.py
+def slices(series, length):
+    if not series:
+        raise ValueError('series cannot be empty')
+    elif length == 0:
+        raise ValueError('slice length cannot be zero')
+    elif length < 0:
+        raise ValueError('slice length cannot be negative')
+    elif len(series) < length:
+        raise ValueError('slice length cannot be greater than series length')
+
+    return [series[idx:idx + length] for idx in range(len(series) - length + 1)]
+
+
+=== Source Interface ===
+def slices(series, length):
+    pass
+
+
+=== Target Interface ===
+package series
+
+func All(n int, s string) []string {
+	panic("Please implement the All function")
+}
+
+func UnsafeFirst(n int, s string) string {
+	panic("Please implement the UnsafeFirst function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/series/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from series import (
+    slices,
+)
+
+
+class SeriesTest(unittest.TestCase):
+    def test_slices_of_one_from_one(self):
+        self.assertEqual(slices("1", 1), ["1"])
+
+    def test_slices_of_one_from_two(self):
+        self.assertEqual(slices("12", 1), ["1", "2"])
+
+    def test_slices_of_two(self):
+        self.assertEqual(slices("35", 2), ["35"])
+
+    def test_slices_of_two_overlap(self):
+        self.assertEqual(slices("9142", 2), ["91", "14", "42"])
+
+    def test_slices_can_include_duplicates(self):
+        self.assertEqual(slices("777777", 3), ["777", "777", "777", "777"])
+
+    def test_slices_of_a_long_series(self):
+        self.assertEqual(
+            slices("918493904243", 5),
+            ["91849", "18493", "84939", "49390", "93904", "39042", "90424", "04243"],
+        )
+
+    def test_slice_length_is_too_large(self):
+        with self.assertRaises(ValueError) as err:
+            slices("12345", 6)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "slice length cannot be greater than series length"
+        )
+
+    def test_slice_length_is_way_too_large(self):
+        with self.assertRaises(ValueError) as err:
+            slices("12345", 42)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "slice length cannot be greater than series length"
+        )
+
+    def test_slice_length_cannot_be_zero(self):
+        with self.assertRaises(ValueError) as err:
+            slices("12345", 0)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "slice length cannot be zero")
+
+    def test_slice_length_cannot_be_negative(self):
+        with self.assertRaises(ValueError) as err:
+            slices("123", -1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "slice length cannot be negative")
+
+    def test_empty_series_is_invalid(self):
+        with self.assertRaises(ValueError) as err:
+            slices("", 1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "series cannot be empty")
+
+
+=== Target Test Code ===
+package series
+
+import (
+	"fmt"
+	"reflect"
+	"testing"
+)
+
+var testCases = []struct {
+	digits   int
+	input    string
+	expected []string
+}{
+	{
+		digits:   1,
+		input:    "01234",
+		expected: []string{"0", "1", "2", "3", "4"},
+	},
+	{
+		digits:   1,
+		input:    "92834",
+		expected: []string{"9", "2", "8", "3", "4"},
+	},
+	{
+		digits:   2,
+		input:    "01234",
+		expected: []string{"01", "12", "23", "34"},
+	},
+	{
+		digits:   2,
+		input:    "98273463",
+		expected: []string{"98", "82", "27", "73", "34", "46", "63"},
+	},
+	{
+		digits:   2,
+		input:    "37103",
+		expected: []string{"37", "71", "10", "03"},
+	},
+	{
+		digits:   3,
+		input:    "01234",
+		expected: []string{"012", "123", "234"},
+	},
+	{
+		digits:   3,
+		input:    "31001",
+		expected: []string{"310", "100", "001"},
+	},
+	{
+		digits:   3,
+		input:    "982347",
+		expected: []string{"982", "823", "234", "347"},
+	},
+	{
+		digits:   4,
+		input:    "01234",
+		expected: []string{"0123", "1234"},
+	},
+	{
+		digits:   4,
+		input:    "91274",
+		expected: []string{"9127", "1274"},
+	},
+	{
+		digits:   5,
+		input:    "01234",
+		expected: []string{"01234"},
+	},
+	{
+		digits:   5,
+		input:    "81228",
+		expected: []string{"81228"},
+	},
+	{
+		digits:   6,
+		input:    "01234",
+		expected: nil,
+	},
+	{
+		digits:   len(cx) + 1,
+		input:    cx,
+		expected: nil,
+	},
+}
+
+var cx = "01032987583"
+
+func TestAll(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%d digits in %s", tc.digits, tc.input), func(t *testing.T) {
+			got := All(tc.digits, tc.input)
+			if len(got) == 0 && len(tc.expected) == 0 {
+				return
+			}
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Fatalf("All(%d, %q)\n got: %v, want: %v", tc.digits, tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestUnsafeFirst(t *testing.T) {
+	for _, tc := range testCases {
+		if len(tc.expected) == 0 {
+			continue
+		}
+		t.Run(fmt.Sprintf("first with %d digits in %s", tc.digits, tc.input), func(t *testing.T) {
+			if got := UnsafeFirst(tc.digits, tc.input); got != tc.expected[0] {
+				t.Fatalf("UnsafeFirst(%d, %q) = %q, want: %q", tc.digits, tc.input, got, tc.expected[0])
+			}
+		})
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/series/.meta/example.go
+package series
+
+import "errors"
+
+func All(n int, s string) ([]string, error) {
+	if s == "" {
+		return nil, errors.New("series cannot be empty")
+	} else if n == 0 {
+		return nil, errors.New("slice length cannot be zero")
+	} else if n < 0 {
+		return nil, errors.New("slice length cannot be negative")
+	} else if len(s) < n {
+		return nil, errors.New("slice length cannot be greater than series length")
+	}
+
+	result := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		result = append(result, s[i:i+n])
+	}
+	return result, nil
+}
+
+func UnsafeFirst(n int, s string) (string, error) {
+	if s == "" {
+		return "", errors.New("series cannot be empty")
+	} else if n == 0 {
+		return "", errors.New("slice length cannot be zero")
+	} else if n < 0 {
+		return "", errors.New("slice length cannot be negative")
+	} else if len(s) < n {
+		return "", errors.New("slice length cannot be greater than series length")
+	}
+
+	return s[:n], nil
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/series [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/series [exercism/series.test]
+./series_test.go:91:11: assignment mismatch: 1 variable but All returns 2 values
+./series_test.go:108:14: assignment mismatch: 1 variable but UnsafeFirst returns 2 values
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/series/.meta/example.go
+package series
+
+import "errors"
+
+func All(n int, s string) ([]string, error) {
+	if s == "" {
+		return nil, errors.New("series cannot be empty")
+	} else if n == 0 {
+		return nil, errors.New("slice length cannot be zero")
+	} else if n < 0 {
+		return nil, errors.New("slice length cannot be negative")
+	} else if len(s) < n {
+		return nil, errors.New("slice length cannot be greater than series length")
+	}
+
+	result := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		result = append(result, s[i:i+n])
+	}
+	return result, nil
+}
+
+func UnsafeFirst(n int, s string) string {
+	if s == "" {
+		panic("series cannot be empty")
+	} else if n == 0 {
+		panic("slice length cannot be zero")
+	} else if n < 0 {
+		panic("slice length cannot be negative")
+	} else if len(s) < n {
+		panic("slice length cannot be greater than series length")
+	}
+
+	return s[:n]
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/series [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/series [exercism/series.test]
+./series_test.go:91:11: assignment mismatch: 1 variable but All returns 2 values
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/series/.meta/example.go
+package series
+
+import "errors"
+
+func All(n int, s string) ([]string, error) {
+	if s == "" {
+		return nil, errors.New("series cannot be empty")
+	} else if n == 0 {
+		return nil, errors.New("slice length cannot be zero")
+	} else if n < 0 {
+		return nil, errors.New("slice length cannot be negative")
+	} else if len(s) < n {
+		return nil, errors.New("slice length cannot be greater than series length")
+	}
+
+	result := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		result = append(result, s[i:i+n])
+	}
+	return result, nil
+}
+
+func UnsafeFirst(n int, s string) string {
+	if s == "" {
+		panic("series cannot be empty")
+	} else if n == 0 {
+		panic("slice length cannot be zero")
+	} else if n < 0 {
+		panic("slice length cannot be negative")
+	} else if len(s) < n {
+		panic("slice length cannot be greater than series length")
+	}
+
+	return s[:n]
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/series [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/series [exercism/series.test]
+./series_test.go:91:11: assignment mismatch: 1 variable but All returns 2 values
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/series/.meta/example.go
+package series
+
+import "errors"
+
+func All(n int, s string) ([]string, error) {
+	if s == "" {
+		return nil, errors.New("series cannot be empty")
+	} else if n == 0 {
+		return nil, errors.New("slice length cannot be zero")
+	} else if n < 0 {
+		return nil, errors.New("slice length cannot be negative")
+	} else if len(s) < n {
+		return nil, errors.New("slice length cannot be greater than series length")
+	}
+
+	result := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		result = append(result, s[i:i+n])
+	}
+	return result, nil
+}
+
+func UnsafeFirst(n int, s string) string {
+	if s == "" {
+		panic("series cannot be empty")
+	} else if n == 0 {
+		panic("slice length cannot be zero")
+	} else if n < 0 {
+		panic("slice length cannot be negative")
+	} else if len(s) < n {
+		panic("slice length cannot be greater than series length")
+	}
+
+	return s[:n]
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/series [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/series [exercism/series.test]
+./series_test.go:91:11: assignment mismatch: 1 variable but All returns 2 values
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/series/.meta/example.go
+package series
+
+import "errors"
+
+func All(n int, s string) ([]string, error) {
+	if s == "" {
+		return nil, errors.New("series cannot be empty")
+	} else if n == 0 {
+		return nil, errors.New("slice length cannot be zero")
+	} else if n < 0 {
+		return nil, errors.New("slice length cannot be negative")
+	} else if len(s) < n {
+		return nil, errors.New("slice length cannot be greater than series length")
+	}
+
+	result := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		result = append(result, s[i:i+n])
+	}
+	return result, nil
+}
+
+func UnsafeFirst(n int, s string) string {
+	if s == "" {
+		panic("series cannot be empty")
+	} else if n == 0 {
+		panic("slice length cannot be zero")
+	} else if n < 0 {
+		panic("slice length cannot be negative")
+	} else if len(s) < n {
+		panic("slice length cannot be greater than series length")
+	}
+
+	return s[:n]
+}
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/series [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/series [exercism/series.test]
+./series_test.go:91:11: assignment mismatch: 1 variable but All returns 2 values
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/series/.meta/example.go
+package series
+
+import "errors"
+
+func All(n int, s string) ([]string, error) {
+	if s == "" {
+		return nil, errors.New("series cannot be empty")
+	} else if n == 0 {
+		return nil, errors.New("slice length cannot be zero")
+	} else if n < 0 {
+		return nil, errors.New("slice length cannot be negative")
+	} else if len(s) < n {
+		return nil, errors.New("slice length cannot be greater than series length")
+	}
+
+	result := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		result = append(result, s[i:i+n])
+	}
+	return result, nil
+}
+
+func UnsafeFirst(n int, s string) string {
+	if s == "" {
+		panic("series cannot be empty")
+	} else if n == 0 {
+		panic("slice length cannot be zero")
+	} else if n < 0 {
+		panic("slice length cannot be negative")
+	} else if len(s) < n {
+		panic("slice length cannot be greater than series length")
+	}
+
+	return s[:n]
+}
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/series [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/series [exercism/series.test]
+./series_test.go:91:11: assignment mismatch: 1 variable but All returns 2 values
+
+
+=== ERROR ===
+Error processing sample (returncode=2): 
+
+=== FINAL STATUS: ERROR ===

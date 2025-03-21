@@ -1,0 +1,1543 @@
+=== Initial Source Code ===
+Source file: exercises/practice/bank-account/.meta/example.py
+import threading
+
+
+class BankAccount:
+    def __init__(self):
+        self.is_open = False
+        self.balance = None
+        self.lock = threading.Lock()
+
+    def get_balance(self):
+        with self.lock:
+            if not self.is_open:
+                raise ValueError('account not open')
+            return self.balance
+
+    def open(self):
+        if self.is_open:
+            raise ValueError('account already open')
+        self.is_open = True
+        self.balance = 0
+
+    def deposit(self, amount):
+        with self.lock:
+            if not self.is_open:
+                raise ValueError('account not open')
+            if amount <= 0:
+                raise ValueError('amount must be greater than 0')
+            self.balance += amount
+
+    def withdraw(self, amount):
+        with self.lock:
+            if not self.is_open:
+                raise ValueError('account not open')
+            if amount <= 0:
+                raise ValueError('amount must be greater than 0')
+            if amount > self.balance:
+                raise ValueError('amount must be less than balance')
+            self.balance -= amount
+
+    def close(self):
+        if not self.is_open:
+            raise ValueError('account not open')
+        self.is_open = False
+
+
+=== Source Interface ===
+class BankAccount:
+    def __init__(self):
+        pass
+
+    def get_balance(self):
+        pass
+
+    def open(self):
+        pass
+
+    def deposit(self, amount):
+        pass
+
+    def withdraw(self, amount):
+        pass
+
+    def close(self):
+        pass
+
+
+=== Target Interface ===
+package account
+
+// Define the Account type here.
+
+func Open(amount int64) *Account {
+	panic("Please implement the Open function")
+}
+
+func (a *Account) Balance() (int64, bool) {
+	panic("Please implement the Balance function")
+}
+
+func (a *Account) Deposit(amount int64) (int64, bool) {
+	panic("Please implement the Deposit function")
+}
+
+func (a *Account) Close() (int64, bool) {
+	panic("Please implement the Close function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/bank-account/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from bank_account import (
+    BankAccount,
+)
+
+
+class BankAccountTest(unittest.TestCase):
+    def test_newly_opened_account_has_zero_balance(self):
+        account = BankAccount()
+        account.open()
+        self.assertEqual(account.get_balance(), 0)
+
+    def test_single_deposit(self):
+        account = BankAccount()
+        account.open()
+        account.deposit(100)
+        self.assertEqual(account.get_balance(), 100)
+
+    def test_multiple_deposits(self):
+        account = BankAccount()
+        account.open()
+        account.deposit(100)
+        account.deposit(50)
+        self.assertEqual(account.get_balance(), 150)
+
+    def test_withdraw_once(self):
+        account = BankAccount()
+        account.open()
+        account.deposit(100)
+        account.withdraw(75)
+        self.assertEqual(account.get_balance(), 25)
+
+    def test_withdraw_twice(self):
+        account = BankAccount()
+        account.open()
+        account.deposit(100)
+        account.withdraw(80)
+        account.withdraw(20)
+        self.assertEqual(account.get_balance(), 0)
+
+    def test_can_do_multiple_operations_sequentially(self):
+        account = BankAccount()
+        account.open()
+        account.deposit(100)
+        account.deposit(110)
+        account.withdraw(200)
+        account.deposit(60)
+        account.withdraw(50)
+        self.assertEqual(account.get_balance(), 20)
+
+    def test_cannot_check_balance_of_closed_account(self):
+        account = BankAccount()
+        account.open()
+        account.close()
+        with self.assertRaises(ValueError) as err:
+            account.get_balance()
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "account not open")
+
+    def test_cannot_deposit_into_closed_account(self):
+        account = BankAccount()
+        account.open()
+        account.close()
+        with self.assertRaises(ValueError) as err:
+            account.deposit(50)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "account not open")
+
+    def test_cannot_deposit_into_unopened_account(self):
+        account = BankAccount()
+        with self.assertRaises(ValueError) as err:
+            account.deposit(50)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "account not open")
+
+    def test_cannot_withdraw_from_closed_account(self):
+        account = BankAccount()
+        account.open()
+        account.close()
+        with self.assertRaises(ValueError) as err:
+            account.withdraw(50)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "account not open")
+
+    def test_cannot_close_an_account_that_was_not_opened(self):
+        account = BankAccount()
+        with self.assertRaises(ValueError) as err:
+            account.close()
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "account not open")
+
+    def test_cannot_open_an_already_opened_account(self):
+        account = BankAccount()
+        account.open()
+        with self.assertRaises(ValueError) as err:
+            account.open()
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "account already open")
+
+    def test_reopened_account_does_not_retain_balance(self):
+        account = BankAccount()
+        account.open()
+        account.deposit(50)
+        account.close()
+        account.open()
+        self.assertEqual(account.get_balance(), 0)
+
+    def test_cannot_withdraw_more_than_deposited(self):
+        account = BankAccount()
+        account.open()
+        account.deposit(25)
+        with self.assertRaises(ValueError) as err:
+            account.withdraw(50)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "amount must be less than balance")
+
+    def test_cannot_withdraw_negative(self):
+        account = BankAccount()
+        account.open()
+        account.deposit(100)
+        with self.assertRaises(ValueError) as err:
+            account.withdraw(-50)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "amount must be greater than 0")
+
+    def test_cannot_deposit_negative(self):
+        account = BankAccount()
+        account.open()
+        with self.assertRaises(ValueError) as err:
+            account.deposit(-50)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "amount must be greater than 0")
+
+
+=== Target Test Code ===
+package account
+
+import (
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+func TestSeqOpenBalanceClose(t *testing.T) {
+	// open account
+	const amt = 10
+	a := Open(amt)
+	if a == nil {
+		t.Fatalf("Open(%d) = nil, want non-nil *Account.", amt)
+	}
+	t.Logf("Account 'a' opened with initial balance of %d.", amt)
+
+	// verify balance after open
+	switch b, ok := a.Balance(); {
+	case !ok:
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	case b != amt:
+		t.Fatalf("a.Balance() = %d, want %d", b, amt)
+	}
+
+	// close account
+	switch p, ok := a.Close(); {
+	case !ok:
+		t.Fatalf("a.Close() returned !ok, want ok.")
+	case p != amt:
+		t.Fatalf("a.Close() returned payout = %d, want %d.", p, amt)
+	}
+	t.Log("Account 'a' closed.")
+
+	// verify balance no longer accessible
+	if b, ok := a.Balance(); ok {
+		t.Log("Balance still available on closed account.")
+		t.Fatalf("a.Balance() = %d, %t.  Want ok == false", b, ok)
+	}
+
+	// verify closing balance is 0
+	if b, _ := a.Balance(); b != 0 {
+		t.Log("Balance after close is non-zero.")
+		t.Fatalf("After a.Close() balance is %d and not 0", b)
+	}
+}
+
+func TestSeqOpenDepositClose(t *testing.T) {
+	// open account
+	const openAmt = 10
+	a := Open(openAmt)
+	if a == nil {
+		t.Fatalf("Open(%d) = nil, want non-nil *Account.", openAmt)
+	}
+	t.Logf("Account 'a' opened with initial balance of %d.", openAmt)
+
+	// deposit
+	const depAmt = 20
+	const newAmt = openAmt + depAmt
+	switch b, ok := a.Deposit(depAmt); {
+	case !ok:
+		t.Fatalf("a.Deposit(%d) returned !ok, want ok.", depAmt)
+	case b != openAmt+depAmt:
+		t.Fatalf("a.Deposit(%d) = %d, want new balance = %d", depAmt, b, newAmt)
+	}
+	t.Logf("Deposit of %d accepted to account 'a'", depAmt)
+
+	// close account
+	switch p, ok := a.Close(); {
+	case !ok:
+		t.Fatalf("a.Close() returned !ok, want ok.")
+	case p != newAmt:
+		t.Fatalf("a.Close() returned payout = %d, want %d.", p, newAmt)
+	}
+	t.Log("Account 'a' closed.")
+
+	// verify deposits no longer accepted
+	if b, ok := a.Deposit(1); ok {
+		t.Log("Deposit accepted on closed account.")
+		t.Fatalf("a.Deposit(1) = %d, %t.  Want ok == false", b, ok)
+	}
+}
+
+func TestMoreSeqCases(t *testing.T) {
+	// open account 'a' as before
+	const openAmt = 10
+	a := Open(openAmt)
+	if a == nil {
+		t.Fatalf("Open(%d) = nil, want non-nil *Account.", openAmt)
+	}
+	t.Logf("Account 'a' opened with initial balance of %d.", openAmt)
+
+	// open account 'z' with zero balance
+	z := Open(0)
+	if z == nil {
+		t.Fatal("Open(0) = nil, want non-nil *Account.")
+	}
+	t.Log("Account 'z' opened with initial balance of 0.")
+
+	// attempt to open account with negative opening balance
+	if Open(-10) != nil {
+		t.Fatal("Open(-10) seemed to work, " +
+			"want nil result for negative opening balance.")
+	}
+
+	// verify both balances a and z still there
+	switch b, ok := a.Balance(); {
+	case !ok:
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	case b != openAmt:
+		t.Fatalf("a.Balance() = %d, want %d", b, openAmt)
+	}
+	switch b, ok := z.Balance(); {
+	case !ok:
+		t.Fatal("z.Balance() returned !ok, want ok.")
+	case b != 0:
+		t.Fatalf("z.Balance() = %d, want 0", b)
+	}
+
+	// withdrawals
+	const wAmt = 3
+	const newAmt = openAmt - wAmt
+	switch b, ok := a.Deposit(-wAmt); {
+	case !ok:
+		t.Fatalf("a.Deposit(%d) returned !ok, want ok.", -wAmt)
+	case b != newAmt:
+		t.Fatalf("a.Deposit(%d) = %d, want new balance = %d", -wAmt, b, newAmt)
+	}
+	t.Logf("Withdrawal of %d accepted from account 'a'", wAmt)
+	if _, ok := z.Deposit(-1); ok {
+		t.Fatal("z.Deposit(-1) returned ok, want !ok.")
+	}
+
+	// verify both balances
+	switch b, ok := a.Balance(); {
+	case !ok:
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	case b != newAmt:
+		t.Fatalf("a.Balance() = %d, want %d", b, newAmt)
+	}
+	switch b, ok := z.Balance(); {
+	case !ok:
+		t.Fatal("z.Balance() returned !ok, want ok.")
+	case b != 0:
+		t.Fatalf("z.Balance() = %d, want 0", b)
+	}
+
+	// close just z
+	switch p, ok := z.Close(); {
+	case !ok:
+		t.Fatalf("z.Close() returned !ok, want ok.")
+	case p != 0:
+		t.Fatalf("z.Close() returned payout = %d, want 0.", p)
+	}
+	t.Log("Account 'z' closed.")
+
+	// verify 'a' balance one more time
+	switch b, ok := a.Balance(); {
+	case !ok:
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	case b != newAmt:
+		t.Fatalf("a.Balance() = %d, want %d", b, newAmt)
+	}
+}
+
+func TestConcClose(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("Multiple CPU cores required for concurrency tests.")
+	}
+	if runtime.GOMAXPROCS(0) < 2 {
+		runtime.GOMAXPROCS(2)
+	}
+
+	// test competing close attempts
+	for rep := 0; rep < 1000; rep++ {
+		const openAmt = 10
+		a := Open(openAmt)
+		if a == nil {
+			t.Fatalf("Open(%d) = nil, want non-nil *Account.", openAmt)
+		}
+		var start sync.WaitGroup
+		start.Add(1)
+		const closeAttempts = 10
+		res := make(chan string)
+		for i := 0; i < closeAttempts; i++ {
+			go func() { // on your mark,
+				start.Wait() // get set...
+				switch p, ok := a.Close(); {
+				case !ok:
+					if p != 0 {
+						t.Errorf("a.Close() = %d, %t.  "+
+							"Want payout = 0 for unsuccessful close", p, ok)
+						res <- "fail"
+					} else {
+						res <- "already closed"
+					}
+				case p != openAmt:
+					t.Errorf("a.Close() = %d, %t.  "+
+						"Want payout = %d for successful close", p, ok, openAmt)
+					res <- "fail"
+				default:
+					res <- "close" // exactly one goroutine should reach here
+				}
+			}()
+		}
+		start.Done() // ...go
+		var closes, fails int
+		for i := 0; i < closeAttempts; i++ {
+			switch <-res {
+			case "close":
+				closes++
+			case "fail":
+				fails++
+			}
+		}
+		switch {
+		case fails > 0:
+			t.FailNow() // error already logged by other goroutine
+		case closes == 0:
+			t.Fatal("Concurrent a.Close() attempts all failed.  " +
+				"Want one to succeed.")
+		case closes > 1:
+			t.Fatalf("%d concurrent a.Close() attempts succeeded, "+
+				"each paying out %d!.  Want just one to succeed.",
+				closes, openAmt)
+		}
+	}
+}
+
+func TestConcDeposit(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("Multiple CPU cores required for concurrency tests.")
+	}
+	if runtime.GOMAXPROCS(0) < 2 {
+		runtime.GOMAXPROCS(2)
+	}
+	a := Open(0)
+	if a == nil {
+		t.Fatal("Open(0) = nil, want non-nil *Account.")
+	}
+	const amt = 10
+	const c = 1000
+	var negBal int32
+	var start, g sync.WaitGroup
+	start.Add(1)
+	g.Add(3 * c)
+	for i := 0; i < c; i++ {
+		go func() { // deposit
+			start.Wait()
+			a.Deposit(amt) // ignore return values
+			g.Done()
+		}()
+		go func() { // withdraw
+			start.Wait()
+			for {
+				if _, ok := a.Deposit(-amt); ok {
+					break
+				}
+				time.Sleep(time.Microsecond) // retry
+			}
+			g.Done()
+		}()
+		go func() { // watch that balance stays >= 0
+			start.Wait()
+			if p, _ := a.Balance(); p < 0 {
+				atomic.StoreInt32(&negBal, 1)
+			}
+			g.Done()
+		}()
+	}
+	start.Done()
+	g.Wait()
+	if negBal == 1 {
+		t.Fatal("Balance went negative with concurrent deposits and " +
+			"withdrawals.  Want balance always >= 0.")
+	}
+	if p, ok := a.Balance(); !ok || p != 0 {
+		t.Fatalf("After equal concurrent deposits and withdrawals, "+
+			"a.Balance = %d, %t.  Want 0, true", p, ok)
+	}
+}
+
+// The benchmark operations are here to encourage you to try different
+// implementations to see which ones perform better. These are worth
+// exploring after the tests pass.
+//
+// There is a basic benchmark and a parallelized version of the same
+// benchmark. You run the benchmark using:
+// go test --bench=.
+//
+// The output will look something like this:
+// goos: linux
+// goarch: amd64
+// BenchmarkAccountOperations-8             10000000        130 ns/op
+// BenchmarkAccountOperationsParallel-8     3000000         488 ns/op
+// PASS
+//
+// You will notice that parallelism does not increase speed in this case, in
+// fact it makes things slower! This is because none of the operations in our
+// Account benefit from parallel processing. We are specifically protecting
+// the account balance internals from being accessed by multiple processes
+// simultaneously. Your protections will make the parallel processing slower
+// because there is some overhead in managing the processes and protections.
+//
+// The interesting thing to try here is to experiment with the protections
+// and see how their implementation changes the results of the parallel
+// benchmark.
+func BenchmarkAccountOperations(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	a := Open(0)
+	defer a.Close()
+	for n := 0; n < b.N; n++ {
+		a.Deposit(10)
+		a.Deposit(-10)
+	}
+}
+
+func BenchmarkAccountOperationsParallel(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	a := Open(0)
+	defer a.Close()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			a.Deposit(10)
+			a.Deposit(-10)
+		}
+	})
+}
+
+
+=== Initial Translation ===
+// exercises/practice/bank-account/.meta/example.go
+package meta
+
+import "sync"
+
+// Account represents a bank account.
+// It supports operations such as opening an account, checking balance, depositing, withdrawing, and closing the account.
+// The methods return a tuple (int64, bool) where the bool indicates whether the operation was successful.
+
+type Account struct {
+	lock    sync.Mutex
+	isOpen  bool
+	balance int64
+}
+
+// Open opens a new bank account with the given initial deposit amount.
+// Although an initial amount is provided per the target interface, the original Python implementation always starts with 0.
+// Returns a pointer to an Account.
+func Open(amount int64) *Account {
+	// Ignoring the 'amount' parameter to mimic the original Python behavior.
+	return &Account{
+		isOpen:  true,
+		balance: 0,
+	}
+}
+
+// Balance returns the current balance if the account is open.
+// It returns (balance, true) if the account is open, otherwise (0, false).
+func (a *Account) Balance() (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	if !a.isOpen {
+		return 0, false
+	}
+	return a.balance, true
+}
+
+// Deposit adds the given amount to the account balance if the account is open and the amount is greater than 0.
+// Returns the new balance and true if the deposit was successful.
+// If the account is not open or the amount is not greater than 0, it returns the current balance and false.
+func (a *Account) Deposit(amount int64) (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if !a.isOpen {
+		return 0, false
+	}
+	if amount <= 0 {
+		return a.balance, false
+	}
+	
+a.balance += amount
+	return a.balance, true
+}
+
+// Withdraw subtracts the given amount from the account balance if the account is open,
+// the amount is greater than 0, and the account has sufficient funds.
+// Returns the new balance and true if the withdrawal was successful.
+// If any condition is not met, it returns the current balance and false.
+func (a *Account) Withdraw(amount int64) (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if !a.isOpen {
+		return 0, false
+	}
+	if amount <= 0 {
+		return a.balance, false
+	}
+	if amount > a.balance {
+		return a.balance, false
+	}
+	
+a.balance -= amount
+	return a.balance, true
+}
+
+// Close closes the account if it is open.
+// Returns the final balance and true if successful,
+// or (current balance, false) if the account was not open.
+func (a *Account) Close() (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if !a.isOpen {
+		return a.balance, false
+	}
+	
+a.isOpen = false
+	return a.balance, true
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (bank_account.go) and account (bank_account_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/bank-account
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/bank-account/.meta/example.go
+package account
+
+import (
+	"sync"
+)
+
+// Account represents a bank account that can be opened, deposited into (or withdrawn from using negative amounts), and closed.
+// The methods return a tuple (int64, bool) where the bool indicates whether the operation was successful.
+// A zero balance with a false ok indicates that the account is closed.
+
+type Account struct {
+	lock    sync.Mutex
+	isOpen  bool
+	balance int64
+}
+
+// Open creates a new account with the given initial deposit amount.
+// If the provided amount is negative, Open returns nil.
+// If the account is successfully opened, it returns an Account pointer with balance set to the provided amount.
+func Open(amount int64) *Account {
+	if amount < 0 {
+		return nil
+	}
+	return &Account{
+		isOpen:  true,
+		balance: amount,
+	}
+}
+
+// Balance returns the current balance and true if the account is open.
+// If the account is closed, it returns 0 and false.
+func (a *Account) Balance() (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	if !a.isOpen {
+		return 0, false
+	}
+	return a.balance, true
+}
+
+// Deposit adds the given amount to the account if the account is open.
+// A positive amount deposits money, while a negative amount is interpreted as a withdrawal request.
+// For a withdrawal (negative deposit), if the withdrawal amount is greater than the current balance, the operation fails.
+// Returns the new balance and true if successful. Otherwise, returns the current balance and false.
+func (a *Account) Deposit(amount int64) (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if !a.isOpen {
+		return a.balance, false
+	}
+
+	if amount >= 0 {
+		a.balance += amount
+		return a.balance, true
+	} else {
+		withdrawAmt := -amount
+		if withdrawAmt > a.balance {
+			return a.balance, false
+		}
+		a.balance -= withdrawAmt
+		return a.balance, true
+	}
+}
+
+// Close closes the account if it is open. It returns the balance at the time of closing as the payout and true.
+// After closing, the account's balance is set to 0 and it is no longer accessible for other operations.
+// If the account is already closed, it returns the current balance (which should be 0) and false.
+func (a *Account) Close() (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if !a.isOpen {
+		return a.balance, false
+	}
+
+	payout := a.balance
+	a.isOpen = false
+	a.balance = 0
+	return payout, true
+}
+
+// exercises/practice/bank-account/.meta/example_test.go
+package account
+
+import (
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+func TestSeqOpenBalanceClose(t *testing.T) {
+	// open account
+	const amt = 10
+	a := Open(amt)
+	if a == nil {
+		t.Fatalf("Open(%d) = nil, want non-nil *Account.", amt)
+	}
+	t.Logf("Account 'a' opened with initial balance of %d.", amt)
+
+	// verify balance after open
+	if b, ok := a.Balance(); !ok {
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	} else if b != amt {
+		t.Fatalf("a.Balance() = %d, want %d", b, amt)
+	}
+
+	// close account
+	if p, ok := a.Close(); !ok {
+		t.Fatalf("a.Close() returned !ok, want ok.")
+	} else if p != amt {
+		t.Fatalf("a.Close() returned payout = %d, want %d.", p, amt)
+	}
+	t.Log("Account 'a' closed.")
+
+	// verify balance no longer accessible
+	if b, ok := a.Balance(); ok {
+		t.Log("Balance still available on closed account.")
+		t.Fatalf("a.Balance() = %d, %t.  Want ok == false", b, ok)
+	}
+
+	// verify closing balance is 0
+	if b, _ := a.Balance(); b != 0 {
+		t.Log("Balance after close is non-zero.")
+		t.Fatalf("After a.Close() balance is %d and not 0", b)
+	}
+}
+
+func TestSeqOpenDepositClose(t *testing.T) {
+	// open account
+	const openAmt = 10
+	a := Open(openAmt)
+	if a == nil {
+		t.Fatalf("Open(%d) = nil, want non-nil *Account.", openAmt)
+	}
+	t.Logf("Account 'a' opened with initial balance of %d.", openAmt)
+
+	// deposit
+	const depAmt = 20
+	const newAmt = openAmt + depAmt
+	if b, ok := a.Deposit(depAmt); !ok {
+		t.Fatalf("a.Deposit(%d) returned !ok, want ok.", depAmt)
+	} else if b != newAmt {
+		t.Fatalf("a.Deposit(%d) = %d, want new balance = %d", depAmt, b, newAmt)
+	}
+	t.Logf("Deposit of %d accepted to account 'a'", depAmt)
+
+	// close account
+	if p, ok := a.Close(); !ok {
+		t.Fatalf("a.Close() returned !ok, want ok.")
+	} else if p != newAmt {
+		t.Fatalf("a.Close() returned payout = %d, want %d.", p, newAmt)
+	}
+	t.Log("Account 'a' closed.")
+
+	// verify deposits no longer accepted
+	if b, ok := a.Deposit(1); ok {
+		t.Log("Deposit accepted on closed account.")
+		t.Fatalf("a.Deposit(1) = %d, %t.  Want ok == false", b, ok)
+	}
+}
+
+func TestMoreSeqCases(t *testing.T) {
+	// open account 'a' as before
+	const openAmt = 10
+	a := Open(openAmt)
+	if a == nil {
+		t.Fatalf("Open(%d) = nil, want non-nil *Account.", openAmt)
+	}
+	t.Logf("Account 'a' opened with initial balance of %d.", openAmt)
+
+	// open account 'z' with zero balance
+	z := Open(0)
+	if z == nil {
+		t.Fatal("Open(0) = nil, want non-nil *Account.")
+	}
+	t.Log("Account 'z' opened with initial balance of 0.")
+
+	// attempt to open account with negative opening balance
+	if Open(-10) != nil {
+		t.Fatal("Open(-10) seemed to work, want nil result for negative opening balance.")
+	}
+
+	// verify both balances a and z still there
+	if b, ok := a.Balance(); !ok {
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	} else if b != openAmt {
+		t.Fatalf("a.Balance() = %d, want %d", b, openAmt)
+	}
+	if b, ok := z.Balance(); !ok {
+		t.Fatal("z.Balance() returned !ok, want ok.")
+	} else if b != 0 {
+		t.Fatalf("z.Balance() = %d, want 0", b)
+	}
+
+	// withdrawals using Deposit with negative amount
+	const wAmt = 3
+	const newAmt = openAmt - wAmt
+	if b, ok := a.Deposit(-wAmt); !ok {
+		t.Fatalf("a.Deposit(%d) returned !ok, want ok.", -wAmt)
+	} else if b != newAmt {
+		t.Fatalf("a.Deposit(%d) = %d, want new balance = %d", -wAmt, b, newAmt)
+	}
+	t.Logf("Withdrawal of %d accepted from account 'a'", wAmt)
+	if _, ok := z.Deposit(-1); ok {
+		t.Fatal("z.Deposit(-1) returned ok, want !ok.")
+	}
+
+	// verify both balances
+	if b, ok := a.Balance(); !ok {
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	} else if b != newAmt {
+		t.Fatalf("a.Balance() = %d, want %d", b, newAmt)
+	}
+	if b, ok := z.Balance(); !ok {
+		t.Fatal("z.Balance() returned !ok, want ok.")
+	} else if b != 0 {
+		t.Fatalf("z.Balance() = %d, want 0", b)
+	}
+
+	// close just z
+	if p, ok := z.Close(); !ok {
+		t.Fatalf("z.Close() returned !ok, want ok.")
+	} else if p != 0 {
+		t.Fatalf("z.Close() returned payout = %d, want 0.", p)
+	}
+	t.Log("Account 'z' closed.")
+
+	// verify 'a' balance one more time
+	if b, ok := a.Balance(); !ok {
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	} else if b != newAmt {
+		t.Fatalf("a.Balance() = %d, want %d", b, newAmt)
+	}
+}
+
+func TestConcClose(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("Multiple CPU cores required for concurrency tests.")
+	}
+	if runtime.GOMAXPROCS(0) < 2 {
+		runtime.GOMAXPROCS(2)
+	}
+
+	// test competing close attempts
+	for rep := 0; rep < 1000; rep++ {
+		const openAmt = 10
+		a := Open(openAmt)
+		if a == nil {
+			t.Fatalf("Open(%d) = nil, want non-nil *Account.", openAmt)
+		}
+		var start sync.WaitGroup
+		start.Add(1)
+		const closeAttempts = 10
+		res := make(chan string)
+		for i := 0; i < closeAttempts; i++ {
+			go func() {
+				start.Wait()
+				switch p, ok := a.Close(); {
+				case !ok:
+					if p != 0 {
+						t.Errorf("a.Close() = %d, %t.  Want payout = 0 for unsuccessful close", p, ok)
+						res <- "fail"
+					} else {
+						res <- "already closed"
+					}
+				case p != openAmt:
+					t.Errorf("a.Close() = %d, %t.  Want payout = %d for successful close", p, ok, openAmt)
+						res <- "fail"
+				default:
+					res <- "close"
+				}
+			}()
+		}
+		start.Done()
+		var closes, fails int
+		for i := 0; i < closeAttempts; i++ {
+			switch <-res {
+			case "close":
+				closes++
+			case "fail":
+				fails++
+			}
+		}
+		switch {
+		case fails > 0:
+			t.FailNow()
+		case closes == 0:
+			t.Fatal("Concurrent a.Close() attempts all failed.  Want one to succeed.")
+		case closes > 1:
+			t.Fatalf("%d concurrent a.Close() attempts succeeded, each paying out %d!.  Want just one to succeed.", closes, openAmt)
+		}
+	}
+}
+
+func TestConcDeposit(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("Multiple CPU cores required for concurrency tests.")
+	}
+	if runtime.GOMAXPROCS(0) < 2 {
+		runtime.GOMAXPROCS(2)
+	}
+	a := Open(0)
+	if a == nil {
+		t.Fatal("Open(0) = nil, want non-nil *Account.")
+	}
+	const amt = 10
+	const c = 1000
+	var negBal int32
+	var start, g sync.WaitGroup
+	start.Add(1)
+	g.Add(3 * c)
+	for i := 0; i < c; i++ {
+		go func() { // deposit
+			start.Wait()
+			a.Deposit(amt)
+			g.Done()
+		}()
+		go func() { // withdraw
+			start.Wait()
+			for {
+				if _, ok := a.Deposit(-amt); ok {
+					break
+				}
+				time.Sleep(time.Microsecond)
+			}
+			g.Done()
+		}()
+		go func() { // watch that balance stays >= 0
+			start.Wait()
+			if p, _ := a.Balance(); p < 0 {
+				atomic.StoreInt32(&negBal, 1)
+			}
+			g.Done()
+		}()
+	}
+	start.Done()
+	g.Wait()
+	if negBal == 1 {
+		t.Fatal("Balance went negative with concurrent deposits and withdrawals.  Want balance always >= 0.")
+	}
+	if p, ok := a.Balance(); !ok || p != 0 {
+		t.Fatalf("After equal concurrent deposits and withdrawals, a.Balance = %d, %t.  Want 0, true", p, ok)
+	}
+}
+
+func BenchmarkAccountOperations(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	a := Open(0)
+	defer a.Close()
+	for n := 0; n < b.N; n++ {
+		a.Deposit(10)
+		a.Deposit(-10)
+	}
+}
+
+func BenchmarkAccountOperationsParallel(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	a := Open(0)
+	defer a.Close()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			a.Deposit(10)
+			a.Deposit(-10)
+		}
+	})
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bank-account [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bank-account [exercism/bank-account.test]
+./bank_account.go:85:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/bank-account/.meta/example.go
+package account
+
+import (
+	"sync"
+)
+
+// Account represents a bank account that can be opened, deposited into (or withdrawn from using negative amounts), and closed.
+// The methods return a tuple (int64, bool) where the bool indicates whether the operation was successful.
+// A zero balance with a false ok indicates that the account is closed.
+
+type Account struct {
+	lock    sync.Mutex
+	isOpen  bool
+	balance int64
+}
+
+// Open creates a new account with the given initial deposit amount.
+// If the provided amount is negative, Open returns nil.
+// If the account is successfully opened, it returns an Account pointer with balance set to the provided amount.
+func Open(amount int64) *Account {
+	if amount < 0 {
+		return nil
+	}
+	return &Account{
+		isOpen:  true,
+		balance: amount,
+	}
+}
+
+// Balance returns the current balance and true if the account is open.
+// If the account is closed, it returns 0 and false.
+func (a *Account) Balance() (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	if !a.isOpen {
+		return 0, false
+	}
+	return a.balance, true
+}
+
+// Deposit adjusts the account balance by the given amount if the account is open.
+// A positive amount deposits money, while a negative amount is interpreted as a withdrawal request.
+// For a withdrawal (negative deposit), if the withdrawal amount is greater than the current balance, the operation fails.
+// Returns the new balance and true if successful. Otherwise, returns the current balance and false.
+func (a *Account) Deposit(amount int64) (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if !a.isOpen {
+		return a.balance, false
+	}
+
+	if amount >= 0 {
+		a.balance += amount
+		return a.balance, true
+	} else {
+		withdrawAmt := -amount
+		if withdrawAmt > a.balance {
+			return a.balance, false
+		}
+		a.balance -= withdrawAmt
+		return a.balance, true
+	}
+}
+
+// Close closes the account if it is open.
+// It returns the balance at the time of closing as the payout and true.
+// After closing, the account's balance is set to 0 and it is no longer accessible for other operations.
+// If the account is already closed, it returns the current balance (which should be 0) and false.
+func (a *Account) Close() (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if !a.isOpen {
+		return a.balance, false
+	}
+
+	payout := a.balance
+	a.isOpen = false
+	a.balance = 0
+	return payout, true
+}
+
+// exercises/practice/bank-account/.meta/example_test.go
+package account
+
+import (
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+func TestSeqOpenBalanceClose(t *testing.T) {
+	// open account
+	const amt = 10
+	a := Open(amt)
+	if a == nil {
+		t.Fatalf("Open(%d) = nil, want non-nil *Account.", amt)
+	}
+	t.Logf("Account 'a' opened with initial balance of %d.", amt)
+
+	// verify balance after open
+	if b, ok := a.Balance(); !ok {
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	} else if b != amt {
+		t.Fatalf("a.Balance() = %d, want %d", b, amt)
+	}
+
+	// close account
+	if p, ok := a.Close(); !ok {
+		t.Fatalf("a.Close() returned !ok, want ok.")
+	} else if p != amt {
+		t.Fatalf("a.Close() returned payout = %d, want %d.", p, amt)
+	}
+	t.Log("Account 'a' closed.")
+
+	// verify balance no longer accessible
+	if b, ok := a.Balance(); ok {
+		t.Log("Balance still available on closed account.")
+		t.Fatalf("a.Balance() = %d, %t.  Want ok == false", b, ok)
+	}
+
+	// verify closing balance is 0
+	if b, _ := a.Balance(); b != 0 {
+		t.Log("Balance after close is non-zero.")
+		t.Fatalf("After a.Close() balance is %d and not 0", b)
+	}
+}
+
+func TestSeqOpenDepositClose(t *testing.T) {
+	// open account
+	const openAmt = 10
+	a := Open(openAmt)
+	if a == nil {
+		t.Fatalf("Open(%d) = nil, want non-nil *Account.", openAmt)
+	}
+	t.Logf("Account 'a' opened with initial balance of %d.", openAmt)
+
+	// deposit
+	const depAmt = 20
+	const newAmt = openAmt + depAmt
+	if b, ok := a.Deposit(depAmt); !ok {
+		t.Fatalf("a.Deposit(%d) returned !ok, want ok.", depAmt)
+	} else if b != newAmt {
+		t.Fatalf("a.Deposit(%d) = %d, want new balance = %d", depAmt, b, newAmt)
+	}
+	t.Logf("Deposit of %d accepted to account 'a'", depAmt)
+
+	// close account
+	if p, ok := a.Close(); !ok {
+		t.Fatalf("a.Close() returned !ok, want ok.")
+	} else if p != newAmt {
+		t.Fatalf("a.Close() returned payout = %d, want %d.", p, newAmt)
+	}
+	t.Log("Account 'a' closed.")
+
+	// verify deposits no longer accepted
+	if b, ok := a.Deposit(1); ok {
+		t.Log("Deposit accepted on closed account.")
+		t.Fatalf("a.Deposit(1) = %d, %t.  Want ok == false", b, ok)
+	}
+}
+
+func TestMoreSeqCases(t *testing.T) {
+	// open account 'a' as before
+	const openAmt = 10
+	a := Open(openAmt)
+	if a == nil {
+		t.Fatalf("Open(%d) = nil, want non-nil *Account.", openAmt)
+	}
+	t.Logf("Account 'a' opened with initial balance of %d.", openAmt)
+
+	// open account 'z' with zero balance
+	z := Open(0)
+	if z == nil {
+		t.Fatal("Open(0) = nil, want non-nil *Account.")
+	}
+	t.Log("Account 'z' opened with initial balance of 0.")
+
+	// attempt to open account with negative opening balance
+	if Open(-10) != nil {
+		t.Fatal("Open(-10) seemed to work, want nil result for negative opening balance.")
+	}
+
+	// verify both balances a and z still there
+	if b, ok := a.Balance(); !ok {
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	} else if b != openAmt {
+		t.Fatalf("a.Balance() = %d, want %d", b, openAmt)
+	}
+	if b, ok := z.Balance(); !ok {
+		t.Fatal("z.Balance() returned !ok, want ok.")
+	} else if b != 0 {
+		t.Fatalf("z.Balance() = %d, want 0", b)
+	}
+
+	// withdrawals using Deposit with negative amount
+	const wAmt = 3
+	const newAmt = openAmt - wAmt
+	if b, ok := a.Deposit(-wAmt); !ok {
+		t.Fatalf("a.Deposit(%d) returned !ok, want ok.", -wAmt)
+	} else if b != newAmt {
+		t.Fatalf("a.Deposit(%d) = %d, want new balance = %d", -wAmt, b, newAmt)
+	}
+	t.Logf("Withdrawal of %d accepted from account 'a'", wAmt)
+	if _, ok := z.Deposit(-1); ok {
+		t.Fatal("z.Deposit(-1) returned ok, want !ok.")
+	}
+
+	// verify both balances
+	if b, ok := a.Balance(); !ok {
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	} else if b != newAmt {
+		t.Fatalf("a.Balance() = %d, want %d", b, newAmt)
+	}
+	if b, ok := z.Balance(); !ok {
+		t.Fatal("z.Balance() returned !ok, want ok.")
+	} else if b != 0 {
+		t.Fatalf("z.Balance() = %d, want 0", b)
+	}
+
+	// close just z
+	if p, ok := z.Close(); !ok {
+		t.Fatalf("z.Close() returned !ok, want ok.")
+	} else if p != 0 {
+		t.Fatalf("z.Close() returned payout = %d, want 0.", p)
+	}
+	t.Log("Account 'z' closed.")
+
+	// verify 'a' balance one more time
+	if b, ok := a.Balance(); !ok {
+		t.Fatal("a.Balance() returned !ok, want ok.")
+	} else if b != newAmt {
+		t.Fatalf("a.Balance() = %d, want %d", b, newAmt)
+	}
+}
+
+func TestConcClose(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("Multiple CPU cores required for concurrency tests.")
+	}
+	if runtime.GOMAXPROCS(0) < 2 {
+		runtime.GOMAXPROCS(2)
+	}
+
+	// test competing close attempts
+	for rep := 0; rep < 1000; rep++ {
+		const openAmt = 10
+		a := Open(openAmt)
+		if a == nil {
+			t.Fatalf("Open(%d) = nil, want non-nil *Account.", openAmt)
+		}
+		var start sync.WaitGroup
+		start.Add(1)
+		const closeAttempts = 10
+		res := make(chan string)
+		for i := 0; i < closeAttempts; i++ {
+			go func() {
+				start.Wait()
+				switch p, ok := a.Close(); {
+				case !ok:
+					if p != 0 {
+						t.Errorf("a.Close() = %d, %t.  Want payout = 0 for unsuccessful close", p, ok)
+						res <- "fail"
+					} else {
+						res <- "already closed"
+					}
+				case p != openAmt:
+					t.Errorf("a.Close() = %d, %t.  Want payout = %d for successful close", p, ok, openAmt)
+						res <- "fail"
+				default:
+					res <- "close"
+				}
+			}()
+		}
+		start.Done()
+		var closes, fails int
+		for i := 0; i < closeAttempts; i++ {
+			switch <-res {
+			case "close":
+				closes++
+			case "fail":
+				fails++
+			}
+		}
+		switch {
+		case fails > 0:
+			t.FailNow()
+		case closes == 0:
+			t.Fatal("Concurrent a.Close() attempts all failed.  Want one to succeed.")
+		case closes > 1:
+			t.Fatalf("%d concurrent a.Close() attempts succeeded, each paying out %d!.  Want just one to succeed.", closes, openAmt)
+		}
+	}
+}
+
+func TestConcDeposit(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("Multiple CPU cores required for concurrency tests.")
+	}
+	if runtime.GOMAXPROCS(0) < 2 {
+		runtime.GOMAXPROCS(2)
+	}
+	a := Open(0)
+	if a == nil {
+		t.Fatal("Open(0) = nil, want non-nil *Account.")
+	}
+	const amt = 10
+	const c = 1000
+	var negBal int32
+	var start, g sync.WaitGroup
+	start.Add(1)
+	g.Add(3 * c)
+	for i := 0; i < c; i++ {
+		go func() { // deposit
+			start.Wait()
+			a.Deposit(amt)
+			g.Done()
+		}()
+		go func() { // withdraw
+			start.Wait()
+			for {
+				if _, ok := a.Deposit(-amt); ok {
+					break
+				}
+				time.Sleep(time.Microsecond) // retry
+			}
+			g.Done()
+		}()
+		go func() { // watch that balance stays >= 0
+			start.Wait()
+			if p, _ := a.Balance(); p < 0 {
+				atomic.StoreInt32(&negBal, 1)
+			}
+			g.Done()
+		}()
+	}
+	start.Done()
+	g.Wait()
+	if negBal == 1 {
+		t.Fatal("Balance went negative with concurrent deposits and withdrawals.  Want balance always >= 0.")
+	}
+	if p, ok := a.Balance(); !ok || p != 0 {
+		t.Fatalf("After equal concurrent deposits and withdrawals, a.Balance = %d, %t.  Want 0, true", p, ok)
+	}
+}
+
+func BenchmarkAccountOperations(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	a := Open(0)
+	defer a.Close()
+	for n := 0; n < b.N; n++ {
+		a.Deposit(10)
+		a.Deposit(-10)
+	}
+}
+
+func BenchmarkAccountOperationsParallel(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	a := Open(0)
+	defer a.Close()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			a.Deposit(10)
+			a.Deposit(-10)
+		}
+	})
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/bank-account [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/bank-account [exercism/bank-account.test]
+./bank_account.go:86:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/bank-account/.meta/example.go
+package account
+
+import (
+	"sync"
+)
+
+// Account represents a bank account that can be opened, deposited into (or withdrawn from using negative amounts), and closed.
+// The methods return a tuple (int64, bool) where the bool indicates whether the operation was successful.
+// A zero balance with a false ok indicates that the account is closed.
+
+// Open creates a new account with the given initial deposit amount.
+// If the provided amount is negative, Open returns nil.
+// If the account is successfully opened, it returns an Account pointer with balance set to the provided amount.
+func Open(amount int64) *Account {
+	if amount < 0 {
+		return nil
+	}
+	return &Account{
+		isOpen:  true,
+		balance: amount,
+	}
+}
+
+// Account structure
+
+type Account struct {
+	lock    sync.Mutex
+	isOpen  bool
+	balance int64
+}
+
+// Balance returns the current balance and true if the account is open.
+// If the account is closed, it returns 0 and false.
+func (a *Account) Balance() (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	if !a.isOpen {
+		return 0, false
+	}
+	return a.balance, true
+}
+
+// Deposit adjusts the account balance by the given amount if the account is open.
+// A positive amount deposits money, while a negative amount is interpreted as a withdrawal request.
+// For a withdrawal (negative deposit), if the withdrawal amount is greater than the current balance, the operation fails.
+// Returns the new balance and true if successful. Otherwise, returns the current balance and false.
+func (a *Account) Deposit(amount int64) (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if !a.isOpen {
+		return a.balance, false
+	}
+
+	if amount >= 0 {
+		a.balance += amount
+		return a.balance, true
+	} else {
+		withdrawAmt := -amount
+		if withdrawAmt > a.balance {
+			return a.balance, false
+		}
+		a.balance -= withdrawAmt
+		return a.balance, true
+	}
+}
+
+// Close closes the account if it is open.
+// It returns the balance at the time of closing as the payout and true.
+// After closing, the account's balance is set to 0 and it is no longer accessible for other operations.
+// If the account is already closed, it returns the current balance (which should be 0) and false.
+func (a *Account) Close() (int64, bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if !a.isOpen {
+		return a.balance, false
+	}
+
+	payout := a.balance
+	a.isOpen = false
+	a.balance = 0
+	return payout, true
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/bank-account	0.284s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

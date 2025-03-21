@@ -1,0 +1,209 @@
+=== Initial Source Code ===
+Source file: exercises/practice/darts/.meta/example.py
+from math import sqrt
+
+# X, and Y variable names against [pylint]: C0104, but is the same as the stub, advise not to change this.
+def score(x, y):
+    dart_location = sqrt(x * x + y * y)
+
+    if dart_location <= 1.0:
+        return 10
+    elif dart_location <= 5.0:
+        return 5
+    elif dart_location <= 10.0:
+        return 1
+    else:
+        return 0
+
+
+=== Source Interface ===
+def score(x, y):
+    pass
+
+
+=== Target Interface ===
+package darts
+
+func Score(x, y float64) int {
+	panic("Please implement the Score function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/darts/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from darts import (
+    score,
+)
+
+
+class DartsTest(unittest.TestCase):
+    def test_missed_target(self):
+        self.assertEqual(score(-9, 9), 0)
+
+    def test_on_the_outer_circle(self):
+        self.assertEqual(score(0, 10), 1)
+
+    def test_on_the_middle_circle(self):
+        self.assertEqual(score(-5, 0), 5)
+
+    def test_on_the_inner_circle(self):
+        self.assertEqual(score(0, -1), 10)
+
+    def test_exactly_on_center(self):
+        self.assertEqual(score(0, 0), 10)
+
+    def test_near_the_center(self):
+        self.assertEqual(score(-0.1, -0.1), 10)
+
+    def test_just_within_the_inner_circle(self):
+        self.assertEqual(score(0.7, 0.7), 10)
+
+    def test_just_outside_the_inner_circle(self):
+        self.assertEqual(score(0.8, -0.8), 5)
+
+    def test_just_within_the_middle_circle(self):
+        self.assertEqual(score(-3.5, 3.5), 5)
+
+    def test_just_outside_the_middle_circle(self):
+        self.assertEqual(score(-3.6, -3.6), 1)
+
+    def test_just_within_the_outer_circle(self):
+        self.assertEqual(score(-7.0, 7.0), 1)
+
+    def test_just_outside_the_outer_circle(self):
+        self.assertEqual(score(7.1, -7.1), 0)
+
+    def test_asymmetric_position_between_the_inner_and_middle_circles(self):
+        self.assertEqual(score(0.5, -4), 5)
+
+
+=== Target Test Code ===
+package darts
+
+import (
+	"testing"
+)
+
+func TestScore(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Score(tc.x, tc.y)
+			if actual != tc.expected {
+				t.Errorf("Score(%#v, %#v) = %#v, want: %#v", tc.x, tc.y, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Score(tc.x, tc.y)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the score in the game of darts based on the position of the dart.
+func Score(x, y float64) int {
+    dartLocation := math.Sqrt(x*x + y*y)
+
+    if dartLocation <= 1.0 {
+        return 10
+    } else if dartLocation <= 5.0 {
+        return 5
+    } else if dartLocation <= 10.0 {
+        return 1
+    } else {
+        return 0
+    }
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts_test.go:8:21: undefined: testCases
+./darts_test.go:23:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the score in the game of darts based on the position of the dart.
+func Score(x, y float64) int {
+    dartLocation := math.Sqrt(x*x + y*y)
+
+    if dartLocation <= 1.0 {
+        return 10
+    } else if dartLocation <= 5.0 {
+        return 5
+    } else if dartLocation <= 10.0 {
+        return 1
+    } else {
+        return 0
+    }
+}
+
+// testCases is a slice of test cases for the Score function
+var testCases = []struct {
+    description string
+    x, y        float64
+    expected    int
+}{
+    {
+        description: "A dart lands inside the inner circle",
+        x:           0,
+        y:           0,
+        expected:    10,
+    },
+    {
+        description: "A dart lands inside the middle circle",
+        x:           3,
+        y:           4,
+        expected:    5,
+    },
+    {
+        description: "A dart lands inside the outer circle",
+        x:           6,
+        y:           8,
+        expected:    1,
+    },
+    {
+        description: "A dart lands outside all circles",
+        x:           10,
+        y:           10,
+        expected:    0,
+    },
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/darts	0.264s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,1227 @@
+=== Initial Source Code ===
+Source file: exercises/practice/sublist/.meta/example.py
+SUBLIST = 0
+SUPERLIST = 1
+EQUAL = 2
+UNEQUAL = 3
+
+
+def sublist(list_one, list_two):
+    if list_one == list_two:
+        return EQUAL
+    if contains(list_one, list_two):
+        return SUPERLIST
+    if contains(list_two, list_one):
+        return SUBLIST
+    return UNEQUAL
+
+
+def contains(list_one, list_two):
+    if not list_two:
+        return True
+    if len(list_two) > len(list_one):
+        return False
+    for idx in range(len(list_one) - len(list_two) + 1):
+        if list_one[idx] != list_two[0]:
+            continue
+        for edx, _ in enumerate(list_two):
+            if list_one[idx + edx] != list_two[edx]:
+                break
+        else:
+            return True
+    return False
+
+
+=== Source Interface ===
+"""
+This exercise stub and the test suite contain several enumerated constants.
+
+Enumerated constants can be done with a NAME assigned to an arbitrary,
+but unique value. An integer is traditionally used because it’s memory
+efficient.
+It is a common practice to export both constants and functions that work with
+those constants (ex. the constants in the os, subprocess and re modules).
+
+You can learn more here: https://en.wikipedia.org/wiki/Enumerated_type
+"""
+
+# Possible sublist categories.
+# Change the values as you see fit.
+SUBLIST = None
+SUPERLIST = None
+EQUAL = None
+UNEQUAL = None
+
+
+def sublist(list_one, list_two):
+    pass
+
+
+=== Target Interface ===
+package sublist
+
+// Relation type is defined in relations.go file.
+
+func Sublist(l1, l2 []int) Relation {
+	panic("Please implement the Sublist function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/sublist/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from sublist import (
+    sublist,
+    SUBLIST,
+    SUPERLIST,
+    EQUAL,
+    UNEQUAL,
+)
+
+
+class SublistTest(unittest.TestCase):
+    def test_empty_lists(self):
+        self.assertEqual(sublist([], []), EQUAL)
+
+    def test_empty_list_within_non_empty_list(self):
+        self.assertEqual(sublist([], [1, 2, 3]), SUBLIST)
+
+    def test_non_empty_list_contains_empty_list(self):
+        self.assertEqual(sublist([1, 2, 3], []), SUPERLIST)
+
+    def test_list_equals_itself(self):
+        self.assertEqual(sublist([1, 2, 3], [1, 2, 3]), EQUAL)
+
+    def test_different_lists(self):
+        self.assertEqual(sublist([1, 2, 3], [2, 3, 4]), UNEQUAL)
+
+    def test_false_start(self):
+        self.assertEqual(sublist([1, 2, 5], [0, 1, 2, 3, 1, 2, 5, 6]), SUBLIST)
+
+    def test_consecutive(self):
+        self.assertEqual(sublist([1, 1, 2], [0, 1, 1, 1, 2, 1, 2]), SUBLIST)
+
+    def test_sublist_at_start(self):
+        self.assertEqual(sublist([0, 1, 2], [0, 1, 2, 3, 4, 5]), SUBLIST)
+
+    def test_sublist_in_middle(self):
+        self.assertEqual(sublist([2, 3, 4], [0, 1, 2, 3, 4, 5]), SUBLIST)
+
+    def test_sublist_at_end(self):
+        self.assertEqual(sublist([3, 4, 5], [0, 1, 2, 3, 4, 5]), SUBLIST)
+
+    def test_at_start_of_superlist(self):
+        self.assertEqual(sublist([0, 1, 2, 3, 4, 5], [0, 1, 2]), SUPERLIST)
+
+    def test_in_middle_of_superlist(self):
+        self.assertEqual(sublist([0, 1, 2, 3, 4, 5], [2, 3]), SUPERLIST)
+
+    def test_at_end_of_superlist(self):
+        self.assertEqual(sublist([0, 1, 2, 3, 4, 5], [3, 4, 5]), SUPERLIST)
+
+    def test_first_list_missing_element_from_second_list(self):
+        self.assertEqual(sublist([1, 3], [1, 2, 3]), UNEQUAL)
+
+    def test_second_list_missing_element_from_first_list(self):
+        self.assertEqual(sublist([1, 2, 3], [1, 3]), UNEQUAL)
+
+    def test_first_list_missing_additional_digits_from_second_list(self):
+        self.assertEqual(sublist([1, 2], [1, 22]), UNEQUAL)
+
+    def test_order_matters_to_a_list(self):
+        self.assertEqual(sublist([1, 2, 3], [3, 2, 1]), UNEQUAL)
+
+    def test_same_digits_but_different_numbers(self):
+        self.assertEqual(sublist([1, 0, 1], [10, 1]), UNEQUAL)
+
+    # Additional tests for this track
+    def test_unique_return_values(self):
+        self.assertEqual(len(set([SUBLIST, SUPERLIST, EQUAL, UNEQUAL])), 4)
+
+    def test_inner_spaces(self):
+        self.assertEqual(sublist(["a c"], ["a", "c"]), UNEQUAL)
+
+    def test_large_lists(self):
+        self.assertEqual(
+            sublist(
+                list(range(1000)) * 1000 + list(range(1000, 1100)),
+                list(range(900, 1050)),
+            ),
+            SUPERLIST,
+        )
+
+    def test_spread_sublist(self):
+        self.assertEqual(
+            sublist(list(range(3, 200, 3)), list(range(15, 200, 15))), UNEQUAL
+        )
+
+
+=== Target Test Code ===
+package sublist
+
+import (
+	"testing"
+)
+
+func TestSublist(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Sublist(tc.listOne, tc.listTwo); actual != tc.expected {
+				t.Fatalf("Sublist(%#v,%#v) = %v, want: %v", tc.listOne, tc.listTwo, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSublist(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Sublist(tc.listOne, tc.listTwo)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list1 is a sublist of list2
+// SUPERLIST:  list1 is a superlist of list2
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l2 is a sublist of l1,
+//   - SUBLIST if l1 is a sublist of l2,
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+func contains(big, small []int) bool {
+	// An empty slice is considered to be a sublist of any list.
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		// First element check to potentially skip unnecessary comparisons.
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list1 is a sublist of list2
+// SUPERLIST:  list1 is a superlist of list2
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l2 is a sublist of l1,
+//   - SUBLIST if l1 is a sublist of l2,
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+func contains(big, small []int) bool {
+	// An empty slice is considered to be a sublist of any list.
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list1 is a sublist of list2
+// SUPERLIST:  list1 is a superlist of list2
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l2 is a sublist of l1,
+//   - SUBLIST if l1 is a sublist of l2,
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+func contains(big, small []int) bool {
+	// An empty slice is considered to be a sublist of any list.
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list1 is a sublist of list2
+// SUPERLIST:  list1 is a superlist of list2
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l1 is a superlist of l2,
+//   - SUBLIST if l1 is a sublist of l2,
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+func contains(big, small []int) bool {
+	// An empty slice is considered to be a sublist of any list.
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list2 is a sublist of list1
+// SUPERLIST:  list1 is a sublist of list2
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l1 is a sublist of l2,
+//   - SUBLIST if l2 is a sublist of l1,
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+func contains(big, small []int) bool {
+	// An empty slice is considered to be a sublist of any list.
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list2 is a sublist of list1 (i.e. list1 is a superlist of list2)
+// SUPERLIST:  list1 is a sublist of list2 (i.e. list1 is a sublist of list2)
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l1 contains l2 (l2 is a sublist of l1),
+//   - SUBLIST if l2 contains l1 (l1 is a sublist of l2),
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+// An empty slice is considered a sublist of any list.
+func contains(big, small []int) bool {
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list2 is a sublist of list1 (i.e. list1 is a superlist of list2)
+// SUPERLIST:  list1 is a sublist of list2 (i.e. list1 is a sublist of list2)
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l1 contains l2 (l2 is a sublist of l1),
+//   - SUBLIST if l2 contains l1 (l1 is a sublist of l2),
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+// An empty slice is considered to be a sublist of any list.
+func contains(big, small []int) bool {
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list2 is a sublist of list1 (i.e. list1 is a superlist of list2)
+// SUPERLIST:  list1 is a sublist of list2 (i.e. list1 is a sublist of list2)
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l1 contains l2 (l2 is a sublist of l1),
+//   - SUBLIST if l2 contains l1 (l1 is a sublist of l2),
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+// An empty slice is considered to be a sublist of any list.
+func contains(big, small []int) bool {
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list2 is a sublist of list1 (i.e. list1 is a superlist of list2)
+// SUPERLIST:  list1 is a sublist of list2 (i.e. list1 contains list2)
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l1 contains l2 (l2 is a sublist of l1),
+//   - SUBLIST if l2 contains l1 (l1 is a sublist of l2),
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+// An empty slice is considered to be a sublist of any list.
+func contains(big, small []int) bool {
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list2 is a sublist of list1 (i.e. list1 is a superlist of list2)
+// SUPERLIST:  list1 contains list2 (i.e. list2 is a sublist of list1)
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l1 contains l2 (l2 is a sublist of l1),
+//   - SUBLIST if l2 contains l1 (l1 is a sublist of l2),
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+// An empty slice is considered to be a sublist of any list.
+func contains(big, small []int) bool {
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/sublist/.meta/example.go
+package sublist
+
+// Relation is the type representing the relationship between two lists.
+// It is defined as an integer value for efficient memory usage.
+// Enumerated constants:
+// SUBLIST:    list2 is a sublist of list1 (i.e. list1 is a superlist of list2)
+// SUPERLIST:  list1 contains list2 (i.e. list2 is a sublist of list1)
+// EQUAL:      both lists are equal
+// UNEQUAL:    lists are unequal
+
+type Relation int
+
+const (
+	SUBLIST   Relation = 0
+	SUPERLIST Relation = 1
+	EQUAL     Relation = 2
+	UNEQUAL   Relation = 3
+)
+
+// Sublist determines the relationship between two lists l1 and l2.
+// It returns:
+//   - EQUAL if the lists are identical,
+//   - SUPERLIST if l1 contains l2 (l2 is a sublist of l1),
+//   - SUBLIST if l2 contains l1 (l1 is a sublist of l2),
+//   - UNEQUAL otherwise.
+func Sublist(l1, l2 []int) Relation {
+	if equal(l1, l2) {
+		return EQUAL
+	}
+	if contains(l1, l2) {
+		return SUPERLIST
+	}
+	if contains(l2, l1) {
+		return SUBLIST
+	}
+	return UNEQUAL
+}
+
+// equal checks if two integer slices are equal.
+func equal(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if the slice 'big' contains the contiguous subsequence 'small'.
+// An empty slice is considered to be a sublist of any list.
+func contains(big, small []int) bool {
+	if len(small) == 0 {
+		return true
+	}
+	if len(small) > len(big) {
+		return false
+	}
+
+	for i := 0; i <= len(big)-len(small); i++ {
+		if big[i] != small[0] {
+			continue
+		}
+		found := true
+		for j := 0; j < len(small); j++ {
+			if big[i+j] != small[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sublist [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sublist [exercism/sublist.test]
+./sublist_test.go:8:21: undefined: testCases
+./sublist_test.go:22:22: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

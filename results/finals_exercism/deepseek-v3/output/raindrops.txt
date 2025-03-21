@@ -1,0 +1,504 @@
+=== Initial Source Code ===
+Source file: exercises/practice/raindrops/.meta/example.py
+def convert(number):
+    """
+    Converts a number to a string according to the raindrop sounds.
+    """
+
+    result = ''
+    if number % 3 == 0:
+        result += 'Pling'
+    if number % 5 == 0:
+        result += 'Plang'
+    if number % 7 == 0:
+        result += 'Plong'
+
+    if not result:
+        result = str(number)
+    return result
+
+
+=== Source Interface ===
+def convert(number):
+    pass
+
+
+=== Target Interface ===
+package raindrops
+
+func Convert(number int) string {
+	panic("Please implement the Convert function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/raindrops/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from raindrops import (
+    convert,
+)
+
+
+class RaindropsTest(unittest.TestCase):
+    def test_the_sound_for_1_is_1(self):
+        self.assertEqual(convert(1), "1")
+
+    def test_the_sound_for_3_is_pling(self):
+        self.assertEqual(convert(3), "Pling")
+
+    def test_the_sound_for_5_is_plang(self):
+        self.assertEqual(convert(5), "Plang")
+
+    def test_the_sound_for_7_is_plong(self):
+        self.assertEqual(convert(7), "Plong")
+
+    def test_the_sound_for_6_is_pling_as_it_has_a_factor_3(self):
+        self.assertEqual(convert(6), "Pling")
+
+    def test_2_to_the_power_3_does_not_make_a_raindrop_sound_as_3_is_the_exponent_not_the_base(
+        self,
+    ):
+        self.assertEqual(convert(8), "8")
+
+    def test_the_sound_for_9_is_pling_as_it_has_a_factor_3(self):
+        self.assertEqual(convert(9), "Pling")
+
+    def test_the_sound_for_10_is_plang_as_it_has_a_factor_5(self):
+        self.assertEqual(convert(10), "Plang")
+
+    def test_the_sound_for_14_is_plong_as_it_has_a_factor_of_7(self):
+        self.assertEqual(convert(14), "Plong")
+
+    def test_the_sound_for_15_is_pling_plang_as_it_has_factors_3_and_5(self):
+        self.assertEqual(convert(15), "PlingPlang")
+
+    def test_the_sound_for_21_is_pling_plong_as_it_has_factors_3_and_7(self):
+        self.assertEqual(convert(21), "PlingPlong")
+
+    def test_the_sound_for_25_is_plang_as_it_has_a_factor_5(self):
+        self.assertEqual(convert(25), "Plang")
+
+    def test_the_sound_for_27_is_pling_as_it_has_a_factor_3(self):
+        self.assertEqual(convert(27), "Pling")
+
+    def test_the_sound_for_35_is_plang_plong_as_it_has_factors_5_and_7(self):
+        self.assertEqual(convert(35), "PlangPlong")
+
+    def test_the_sound_for_49_is_plong_as_it_has_a_factor_7(self):
+        self.assertEqual(convert(49), "Plong")
+
+    def test_the_sound_for_52_is_52(self):
+        self.assertEqual(convert(52), "52")
+
+    def test_the_sound_for_105_is_pling_plang_plong_as_it_has_factors_3_5_and_7(self):
+        self.assertEqual(convert(105), "PlingPlangPlong")
+
+    def test_the_sound_for_3125_is_plang_as_it_has_a_factor_5(self):
+        self.assertEqual(convert(3125), "Plang")
+
+
+=== Target Test Code ===
+package raindrops
+
+import "testing"
+
+func TestConvert(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Convert(tc.input); actual != tc.expected {
+				t.Fatalf("Convert(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkConvert(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Convert(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/raindrops/.meta/example.go
+package raindrops
+
+import "strconv"
+
+// Convert converts a number to a string according to the raindrop sounds.
+func Convert(number int) string {
+	result := ""
+	if number%3 == 0 {
+		result += "Pling"
+	}
+	if number%5 == 0 {
+		result += "Plang"
+	}
+	if number%7 == 0 {
+		result += "Plong"
+	}
+
+	if result == "" {
+		result = strconv.Itoa(number)
+	}
+	return result
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/raindrops [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/raindrops [exercism/raindrops.test]
+./raindrops_test.go:6:21: undefined: testCases
+./raindrops_test.go:20:24: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/raindrops/.meta/example.go
+package raindrops
+
+import "strconv"
+
+// Convert converts a number to a string according to the raindrop sounds.
+func Convert(number int) string {
+	result := ""
+	if number%3 == 0 {
+		result += "Pling"
+	}
+	if number%5 == 0 {
+		result += "Plang"
+	}
+	if number%7 == 0 {
+		result += "Plong"
+	}
+
+	if result == "" {
+		result = strconv.Itoa(number)
+	}
+	return result
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/raindrops [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/raindrops [exercism/raindrops.test]
+./raindrops_test.go:6:21: undefined: testCases
+./raindrops_test.go:20:24: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/raindrops/.meta/example.go
+package raindrops
+
+import "strconv"
+
+// Convert converts a number to a string according to the raindrop sounds.
+func Convert(number int) string {
+	result := ""
+	if number%3 == 0 {
+		result += "Pling"
+	}
+	if number%5 == 0 {
+		result += "Plang"
+	}
+	if number%7 == 0 {
+		result += "Plong"
+	}
+
+	if result == "" {
+		result = strconv.Itoa(number)
+	}
+	return result
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/raindrops [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/raindrops [exercism/raindrops.test]
+./raindrops_test.go:6:21: undefined: testCases
+./raindrops_test.go:20:24: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/raindrops/.meta/example.go
+package raindrops
+
+import "strconv"
+
+// Convert converts a number to a string according to the raindrop sounds.
+func Convert(number int) string {
+	result := ""
+	if number%3 == 0 {
+		result += "Pling"
+	}
+	if number%5 == 0 {
+		result += "Plang"
+	}
+	if number%7 == 0 {
+		result += "Plong"
+	}
+
+	if result == "" {
+		result = strconv.Itoa(number)
+	}
+	return result
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/raindrops [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/raindrops [exercism/raindrops.test]
+./raindrops_test.go:6:21: undefined: testCases
+./raindrops_test.go:20:24: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/raindrops/.meta/example.go
+package raindrops
+
+import "strconv"
+
+// Convert converts a number to a string according to the raindrop sounds.
+func Convert(number int) string {
+	result := ""
+	if number%3 == 0 {
+		result += "Pling"
+	}
+	if number%5 == 0 {
+		result += "Plang"
+	}
+	if number%7 == 0 {
+		result += "Plong"
+	}
+
+	if result == "" {
+		result = strconv.Itoa(number)
+	}
+	return result
+}
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/raindrops [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/raindrops [exercism/raindrops.test]
+./raindrops_test.go:6:21: undefined: testCases
+./raindrops_test.go:20:24: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/raindrops/.meta/example.go
+package raindrops
+
+import "strconv"
+
+// Convert converts a number to a string according to the raindrop sounds.
+func Convert(number int) string {
+	result := ""
+	if number%3 == 0 {
+		result += "Pling"
+	}
+	if number%5 == 0 {
+		result += "Plang"
+	}
+	if number%7 == 0 {
+		result += "Plong"
+	}
+
+	if result == "" {
+		result = strconv.Itoa(number)
+	}
+	return result
+}
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/raindrops [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/raindrops [exercism/raindrops.test]
+./raindrops_test.go:6:21: undefined: testCases
+./raindrops_test.go:20:24: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/raindrops/.meta/example.go
+package raindrops
+
+import "strconv"
+
+// Convert converts a number to a string according to the raindrop sounds.
+func Convert(number int) string {
+	result := ""
+	if number%3 == 0 {
+		result += "Pling"
+	}
+	if number%5 == 0 {
+		result += "Plang"
+	}
+	if number%7 == 0 {
+		result += "Plong"
+	}
+
+	if result == "" {
+		result = strconv.Itoa(number)
+	}
+	return result
+}
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/raindrops [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/raindrops [exercism/raindrops.test]
+./raindrops_test.go:6:21: undefined: testCases
+./raindrops_test.go:20:24: undefined: testCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/raindrops/.meta/example.go
+package raindrops
+
+import "strconv"
+
+// Convert converts a number to a string according to the raindrop sounds.
+func Convert(number int) string {
+	result := ""
+	if number%3 == 0 {
+		result += "Pling"
+	}
+	if number%5 == 0 {
+		result += "Plang"
+	}
+	if number%7 == 0 {
+		result += "Plong"
+	}
+
+	if result == "" {
+		result = strconv.Itoa(number)
+	}
+	return result
+}
+
+// exercises/practice/raindrops/.meta/example_test.go
+package raindrops
+
+import (
+	"testing"
+)
+
+var testCases = []struct {
+	description string
+	input      int
+	expected   string
+}{
+	{
+		description: "Number has 3 as a factor",
+		input:      9,
+		expected:   "Pling",
+	},
+	{
+		description: "Number has 5 as a factor",
+		input:      10,
+		expected:   "Plang",
+	},
+	{
+		description: "Number has 7 as a factor",
+		input:      14,
+		expected:   "Plong",
+	},
+	{
+		description: "Number has 3 and 5 as factors",
+		input:      15,
+		expected:   "PlingPlang",
+	},
+	{
+		description: "Number has 3 and 7 as factors",
+		input:      21,
+		expected:   "PlingPlong",
+	},
+	{
+		description: "Number has 5 and 7 as factors",
+		input:      35,
+		expected:   "PlangPlong",
+	},
+	{
+		description: "Number has 3, 5, and 7 as factors",
+		input:      105,
+		expected:   "PlingPlangPlong",
+	},
+	{
+		description: "Number has no factors of 3, 5, or 7",
+		input:      8,
+		expected:   "8",
+	},
+}
+
+func TestConvert(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Convert(tc.input); actual != tc.expected {
+				t.Fatalf("Convert(%d) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkConvert(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Convert(test.input)
+		}
+	}
+}
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/raindrops [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/raindrops [exercism/raindrops.test]
+./raindrops.go:26:1: syntax error: non-declaration statement outside function body
+
+
+=== ERROR ===
+Error processing sample (returncode=2): 
+
+=== FINAL STATUS: ERROR ===

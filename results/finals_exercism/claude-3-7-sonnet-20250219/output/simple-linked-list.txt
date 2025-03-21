@@ -1,0 +1,974 @@
+=== Initial Source Code ===
+Source file: exercises/practice/simple-linked-list/.meta/example.py
+class Node:
+    def __init__(self, value):
+        self._value = value
+        self._next = None
+
+    def value(self):
+        return self._value
+
+    def next(self):
+        return self._next
+
+
+class LinkedIterator:
+    def __init__(self, linked_list):
+        self.current = linked_list._head
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.current is None:
+            raise StopIteration
+        value = self.current.value()
+        self.current = self.current.next()
+        return value
+
+    def next(self):
+        return self.__next__()
+
+
+class LinkedList:
+    def __init__(self, values=None):
+        values = values if values is not None else []
+        self._head = None
+        self._len = 0
+        for value in values:
+            self.push(value)
+
+    def __iter__(self):
+        return LinkedIterator(self)
+
+    def __len__(self):
+        return self._len
+
+    def head(self):
+        if self._head is None:
+            raise EmptyListException('The list is empty.')
+        return self._head
+
+    def push(self, value):
+        new_node = Node(value)
+        new_node._next = self._head
+        self._head = new_node
+        self._len += 1
+
+    def pop(self):
+        if self._head is None:
+            raise EmptyListException('The list is empty.')
+        self._len -= 1
+        ret = self._head.value()
+        self._head = self._head.next()
+        return ret
+
+    def reversed(self):
+        return LinkedList(self)
+
+
+class EmptyListException(Exception):
+    """Exception raised when the linked list is empty.
+
+    message: explanation of the error.
+
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
+=== Source Interface ===
+class EmptyListException(Exception):
+    pass
+
+
+class Node:
+    def __init__(self, value):
+        pass
+
+    def value(self):
+        pass
+
+    def next(self):
+        pass
+
+
+class LinkedList:
+    def __init__(self, values=None):
+        pass
+
+    def __iter__(self):
+        pass
+
+    def __len__(self):
+        pass
+
+    def head(self):
+        pass
+
+    def push(self, value):
+        pass
+
+    def pop(self):
+        pass
+
+    def reversed(self):
+        pass
+
+
+=== Target Interface ===
+package linkedlist
+
+// Define the List and Element types here.
+
+func New(elements []int) *List {
+	panic("Please implement the New function")
+}
+
+func (l *List) Size() int {
+	panic("Please implement the Size function")
+}
+
+func (l *List) Push(element int) {
+	panic("Please implement the Push function")
+}
+
+func (l *List) Pop() (int, error) {
+	panic("Please implement the Pop function")
+}
+
+func (l *List) Array() []int {
+	panic("Please implement the Array function")
+}
+
+func (l *List) Reverse() *List {
+	panic("Please implement the Reverse function")
+}
+
+
+=== Source Test Code ===
+import unittest
+
+from simple_linked_list import LinkedList, EmptyListException
+
+
+# No canonical data available for this exercise
+
+class SimpleLinkedListTest(unittest.TestCase):
+    def test_empty_list_has_len_zero(self):
+        sut = LinkedList()
+        self.assertEqual(len(sut), 0)
+
+    def test_singleton_list_has_len_one(self):
+        sut = LinkedList([1])
+        self.assertEqual(len(sut), 1)
+
+    def test_non_empty_list_has_correct_len(self):
+        sut = LinkedList([1, 2, 3])
+        self.assertEqual(len(sut), 3)
+
+    def test_error_on_empty_list_head(self):
+        sut = LinkedList()
+        with self.assertRaises(EmptyListException) as err:
+            sut.head()
+        self.assertEqual(type(err.exception), EmptyListException)
+        self.assertEqual(err.exception.args[0], "The list is empty.")
+
+    def test_singleton_list_has_head(self):
+        sut = LinkedList([1])
+        self.assertEqual(sut.head().value(), 1)
+
+    def test_non_empty_list_has_correct_head(self):
+        sut = LinkedList([1, 2])
+        self.assertEqual(sut.head().value(), 2)
+
+    def test_can_push_to_non_empty_list(self):
+        sut = LinkedList([1, 2, 3])
+        sut.push(4)
+        self.assertEqual(len(sut), 4)
+
+    def test_pushing_to_empty_list_changes_head(self):
+        sut = LinkedList()
+        sut.push(5)
+        self.assertEqual(len(sut), 1)
+        self.assertEqual(sut.head().value(), 5)
+
+    def test_can_pop_from_non_empty_list(self):
+        sut = LinkedList([3, 4, 5])
+        self.assertEqual(sut.pop(), 5)
+        self.assertEqual(len(sut), 2)
+        self.assertEqual(sut.head().value(), 4)
+
+    def test_pop_from_singleton_list_removes_head(self):
+        sut = LinkedList([1])
+        self.assertEqual(sut.pop(), 1)
+        with self.assertRaises(EmptyListException) as err:
+            sut.head()
+        self.assertEqual(type(err.exception), EmptyListException)
+        self.assertEqual(err.exception.args[0], "The list is empty.")
+
+    def test_error_on_empty_list_pop(self):
+        sut = LinkedList()
+        with self.assertRaises(EmptyListException) as err:
+            sut.pop()
+        self.assertEqual(type(err.exception), EmptyListException)
+        self.assertEqual(err.exception.args[0], "The list is empty.")
+
+    def test_push_and_pop(self):
+        sut = LinkedList([1, 2])
+        sut.push(3)
+        self.assertEqual(len(sut), 3)
+        self.assertEqual(sut.pop(), 3)
+        self.assertEqual(sut.pop(), 2)
+        self.assertEqual(sut.pop(), 1)
+        self.assertEqual(len(sut), 0)
+        sut.push(4)
+        self.assertEqual(len(sut), 1)
+        self.assertEqual(sut.head().value(), 4)
+
+    def test_singleton_list_head_has_no_next(self):
+        sut = LinkedList([1])
+        self.assertIsNone(sut.head().next())
+
+    def test_non_empty_list_traverse(self):
+        sut = LinkedList(range(10))
+        current = sut.head()
+        for i in range(10):
+            self.assertEqual(current.value(), 9 - i)
+            current = current.next()
+        self.assertIsNone(current)
+
+    def test_empty_linked_list_to_list_is_empty(self):
+        sut = LinkedList()
+        self.assertEqual(list(sut), [])
+
+    def test_singleton_linked_list_to_list_list_with_singular_element(self):
+        sut = LinkedList([1])
+        self.assertEqual(list(sut), [1])
+
+    def test_non_empty_linked_list_to_list_is_list_with_all_elements(self):
+        sut = LinkedList([1, 2, 3])
+        self.assertEqual(list(sut), [3, 2, 1])
+
+    def test_reversed_empty_list_is_empty_list(self):
+        sut = LinkedList([])
+        self.assertEqual(list(sut.reversed()), [])
+
+    def test_reversed_singleton_list_is_same_list(self):
+        sut = LinkedList([1])
+        self.assertEqual(list(sut.reversed()), [1])
+
+    def test_reverse_non_empty_list(self):
+        sut = LinkedList([1, 2, 3])
+        self.assertEqual(list(sut.reversed()), [1, 2, 3])
+
+
+=== Target Test Code ===
+package linkedlist
+
+import (
+	"reflect"
+	"testing"
+)
+
+var array1To10 = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+
+func TestEmptyListHasSizeZero(t *testing.T) {
+	list := New([]int{})
+	if size := list.Size(); size != 0 {
+		t.Fatalf("Size of empty list: %d, expected: %d", size, 0)
+	}
+	list = New(nil)
+	if size := list.Size(); size != 0 {
+		t.Fatalf("Size of empty list: %d, expected: %d", size, 0)
+	}
+}
+
+func TestSingletonListHasSizeOne(t *testing.T) {
+	list := New([]int{1})
+	if size := list.Size(); size != 1 {
+		t.Fatalf("Size of singleton list: %d, expected: %d", size, 1)
+	}
+}
+
+func TestNonEmptyListHasCorrectSize(t *testing.T) {
+	list := New([]int{1, 2, 3})
+	if size := list.Size(); size != 3 {
+		t.Fatalf("Size of list from [1, 2, 3]: %d, expected: %d", size, 3)
+	}
+}
+
+func TestListHasCorrectSizeAfterPop(t *testing.T) {
+	list := New([]int{1, 2, 3})
+
+	_, _ = list.Pop()
+	_, _ = list.Pop()
+	_, _ = list.Pop()
+
+	if size := list.Size(); size != 0 {
+		t.Fatalf("Size of list from [1, 2, 3] after 3 calls to pop(): got %d, expected: %d", size, 0)
+	}
+}
+
+func TestListHasCorrectSizeAfterPush(t *testing.T) {
+	list := New([]int{})
+
+	list.Push(1)
+	list.Push(2)
+	list.Push(3)
+
+	if size := list.Size(); size != 3 {
+		t.Fatalf("Size of list from [] after 3 calls to push(): got %d, expected: %d", size, 3)
+	}
+}
+
+func TestEmptyListToEmptyArray(t *testing.T) {
+	list := New([]int{})
+	if array := list.Array(); len(array) != 0 {
+		t.Fatalf("Test empty list to array: %v, want empty array", array)
+	}
+	list = New(nil)
+	if array := list.Array(); len(array) != 0 {
+		t.Fatalf("Test empty list to array: %v, want empty array", array)
+	}
+}
+
+func TestNonEmptyListToArray(t *testing.T) {
+	expected := []int{1, 2, 3}
+	list := New(expected)
+	array := list.Array()
+	if !reflect.DeepEqual(array, expected) {
+		t.Fatalf("Test non empty list to array: %v, want %v", array, expected)
+	}
+}
+
+func TestPopFromEmptyList(t *testing.T) {
+	list := New([]int{})
+	if _, err := list.Pop(); err == nil {
+		t.Fatalf("Pop from empty list: expected error but there was not")
+	}
+	list = New(nil)
+	if _, err := list.Pop(); err == nil {
+		t.Fatalf("Pop from empty list: expected error but there was not")
+	}
+}
+
+func TestPopFromNonEmptyList(t *testing.T) {
+	list := New([]int{1, 2, 3})
+	elem, err := list.Pop()
+	if err != nil {
+		t.Fatalf("Pop from non empty list: unexpected error %v", err)
+	}
+	if elem != 3 {
+		t.Fatalf("Pop from non empty list: %d, want %d", elem, 3)
+	}
+	actual := list.Array()
+	expected := []int{1, 2}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("Pop from non empty list: %v, want %v", actual, expected)
+	}
+}
+
+func TestPushToEmptyList(t *testing.T) {
+	list := New([]int{})
+	list.Push(1)
+	actual := list.Array()
+	expected := []int{1}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("Push to empty list: %v, want %v", actual, expected)
+	}
+	list = New(nil)
+	list.Push(1)
+	actual = list.Array()
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("Push to empty list: %v, want %v", actual, expected)
+	}
+}
+
+func TestPushToNonEmptyList(t *testing.T) {
+	list := New([]int{1, 2, 3})
+	list.Push(4)
+	actual := list.Array()
+	expected := []int{1, 2, 3, 4}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("Push to non empty list: %v, want %v", actual, expected)
+	}
+}
+
+func TestPushAndPop(t *testing.T) {
+	list := New([]int{1, 2, 3})
+	list.Pop()
+	list.Push(4)
+	list.Push(5)
+	list.Pop()
+	list.Push(6)
+	actual := list.Array()
+	expected := []int{1, 2, 4, 6}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("Test push and pop: %v, want %v", actual, expected)
+	}
+}
+
+func TestReverseEmptyList(t *testing.T) {
+	list := New([]int{})
+	if reversed := list.Reverse().Array(); len(reversed) != 0 {
+		t.Fatalf("Reverse empty list: %v, want empty list", reversed)
+	}
+	list = New(nil)
+	if reversed := list.Reverse().Array(); len(reversed) != 0 {
+		t.Fatalf("Reverse empty list: %v, want empty list", reversed)
+	}
+}
+
+func TestReverseNonEmptyList(t *testing.T) {
+	list := New([]int{1, 2, 3})
+	actual := list.Reverse().Array()
+	expected := []int{3, 2, 1}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("Reverse non empty list: %v, want %v", actual, expected)
+	}
+}
+
+func BenchmarkNewList(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		_ = New(array1To10)
+	}
+}
+
+func BenchmarkListSize(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	list := New(array1To10)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = list.Size()
+	}
+}
+
+func BenchmarkListPush(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		list := New([]int{})
+		b.StartTimer()
+		for k := 0; k < 1000; k++ {
+			list.Push(k)
+		}
+	}
+}
+
+func BenchmarkListPop(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		list := New([]int{})
+		for k := 0; k < 1000; k++ {
+			list.Push(k)
+		}
+		b.StartTimer()
+		for k := 0; k < 1000; k++ {
+			_, _ = list.Pop()
+		}
+	}
+}
+
+func BenchmarkListToArray(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	list := New(array1To10)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = list.Array()
+	}
+}
+
+func BenchmarkListReverse(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	list := New(array1To10)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = list.Reverse()
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/simple-linked-list/.meta/example.go
+package linkedlist
+
+import (
+	"errors"
+)
+
+// Element represents a node in the linked list
+type Element struct {
+	value int
+	next  *Element
+}
+
+// List represents a linked list with a head element and size
+type List struct {
+	head *Element
+	size int
+}
+
+// New creates a new linked list from a slice of integers
+func New(elements []int) *List {
+	list := &List{}
+	for _, value := range elements {
+		list.Push(value)
+	}
+	return list
+}
+
+// Size returns the number of elements in the list
+func (l *List) Size() int {
+	return l.size
+}
+
+// Push adds a new element to the front of the list
+func (l *List) Push(element int) {
+	newElement := &Element{
+		value: element,
+		next:  l.head,
+	}
+	l.head = newElement
+	l.size++
+}
+
+// Pop removes and returns the element at the front of the list
+func (l *List) Pop() (int, error) {
+	if l.head == nil {
+		return 0, errors.New("the list is empty")
+	}
+	
+	value := l.head.value
+	l.head = l.head.next
+	l.size--
+	
+	return value, nil
+}
+
+// Array returns all the elements in the list as a slice
+func (l *List) Array() []int {
+	result := make([]int, 0, l.size)
+	current := l.head
+	
+	for current != nil {
+		result = append(result, current.value)
+		current = current.next
+	}
+	
+	return result
+}
+
+// Reverse returns a new list with the elements in reverse order
+func (l *List) Reverse() *List {
+	newList := New([]int{})
+	current := l.head
+	
+	for current != nil {
+		newList.Push(current.value)
+		current = current.next
+	}
+	
+	return newList
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestNonEmptyListToArray (0.00s)
+    simple_linked_list_test.go:75: Test non empty list to array: [3 2 1], want [1 2 3]
+--- FAIL: TestPopFromNonEmptyList (0.00s)
+    simple_linked_list_test.go:102: Pop from non empty list: [2 1], want [1 2]
+--- FAIL: TestPushToNonEmptyList (0.00s)
+    simple_linked_list_test.go:128: Push to non empty list: [4 3 2 1], want [1 2 3 4]
+--- FAIL: TestPushAndPop (0.00s)
+    simple_linked_list_test.go:142: Test push and pop: [6 4 2 1], want [1 2 4 6]
+--- FAIL: TestReverseNonEmptyList (0.00s)
+    simple_linked_list_test.go:162: Reverse non empty list: [1 2 3], want [3 2 1]
+FAIL
+FAIL	exercism/simple-linked-list	0.282s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/simple-linked-list/.meta/example.go
+package linkedlist
+
+import (
+	"errors"
+)
+
+// Element represents a node in the linked list
+type Element struct {
+	value int
+	next  *Element
+}
+
+// List represents a linked list with a head element and size
+type List struct {
+	head *Element
+	size int
+}
+
+// New creates a new linked list from a slice of integers
+func New(elements []int) *List {
+	list := &List{}
+	for i := len(elements) - 1; i >= 0; i-- {
+		list.Push(elements[i])
+	}
+	return list
+}
+
+// Size returns the number of elements in the list
+func (l *List) Size() int {
+	return l.size
+}
+
+// Push adds a new element to the front of the list
+func (l *List) Push(element int) {
+	newElement := &Element{
+		value: element,
+		next:  l.head,
+	}
+	l.head = newElement
+	l.size++
+}
+
+// Pop removes and returns the element at the front of the list
+func (l *List) Pop() (int, error) {
+	if l.head == nil {
+		return 0, errors.New("the list is empty")
+	}
+	
+	value := l.head.value
+	l.head = l.head.next
+	l.size--
+	
+	return value, nil
+}
+
+// Array returns all the elements in the list as a slice
+func (l *List) Array() []int {
+	result := make([]int, l.size)
+	current := l.head
+	
+	// The array needs to be in reverse order from how elements are stored
+	// in the linked list (since we push to the front)
+	for i := l.size - 1; i >= 0; i-- {
+		result[i] = current.value
+		current = current.next
+	}
+	
+	return result
+}
+
+// Reverse returns a new list with the elements in reverse order
+func (l *List) Reverse() *List {
+	newList := New([]int{})
+	
+	// Convert to array first
+	array := l.Array()
+	
+	// Push elements in reverse order
+	for i := len(array) - 1; i >= 0; i-- {
+		newList.Push(array[i])
+	}
+	
+	return newList
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestNonEmptyListToArray (0.00s)
+    simple_linked_list_test.go:75: Test non empty list to array: [3 2 1], want [1 2 3]
+--- FAIL: TestPopFromNonEmptyList (0.00s)
+    simple_linked_list_test.go:97: Pop from non empty list: 1, want 3
+--- FAIL: TestPushToNonEmptyList (0.00s)
+    simple_linked_list_test.go:128: Push to non empty list: [3 2 1 4], want [1 2 3 4]
+--- FAIL: TestPushAndPop (0.00s)
+    simple_linked_list_test.go:142: Test push and pop: [3 2 4 6], want [1 2 4 6]
+--- FAIL: TestReverseNonEmptyList (0.00s)
+    simple_linked_list_test.go:162: Reverse non empty list: [1 2 3], want [3 2 1]
+FAIL
+FAIL	exercism/simple-linked-list	0.276s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/simple-linked-list/.meta/example.go
+package linkedlist
+
+import (
+	"errors"
+)
+
+// Element represents a node in the linked list
+type Element struct {
+	value int
+	next  *Element
+}
+
+// List represents a linked list with a head element and size
+type List struct {
+	head *Element
+	size int
+}
+
+// New creates a new linked list from a slice of integers
+func New(elements []int) *List {
+	list := &List{}
+	// Push elements in reverse order to maintain original order
+	for i := len(elements) - 1; i >= 0; i-- {
+		list.Push(elements[i])
+	}
+	return list
+}
+
+// Size returns the number of elements in the list
+func (l *List) Size() int {
+	return l.size
+}
+
+// Push adds a new element to the front of the list
+func (l *List) Push(element int) {
+	newElement := &Element{
+		value: element,
+		next:  l.head,
+	}
+	l.head = newElement
+	l.size++
+}
+
+// Pop removes and returns the element at the front of the list
+func (l *List) Pop() (int, error) {
+	if l.head == nil {
+		return 0, errors.New("the list is empty")
+	}
+	
+	value := l.head.value
+	l.head = l.head.next
+	l.size--
+	
+	return value, nil
+}
+
+// Array returns all the elements in the list as a slice in the original order
+func (l *List) Array() []int {
+	if l.size == 0 {
+		return []int{}
+	}
+	
+	// First, collect elements in reverse order (as they appear in the list)
+	reversed := make([]int, l.size)
+	current := l.head
+	for i := 0; i < l.size; i++ {
+		reversed[i] = current.value
+		current = current.next
+	}
+	
+	// Then reverse again to get original order
+	result := make([]int, l.size)
+	for i := 0; i < l.size; i++ {
+		result[i] = reversed[l.size-1-i]
+	}
+	
+	return result
+}
+
+// Reverse returns a new list with the elements in reverse order
+func (l *List) Reverse() *List {
+	newList := &List{}
+	current := l.head
+	
+	// Simply insert all elements in the same order they appear in the original list
+	for current != nil {
+		newList.Push(current.value)
+		current = current.next
+	}
+	
+	return newList
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestNonEmptyListToArray (0.00s)
+    simple_linked_list_test.go:75: Test non empty list to array: [3 2 1], want [1 2 3]
+--- FAIL: TestPopFromNonEmptyList (0.00s)
+    simple_linked_list_test.go:97: Pop from non empty list: 1, want 3
+--- FAIL: TestPushToNonEmptyList (0.00s)
+    simple_linked_list_test.go:128: Push to non empty list: [3 2 1 4], want [1 2 3 4]
+--- FAIL: TestPushAndPop (0.00s)
+    simple_linked_list_test.go:142: Test push and pop: [3 2 4 6], want [1 2 4 6]
+--- FAIL: TestReverseNonEmptyList (0.00s)
+    simple_linked_list_test.go:162: Reverse non empty list: [1 2 3], want [3 2 1]
+FAIL
+FAIL	exercism/simple-linked-list	0.283s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/simple-linked-list/.meta/example.go
+package linkedlist
+
+import (
+	"errors"
+)
+
+// Element represents a node in the linked list
+type Element struct {
+	value int
+	next  *Element
+}
+
+// List represents a linked list with a head element and size
+type List struct {
+	head *Element
+	size int
+}
+
+// New creates a new linked list from a slice of integers
+func New(elements []int) *List {
+	list := &List{}
+	
+	if elements == nil {
+		return list
+	}
+	
+	// Add elements in order
+	for _, value := range elements {
+		// We need to add each element to the end to maintain order
+		if list.head == nil {
+			list.head = &Element{value: value}
+			list.size = 1
+		} else {
+			current := list.head
+			for current.next != nil {
+				current = current.next
+			}
+			current.next = &Element{value: value}
+			list.size++
+		}
+	}
+	
+	return list
+}
+
+// Size returns the number of elements in the list
+func (l *List) Size() int {
+	return l.size
+}
+
+// Push adds a new element to the end of the list
+func (l *List) Push(element int) {
+	if l.head == nil {
+		l.head = &Element{value: element}
+	} else {
+		current := l.head
+		for current.next != nil {
+			current = current.next
+		}
+		current.next = &Element{value: element}
+	}
+	l.size++
+}
+
+// Pop removes and returns the last element from the list
+func (l *List) Pop() (int, error) {
+	if l.head == nil {
+		return 0, errors.New("the list is empty")
+	}
+	
+	var value int
+	
+	// If there's only one element
+	if l.head.next == nil {
+		value = l.head.value
+		l.head = nil
+	} else {
+		// Find the second-to-last element
+		current := l.head
+		for current.next.next != nil {
+			current = current.next
+		}
+		value = current.next.value
+		current.next = nil
+	}
+	
+	l.size--
+	return value, nil
+}
+
+// Array returns all the elements in the list as a slice
+func (l *List) Array() []int {
+	result := make([]int, l.size)
+	current := l.head
+	
+	// Simply iterate through the list to build the array
+	for i := 0; i < l.size && current != nil; i++ {
+		result[i] = current.value
+		current = current.next
+	}
+	
+	return result
+}
+
+// Reverse returns a new list with the elements in reverse order
+func (l *List) Reverse() *List {
+	newList := &List{}
+	
+	if l.head == nil {
+		return newList
+	}
+	
+	// We need to iterate through the original list and add each element
+	// to the beginning of the new list to reverse the order
+	array := l.Array()
+	for i := len(array) - 1; i >= 0; i-- {
+		if newList.head == nil {
+			newList.head = &Element{value: array[i]}
+			newList.size = 1
+		} else {
+			current := newList.head
+			for current.next != nil {
+				current = current.next
+			}
+			current.next = &Element{value: array[i]}
+			newList.size++
+		}
+	}
+	
+	return newList
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/simple-linked-list	0.278s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

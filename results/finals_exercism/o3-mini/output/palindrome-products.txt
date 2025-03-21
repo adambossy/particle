@@ -1,0 +1,2938 @@
+=== Initial Source Code ===
+Source file: exercises/practice/palindrome-products/.meta/example.py
+from itertools import chain
+from math import log10, floor, ceil
+
+
+def largest(min_factor, max_factor):
+    return get_extreme_palindrome_with_factors(max_factor, min_factor, 'largest')
+
+
+def smallest(max_factor, min_factor):
+    return get_extreme_palindrome_with_factors(max_factor, min_factor, 'smallest')
+
+
+def get_extreme_palindrome_with_factors(max_factor, min_factor, extreme):
+    palindromes_found = palindromes(max_factor, min_factor, reverse=(extreme == 'largest'))
+    factor_pairs = None
+    for palindrome in palindromes_found:
+        factor_pairs = ((factor, palindrome // factor)
+                        for factor in range(min_factor, max_factor + 1)
+                        if palindrome % factor == 0)
+        factor_pairs = list(pair for pair in factor_pairs
+                            if min_factor <= pair[1] <= max_factor)
+        if len(factor_pairs) > 0:
+            break
+
+    if not factor_pairs:
+        return (None, [])
+
+    return (palindrome, factor_pairs)
+
+
+def reverse_num(number):
+    reversed_nums = 0
+    while number > 0:
+        reversed_nums *= 10
+        reversed_nums += (number % 10)
+        number //= 10
+    return reversed_nums
+
+
+def num_digits(number):
+    return int(floor(log10(number) + 1))
+
+
+def palindromes(max_factor, min_factor, reverse=False):
+    """Generates all palindromes between `min_factor`**2 and max_factor`**2
+    If `reverse` is True, will produce the palindromes in decreasing order,
+    from `max_factor`**2 down to `min_factor`**2. This is needed for
+    `largest_palindrome`, since it won't have to iterate through a
+    most of the palindromes just to find the one it needs.
+    """
+    if max_factor < min_factor:
+        raise ValueError('min must be <= max')
+
+    minimum = min_factor ** 2
+    maximum = max_factor ** 2
+
+    def gen_palindromes_of_length(digit_count, reverse=reverse):
+        """Generates all palindromes with `nd` number of digits that are
+        within the desired range.
+        Again, if `reverse` is True, the palindromes are generated in
+        reverse order.
+        """
+        even_nd = (digit_count % 2 == 0)
+
+        min_left_half = max(10 ** (int(ceil(digit_count / 2)) - 1),
+                            minimum // (10 ** (digit_count // 2)))
+        max_left_half = min((10 ** int(ceil(digit_count / 2))) - 1,
+                            maximum // (10 ** (digit_count // 2)))
+
+        current_left_half = min_left_half if not reverse else max_left_half
+
+        def make_palindrome(left_half, even_nd=False):
+            right_half = (reverse_num(left_half)
+                          if even_nd
+                          else reverse_num(left_half // 10))
+            return (left_half * (10 ** (digit_count // 2))) + right_half
+
+        if not reverse:
+            while current_left_half <= max_left_half:
+                palindrome = make_palindrome(current_left_half, even_nd)
+                if minimum <= palindrome <= maximum:
+                    yield palindrome
+                elif palindrome > maximum:
+                    # since palindromes are generated in increasing order,
+                    #   we break out of the loop once we've exceeded the
+                    #   maximum value
+                    break
+                current_left_half += 1
+        else:
+            while current_left_half >= min_left_half:
+                palindrome = make_palindrome(current_left_half, even_nd)
+                if minimum <= palindrome <= maximum:
+                    yield palindrome
+                elif palindrome < minimum:
+                    # since palindromes are generated in decreasing order,
+                    #   we break out of the loop once we've gone below the
+                    #   minimum value
+                    break
+                current_left_half -= 1
+
+    min_nd = num_digits(minimum)
+    max_nd = num_digits(maximum)
+
+    lengths = (range(min_nd, max_nd + 1)
+               if not reverse
+               else range(max_nd, min_nd - 1, -1))
+
+    return chain(*map(gen_palindromes_of_length, lengths))
+
+
+=== Source Interface ===
+def largest(min_factor, max_factor):
+    """Given a range of numbers, find the largest palindromes which
+       are products of two numbers within that range.
+
+    :param min_factor: int with a default value of 0
+    :param max_factor: int
+    :return: tuple of (palindrome, iterable).
+             Iterable should contain both factors of the palindrome in an arbitrary order.
+    """
+
+    pass
+
+
+def smallest(min_factor, max_factor):
+    """Given a range of numbers, find the smallest palindromes which
+    are products of two numbers within that range.
+
+    :param min_factor: int with a default value of 0
+    :param max_factor: int
+    :return: tuple of (palindrome, iterable).
+    Iterable should contain both factors of the palindrome in an arbitrary order.
+    """
+
+    pass
+
+
+=== Target Interface ===
+package palindrome
+
+// Define Product type here.
+
+func Products(fmin, fmax int) (Product, Product, error) {
+	panic("Please implement the Products function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/palindrome-products/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from palindrome_products import (
+    largest,
+    smallest,
+)
+
+
+class PalindromeProductsTest(unittest.TestCase):
+    def test_find_the_smallest_palindrome_from_single_digit_factors(self):
+        value, factors = smallest(min_factor=1, max_factor=9)
+        self.assertEqual(value, 1)
+        self.assertFactorsEqual(factors, [[1, 1]])
+
+    def test_find_the_largest_palindrome_from_single_digit_factors(self):
+        value, factors = largest(min_factor=1, max_factor=9)
+        self.assertEqual(value, 9)
+        self.assertFactorsEqual(factors, [[1, 9], [3, 3]])
+
+    def test_find_the_smallest_palindrome_from_double_digit_factors(self):
+        value, factors = smallest(min_factor=10, max_factor=99)
+        self.assertEqual(value, 121)
+        self.assertFactorsEqual(factors, [[11, 11]])
+
+    def test_find_the_largest_palindrome_from_double_digit_factors(self):
+        value, factors = largest(min_factor=10, max_factor=99)
+        self.assertEqual(value, 9009)
+        self.assertFactorsEqual(factors, [[91, 99]])
+
+    def test_find_the_smallest_palindrome_from_triple_digit_factors(self):
+        value, factors = smallest(min_factor=100, max_factor=999)
+        self.assertEqual(value, 10201)
+        self.assertFactorsEqual(factors, [[101, 101]])
+
+    def test_find_the_largest_palindrome_from_triple_digit_factors(self):
+        value, factors = largest(min_factor=100, max_factor=999)
+        self.assertEqual(value, 906609)
+        self.assertFactorsEqual(factors, [[913, 993]])
+
+    def test_find_the_smallest_palindrome_from_four_digit_factors(self):
+        value, factors = smallest(min_factor=1000, max_factor=9999)
+        self.assertEqual(value, 1002001)
+        self.assertFactorsEqual(factors, [[1001, 1001]])
+
+    def test_find_the_largest_palindrome_from_four_digit_factors(self):
+        value, factors = largest(min_factor=1000, max_factor=9999)
+        self.assertEqual(value, 99000099)
+        self.assertFactorsEqual(factors, [[9901, 9999]])
+
+    def test_empty_result_for_smallest_if_no_palindrome_in_the_range(self):
+        value, factors = smallest(min_factor=1002, max_factor=1003)
+        self.assertIsNone(value)
+        self.assertFactorsEqual(factors, [])
+
+    def test_empty_result_for_largest_if_no_palindrome_in_the_range(self):
+        value, factors = largest(min_factor=15, max_factor=15)
+        self.assertIsNone(value)
+        self.assertFactorsEqual(factors, [])
+
+    def test_error_result_for_smallest_if_min_is_more_than_max(self):
+        with self.assertRaises(ValueError) as err:
+            value, factors = smallest(min_factor=10000, max_factor=1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "min must be <= max")
+
+    def test_error_result_for_largest_if_min_is_more_than_max(self):
+        with self.assertRaises(ValueError) as err:
+            value, factors = largest(min_factor=2, max_factor=1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "min must be <= max")
+
+    def test_smallest_product_does_not_use_the_smallest_factor(self):
+        value, factors = smallest(min_factor=3215, max_factor=4000)
+        self.assertEqual(value, 10988901)
+        self.assertFactorsEqual(factors, [[3297, 3333]])
+
+    def assertFactorsEqual(self, actual, expected):
+        self.assertEqual(set(map(frozenset, actual)), set(map(frozenset, expected)))
+
+
+=== Target Test Code ===
+package palindrome
+
+import (
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+type testCase struct {
+	description string
+	// input to Products(): range limits for factors of the palindrome
+	fmin, fmax int
+	// output from Products():
+	pmin, pmax Product // min and max palandromic products
+	errPrefix  string  // start of text if there is an error, "" otherwise
+}
+
+var testCases = []testCase{
+	{
+		description: "valid limits 1-9",
+		fmin:        1,
+		fmax:        9,
+		pmin:        Product{}, // zero value means don't bother to test it
+		pmax:        Product{9, [][2]int{{1, 9}, {3, 3}}},
+		errPrefix:   "",
+	},
+	{
+		description: "valid limits 10-99",
+		fmin:        10,
+		fmax:        99,
+		pmin:        Product{121, [][2]int{{11, 11}}},
+		pmax:        Product{9009, [][2]int{{91, 99}}},
+		errPrefix:   "",
+	},
+	{
+		description: "valid limits 100-999",
+		fmin:        100,
+		fmax:        999,
+		pmin:        Product{10201, [][2]int{{101, 101}}},
+		pmax:        Product{906609, [][2]int{{913, 993}}},
+		errPrefix:   "",
+	},
+	{
+		description: "no palindromes",
+		fmin:        4,
+		fmax:        10,
+		pmin:        Product{},
+		pmax:        Product{},
+		errPrefix:   "no palindromes",
+	},
+	{
+		description: "fmin > fmax",
+		fmin:        10,
+		fmax:        4,
+		pmin:        Product{},
+		pmax:        Product{},
+		errPrefix:   "fmin > fmax",
+	},
+}
+
+// Bonus curiosities. Can a negative number be a palindrome? Most say no.
+/*
+var bonusData = []testCase{
+	// The following two test cases have the same input, but different expectations. Uncomment just one or the other.
+	// Here you can test that you can reach the limit of the largest palindrome made of two 2-digit numbers.
+	//{
+	//	description: "bonus test 1: error for negative limits",
+	//	fmin:        -99,
+	//	fmax:        -10,
+	//	pmin:        Product{},
+	//	pmax:        Product{},
+	//	errPrefix:   "Negative limits",
+	//},
+	// You can still get non-negative products from negative factors.
+	{
+		description: "bonus test 1: no error for negative limits",
+		fmin:        -99,
+		fmax:        -10,
+		pmin:        Product{121, [][2]int{{-11, -11}}},
+		pmax:        Product{9009, [][2]int{{-99, -91}}},
+		errPrefix:   "",
+	},
+	// The following two test cases have the same input, but different expectations. Uncomment just one or the other.
+	//In case you reverse the *digits* you could have the following cases:
+	//- the zero has to be considered
+	//{
+	//	description: "bonus test 2",
+	//	fmin:        -2,
+	//	fmax:        2,
+	//	pmin:        Product{0, [][2]int{{-2, 0}, {-1, 0}, {0, 0}, {0, 1}, {0, 2}}},
+	//	pmax:        Product{4, [][2]int{{-2, -2}, {2, 2}}},
+	//	errPrefix:   "",
+	//},
+	// - you can keep the minus sign in place
+	{
+		description: "bonus test 2",
+		fmin:        -2,
+		fmax:        2,
+		pmin:        Product{-4, [][2]int{{-2, 2}}},
+		pmax:        Product{4, [][2]int{{-2, -2}, {2, 2}}},
+		errPrefix:   "",
+	},
+}
+*/
+
+func TestPalindromeProducts(t *testing.T) {
+	// Uncomment the following line and the bonusData var above to add the bonus test to the default tests
+	// testData = append(testData, bonusData...)
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			pmin, pmax, err := Products(tc.fmin, tc.fmax)
+
+			switch {
+			case tc.errPrefix != "":
+				if err == nil {
+					t.Fatalf("Products(%d, %d) expected error %q, got nil", tc.fmin, tc.fmax, fmt.Sprintf("%s...", tc.errPrefix))
+				}
+				if !strings.HasPrefix(err.Error(), tc.errPrefix) {
+					t.Fatalf("Products(%d, %d) expected error with prefix %q, got: %q", tc.fmin, tc.fmax, tc.errPrefix, err.Error())
+				}
+			case err != nil:
+				t.Fatalf("Products(%d, %d) returned unexpected error: %v", tc.fmin, tc.fmax, err)
+			}
+
+			matchProd := func(field string, have, want Product) {
+				if len(want.Factorizations) > 0 && // option to skip test
+					!reflect.DeepEqual(have, want) {
+					t.Fatalf("Products(%d, %d) [%s] = %v, want: %v", tc.fmin, tc.fmax, field, have, want)
+				}
+			}
+			matchProd("pmin", pmin, tc.pmin)
+			matchProd("pmax", pmax, tc.pmax)
+		})
+	}
+}
+
+func BenchmarkPalindromeProducts(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Products(test.fmin, test.fmax)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"fmt"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is a two-element array of ints.
+// If no palindrome exists, Value will be 0 and Factors will be empty.
+type Product struct {
+	Value   int
+	Factors [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("invalid input: fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	// If no palindrome was found, largestVal will be 0 and no factors are present
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindrome product")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	return Product{Value: largestVal, Factors: largestFactors}, Product{Value: smallestVal, Factors: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product (and its factor pairs) for factors in the range [minFactor, maxFactor].
+// It calls the common helper getExtremePalindromeWithFactors with "largest" as the extreme indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product (and its factor pairs) for factors in the range [minFactor, maxFactor].
+// It calls the common helper getExtremePalindromeWithFactors with "smallest" as the extreme indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome in the products of numbers
+// between minFactor and maxFactor, and returns it along with all valid factor pairs.
+// The first parameter is the maximum factor and the second is the minimum factor (as in the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	// For generating palindromes, note that the original python code calls:
+	// palindromes(max_factor, min_factor, reverse=(extreme=='largest'))
+	// Since our palindromes function expects (minFactor, maxFactor, reverse), we call it accordingly.
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		// Check all possible factors
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				if other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed by products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with the given digit count that lie within [minimum, maximum].
+// If reverse is true, the palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	// halfDigits is the length of the left half. For odd digit counts, we take the ceiling.
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+	
+	// candidate range for the left half based solely on digit count
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	// Adjust left half range based on the overall minimum and maximum
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome forms a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left*int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in an integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two ints.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// For debugging purposes, you can uncomment the following main function to run a sample test.
+// func main() {
+// 	largestProd, smallestProd, err := Products(1, 9)
+// 	if err != nil {
+// 		fmt.Println("Error:", err)
+// 	} else {
+// 		fmt.Printf("Largest: %d, Factors: %v\n", largestProd.Value, largestProd.Factors)
+// 		fmt.Printf("Smallest: %d, Factors: %v\n", smallestProd.Value, smallestProd.Factors)
+// 	}
+// }
+
+// The functions above implement the interface required to satisfy tests in the target language.
+// The Products function is used as the entry point for obtaining the palindrome products.
+
+// End of file.
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"fmt"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value           int
+	Factorizations  [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	// Note: if smallest isn't found, Products() would have returned an error above.
+	return Product{Value: largestVal, Factorizations: largestFactors}, Product{Value: smallestVal, Factorizations: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// The factors are determined such that each pair (a, b) satisfies a <= b.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// To follow the original implementation, we pass maxFactor first and minFactor second to getExtremePalindromeWithFactors
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once (ensure factor <= other) and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left*int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// End of implementation.
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"fmt"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value          int
+	Factorizations [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	return Product{Value: largestVal, Factorizations: largestFactors}, Product{Value: smallestVal, Factorizations: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "largest" indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "smallest" indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once: ensure factor <= other and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left*int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// End of implementation.
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"fmt"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value          int
+	Factorizations [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	return Product{Value: largestVal, Factorizations: largestFactors}, Product{Value: smallestVal, Factorizations: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "largest" indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "smallest" indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once: ensure factor <= other and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left*int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// End of implementation.
+
+// exercises/practice/palindrome-products/.meta/example_test.go
+package palindrome_products
+
+import (
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+type testCase struct {
+	description string
+	// input to Products(): range limits for factors of the palindrome
+	fmin, fmax int
+	// output from Products():
+	pmin, pmax Product // min and max palindromic products
+	errPrefix  string  // start of text if there is an error, "" otherwise
+}
+
+var testCases = []testCase{
+	{
+		description: "valid limits 1-9",
+		fmin:        1,
+		fmax:        9,
+		pmin:        Product{}, // zero value means don't bother to test it
+		pmax:        Product{9, [][2]int{{1, 9}, {3, 3}}},
+		errPrefix:   "",
+	},
+	{
+		description: "valid limits 10-99",
+		fmin:        10,
+		fmax:        99,
+		pmin:        Product{121, [][2]int{{11, 11}}},
+		pmax:        Product{9009, [][2]int{{91, 99}}},
+		errPrefix:   "",
+	},
+	{
+		description: "valid limits 100-999",
+		fmin:        100,
+		fmax:        999,
+		pmin:        Product{10201, [][2]int{{101, 101}}},
+		pmax:        Product{906609, [][2]int{{913, 993}}},
+		errPrefix:   "",
+	},
+	{
+		description: "no palindromes",
+		fmin:        4,
+		fmax:        10,
+		pmin:        Product{},
+		pmax:        Product{},
+		errPrefix:   "no palindromes",
+	},
+	{
+		description: "fmin > fmax",
+		fmin:        10,
+		fmax:        4,
+		pmin:        Product{},
+		pmax:        Product{},
+		errPrefix:   "fmin > fmax",
+	},
+}
+
+// Bonus curiosities. Can a negative number be a palindrome? Most say no.
+/*
+var bonusData = []testCase{
+	// The following two test cases have the same input, but different expectations. Uncomment just one or the other.
+	// Here you can test that you can reach the limit of the largest palindrome made of two 2-digit numbers.
+	//{
+	//	description: "bonus test 1: error for negative limits",
+	//	fmin:        -99,
+	//	fmax:        -10,
+	//	pmin:        Product{},
+	//	pmax:        Product{},
+	//	errPrefix:   "Negative limits",
+	//},
+	// You can still get non-negative products from negative factors.
+	{
+		description: "bonus test 1: no error for negative limits",
+		fmin:        -99,
+		fmax:        -10,
+		pmin:        Product{121, [][2]int{{-11, -11}}},
+		pmax:        Product{9009, [][2]int{{-99, -91}}},
+		errPrefix:   "",
+	},
+	// The following two test cases have the same input, but different expectations. Uncomment just one or the other.
+	//In case you reverse the *digits* you could have the following cases:
+	//- the zero has to be considered
+	//{
+	//	description: "bonus test 2",
+	//	fmin:        -2,
+	//	fmax:        2,
+	//	pmin:        Product{0, [][2]int{{-2, 0}, {-1, 0}, {0, 0}, {0, 1}, {0, 2}}},
+	//	pmax:        Product{4, [][2]int{{-2, -2}, {2, 2}}},
+	//	errPrefix:   "",
+	//},
+	// - you can keep the minus sign in place
+	{
+		description: "bonus test 2",
+		fmin:        -2,
+		fmax:        2,
+		pmin:        Product{-4, [][2]int{{-2, 2}}},
+		pmax:        Product{4, [][2]int{{-2, -2}, {2, 2}}},
+		errPrefix:   "",
+	},
+}
+*/
+
+func TestPalindromeProducts(t *testing.T) {
+	// Uncomment the following line and the bonusData var above to add the bonus test to the default tests
+	// testCases = append(testCases, bonusData...)
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			pmin, pmax, err := Products(tc.fmin, tc.fmax)
+
+			switch {
+			case tc.errPrefix != "":
+				if err == nil {
+					t.Fatalf("Products(%d, %d) expected error %q, got nil", tc.fmin, tc.fmax, fmt.Sprintf("%s...", tc.errPrefix))
+				}
+				if !strings.HasPrefix(err.Error(), tc.errPrefix) {
+					t.Fatalf("Products(%d, %d) expected error with prefix %q, got: %q", tc.fmin, tc.fmax, tc.errPrefix, err.Error())
+				}
+			case err != nil:
+				t.Fatalf("Products(%d, %d) returned unexpected error: %v", tc.fmin, tc.fmax, err)
+			}
+
+			matchProd := func(field string, have, want Product) {
+				if len(want.Factorizations) > 0 && !reflect.DeepEqual(have, want) {
+					t.Fatalf("Products(%d, %d) [%s] = %v, want: %v", tc.fmin, tc.fmax, field, have, want)
+				}
+			}
+			matchProd("pmin", pmin, tc.pmin)
+			matchProd("pmax", pmax, tc.pmax)
+		})
+	}
+}
+
+func BenchmarkPalindromeProducts(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Products(test.fmin, test.fmax)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value          int
+	Factorizations [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	return Product{Value: largestVal, Factorizations: largestFactors}, Product{Value: smallestVal, Factorizations: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "largest" indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "smallest" indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once: ensure factor <= other and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left * int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value          int
+	Factorizations [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	return Product{Value: largestVal, Factorizations: largestFactors}, Product{Value: smallestVal, Factorizations: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "largest" indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "smallest" indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once: ensure factor <= other and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left * int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value          int
+	Factorizations [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	return Product{Value: largestVal, Factorizations: largestFactors}, Product{Value: smallestVal, Factorizations: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "largest" indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "smallest" indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once: ensure factor <= other and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left * int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value          int
+	Factorizations [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	return Product{Value: largestVal, Factorizations: largestFactors}, Product{Value: smallestVal, Factorizations: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "largest" indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "smallest" indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once: ensure factor <= other and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left * int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value          int
+	Factorizations [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	return Product{Value: largestVal, Factorizations: largestFactors}, Product{Value: smallestVal, Factorizations: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "largest" indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "smallest" indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once: ensure factor <= other and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left * int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value          int
+	Factorizations [][2]int
+}
+
+// Products returns the largest and smallest palindromic products for the given range of factors.
+// The first returned Product is the largest palindrome product and the second is the smallest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	largestVal, largestFactors := largest(fmin, fmax)
+	if largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	return Product{Value: largestVal, Factorizations: largestFactors}, Product{Value: smallestVal, Factorizations: smallestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "largest" indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "smallest" indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once: ensure factor <= other and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left * int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// exercises/practice/palindrome-products/.meta/example_test.go
+package palindrome_products
+
+import (
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+func TestPalindromeProducts(t *testing.T) {
+	testCases := []struct {
+		description string
+		fmin, fmax  int
+		pmin, pmax  Product
+		errPrefix  string
+	}{
+		{
+			description: "valid limits 1-9",
+			fmin:        1,
+			fmax:        9,
+			pmin:        Product{},
+			pmax:        Product{9, [][2]int{{1, 9}, {3, 3}}},
+			errPrefix:   "",
+		},
+		{
+			description: "valid limits 10-99",
+			fmin:        10,
+			fmax:        99,
+			pmin:        Product{121, [][2]int{{11, 11}}},
+			pmax:        Product{9009, [][2]int{{91, 99}}},
+			errPrefix:   "",
+		},
+		{
+			description: "valid limits 100-999",
+			fmin:        100,
+			fmax:        999,
+			pmin:        Product{10201, [][2]int{{101, 101}}},
+			pmax:        Product{906609, [][2]int{{913, 993}}},
+			errPrefix:   "",
+		},
+		{
+			description: "no palindromes",
+			fmin:        4,
+			fmax:        10,
+			pmin:        Product{},
+			pmax:        Product{},
+			errPrefix:   "no palindromes",
+		},
+		{
+			description: "fmin > fmax",
+			fmin:        10,
+			fmax:        4,
+			pmin:        Product{},
+			pmax:        Product{},
+			errPrefix:   "fmin > fmax",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			pmin, pmax, err := Products(tc.fmin, tc.fmax)
+
+			switch {
+			case tc.errPrefix != "":
+				if err == nil {
+					t.Fatalf("Products(%d, %d) expected error %q, got nil", tc.fmin, tc.fmax, fmt.Sprintf("%s...", tc.errPrefix))
+				}
+				if !strings.HasPrefix(err.Error(), tc.errPrefix) {
+					t.Fatalf("Products(%d, %d) expected error with prefix %q, got: %q", tc.fmin, tc.fmax, tc.errPrefix, err.Error())
+				}
+			case err != nil:
+				t.Fatalf("Products(%d, %d) returned unexpected error: %v", tc.fmin, tc.fmax, err)
+			}
+
+			matchProd := func(field string, have, want Product) {
+				if len(want.Factorizations) > 0 && !reflect.DeepEqual(have, want) {
+					t.Fatalf("Products(%d, %d) [%s] = %v, want: %v", tc.fmin, tc.fmax, field, have, want)
+				}
+			}
+			matchProd("pmin", pmin, tc.pmin)
+			matchProd("pmax", pmax, tc.pmax)
+		})
+	}
+}
+
+func BenchmarkPalindromeProducts(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range []struct{ fmin, fmax int }{{1, 9}, {10, 99}, {100, 999}} {
+			Products(tc.fmin, tc.fmax)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/palindrome-products/.meta/example.go
+package palindrome_products
+
+import (
+	"errors"
+	"math"
+)
+
+// Product represents a palindromic product along with its factor pairs.
+// Each factor pair is represented as a 2-element array of ints.
+// If no palindrome exists, Value will be 0 and Factorizations will be empty.
+// The field name 'Factorizations' is used to match test expectations.
+
+type Product struct {
+	Value          int
+	Factorizations [][2]int
+}
+
+// Products returns the smallest and largest palindromic products for the given range of factors.
+// The first returned Product is the smallest palindrome product and the second is the largest palindrome product.
+// If no palindromic product exists in the given range or input is invalid, an error is returned.
+func Products(fmin, fmax int) (Product, Product, error) {
+	if fmin > fmax {
+		return Product{}, Product{}, errors.New("fmin > fmax")
+	}
+
+	smallestVal, smallestFactors := smallest(fmin, fmax)
+	largestVal, largestFactors := largest(fmin, fmax)
+	if smallestVal == 0 || len(smallestFactors) == 0 || largestVal == 0 || len(largestFactors) == 0 {
+		return Product{}, Product{}, errors.New("no palindromes")
+	}
+
+	return Product{Value: smallestVal, Factorizations: smallestFactors}, Product{Value: largestVal, Factorizations: largestFactors}, nil
+}
+
+// largest returns the largest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "largest" indicator.
+func largest(minFactor, maxFactor int) (int, [][2]int) {
+	// Note: to match the original implementation, we pass maxFactor first and minFactor second
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "largest")
+}
+
+// smallest returns the smallest palindromic product and its factor pairs for factors in the range [minFactor, maxFactor].
+// It delegates the computation to getExtremePalindromeWithFactors with the "smallest" indicator.
+func smallest(minFactor, maxFactor int) (int, [][2]int) {
+	return getExtremePalindromeWithFactors(maxFactor, minFactor, "smallest")
+}
+
+// getExtremePalindromeWithFactors finds the extreme (largest or smallest) palindrome among the products of numbers
+// between minFactor and maxFactor, and returns the palindrome along with all valid factor pairs (with a <= b).
+// The first parameter is the maximum factor and the second is the minimum factor (to match the original implementation).
+func getExtremePalindromeWithFactors(maxFactor, minFactor int, extreme string) (int, [][2]int) {
+	reverseOrder := (extreme == "largest")
+	pals, err := palindromes(minFactor, maxFactor, reverseOrder)
+	if err != nil {
+		return 0, [][2]int{}
+	}
+
+	for _, p := range pals {
+		pairs := make([][2]int, 0)
+		for factor := minFactor; factor <= maxFactor; factor++ {
+			if p%factor == 0 {
+				other := p / factor
+				// Include the pair only once: ensure factor <= other and both in range
+				if factor <= other && other >= minFactor && other <= maxFactor {
+					pairs = append(pairs, [2]int{factor, other})
+				}
+			}
+		}
+		if len(pairs) > 0 {
+			return p, pairs
+		}
+	}
+	return 0, [][2]int{}
+}
+
+// palindromes generates all palindromic numbers that can be formed as products of two numbers in the range [minFactor, maxFactor].
+// It returns a slice of palindromes. If reverse is true, palindromes are generated in decreasing order.
+func palindromes(minFactor, maxFactor int, reverse bool) ([]int, error) {
+	if maxFactor < minFactor {
+		return nil, errors.New("min must be <= max")
+	}
+
+	minimum := minFactor * minFactor
+	maximum := maxFactor * maxFactor
+
+	minDigits := numDigits(minimum)
+	maxDigits := numDigits(maximum)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for d := minDigits; d <= maxDigits; d++ {
+			palsD := genPalindromesOfLength(d, false, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	} else {
+		for d := maxDigits; d >= minDigits; d-- {
+			palsD := genPalindromesOfLength(d, true, minimum, maximum)
+			results = append(results, palsD...)
+		}
+	}
+
+	return results, nil
+}
+
+// genPalindromesOfLength generates all palindromes with a given digit count that lie within [minimum, maximum].
+// If reverse is true, palindromes are generated in decreasing order.
+func genPalindromesOfLength(digitCount int, reverse bool, minimum, maximum int) []int {
+	evenND := (digitCount % 2 == 0)
+	halfDigits := (digitCount + 1) / 2
+	divisor := int(math.Pow10(digitCount / 2))
+
+	leftCandidateMin := int(math.Pow10(halfDigits - 1))
+	leftCandidateMax := int(math.Pow10(halfDigits)) - 1
+
+	adjustedMin := minimum / divisor
+	adjustedMax := maximum / divisor
+
+	leftMin := maxInt(leftCandidateMin, adjustedMin)
+	leftMax := minInt(leftCandidateMax, adjustedMax)
+
+	results := make([]int, 0)
+
+	if !reverse {
+		for left := leftMin; left <= leftMax; left++ {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p > maximum {
+				break
+			}
+		}
+	} else {
+		for left := leftMax; left >= leftMin; left-- {
+			p := makePalindrome(left, evenND, digitCount)
+			if p >= minimum && p <= maximum {
+				results = append(results, p)
+			} else if p < minimum {
+				break
+			}
+		}
+	}
+
+	return results
+}
+
+// makePalindrome constructs a palindrome by taking the left half and appending its reversed form.
+// For even digit counts, the entire left half is reversed. For odd digit counts, the last digit of the left half is omitted when reversing.
+func makePalindrome(left int, even bool, digitCount int) int {
+	var right int
+	if even {
+		right = reverseNum(left)
+	} else {
+		right = reverseNum(left / 10)
+	}
+	return left * int(math.Pow10(digitCount/2)) + right
+}
+
+// reverseNum returns the number obtained by reversing the digits of the input number.
+func reverseNum(number int) int {
+	rev := 0
+	for number > 0 {
+		rev = rev*10 + (number % 10)
+		number /= 10
+	}
+	return rev
+}
+
+// numDigits returns the number of digits in a given integer. If the number is 0, it returns 1.
+func numDigits(number int) int {
+	if number == 0 {
+		return 1
+	}
+	count := 0
+	for number != 0 {
+		number /= 10
+		count++
+	}
+	return count
+}
+
+// Helper functions to get the maximum or minimum of two integers.
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages palindrome_products (palindrome_products.go) and palindrome (palindrome_products_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/palindrome-products
+
+
+=== FINAL STATUS: FAILED ===

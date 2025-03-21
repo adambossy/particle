@@ -1,0 +1,568 @@
+=== Initial Source Code ===
+Source file: exercises/practice/circular-buffer/.meta/example.py
+class BufferFullException(BufferError):
+    """Exception raised when CircularBuffer is full.
+
+    message: explanation of the error.
+
+    """
+    def __init__(self, message):
+        self.message = message
+
+
+class BufferEmptyException(BufferError):
+    """Exception raised when CircularBuffer is empty.
+
+    message: explanation of the error.
+
+    """
+    def __init__(self, message):
+        self.message = message
+
+
+class CircularBuffer:
+
+    def __init__(self, capacity):
+        self.buffer = bytearray(capacity)
+        self.read_point = 0
+        self.write_point = 0
+
+    # (protected) helper method
+    def _update_buffer(self, data):
+        try:
+            self.buffer[self.write_point] = data
+        except TypeError:
+            self.buffer[self.write_point] = ord(data)
+
+    def clear(self):
+        self.buffer = bytearray(len(self.buffer))
+
+    def write(self, data):
+        if all(self.buffer):
+            raise BufferFullException('Circular buffer is full')
+        self._update_buffer(data)
+        self.write_point = (self.write_point + 1) % len(self.buffer)
+
+    def overwrite(self, data):
+        self._update_buffer(data)
+        if all(self.buffer) and self.write_point == self.read_point:
+            self.read_point = (self.read_point + 1) % len(self.buffer)
+        self.write_point = (self.write_point + 1) % len(self.buffer)
+
+    def read(self):
+        if not any(self.buffer):
+            raise BufferEmptyException('Circular buffer is empty')
+        data = chr(self.buffer[self.read_point])
+        self.buffer[self.read_point] = 0
+        self.read_point = (self.read_point + 1) % len(self.buffer)
+        return data
+
+
+=== Source Interface ===
+class BufferFullException(BufferError):
+    """Exception raised when CircularBuffer is full.
+
+    message: explanation of the error.
+
+    """
+    def __init__(self, message):
+        pass
+
+
+class BufferEmptyException(BufferError):
+    """Exception raised when CircularBuffer is empty.
+
+    message: explanation of the error.
+
+    """
+    def __init__(self, message):
+        pass
+
+
+class CircularBuffer:
+    def __init__(self, capacity):
+        pass
+
+    def read(self):
+        pass
+
+    def write(self, data):
+        pass
+
+    def overwrite(self, data):
+        pass
+
+    def clear(self):
+        pass
+
+
+=== Target Interface ===
+package circular
+
+// Implement a circular buffer of bytes supporting both overflow-checked writes
+// and unconditional, possibly overwriting, writes.
+//
+// We chose the provided API so that Buffer implements io.ByteReader
+// and io.ByteWriter and can be used (size permitting) as a drop in
+// replacement for anything using that interface.
+
+// Define the Buffer type here.
+
+func NewBuffer(size int) *Buffer {
+	panic("Please implement the NewBuffer function")
+}
+
+func (b *Buffer) ReadByte() (byte, error) {
+	panic("Please implement the ReadByte function")
+}
+
+func (b *Buffer) WriteByte(c byte) error {
+	panic("Please implement the WriteByte function")
+}
+
+func (b *Buffer) Overwrite(c byte) {
+	panic("Please implement the Overwrite function")
+}
+
+func (b *Buffer) Reset() {
+	panic("Please implement the Reset function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/circular-buffer/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from circular_buffer import (
+    CircularBuffer,
+    BufferEmptyException,
+    BufferFullException,
+)
+
+
+class CircularBufferTest(unittest.TestCase):
+    def test_reading_empty_buffer_should_fail(self):
+        buf = CircularBuffer(1)
+        with self.assertRaises(BufferError) as err:
+            buf.read()
+
+        self.assertEqual(type(err.exception), BufferEmptyException)
+        self.assertEqual(err.exception.args[0], "Circular buffer is empty")
+
+    def test_can_read_an_item_just_written(self):
+        buf = CircularBuffer(1)
+        buf.write("1")
+        self.assertEqual(buf.read(), "1")
+
+    def test_each_item_may_only_be_read_once(self):
+        buf = CircularBuffer(1)
+        buf.write("1")
+        self.assertEqual(buf.read(), "1")
+        with self.assertRaises(BufferError) as err:
+            buf.read()
+
+        self.assertEqual(type(err.exception), BufferEmptyException)
+        self.assertEqual(err.exception.args[0], "Circular buffer is empty")
+
+    def test_items_are_read_in_the_order_they_are_written(self):
+        buf = CircularBuffer(2)
+        buf.write("1")
+        buf.write("2")
+        self.assertEqual(buf.read(), "1")
+        self.assertEqual(buf.read(), "2")
+
+    def test_full_buffer_can_t_be_written_to(self):
+        buf = CircularBuffer(1)
+        buf.write("1")
+        with self.assertRaises(BufferError) as err:
+            buf.write("2")
+
+        self.assertEqual(type(err.exception), BufferFullException)
+        self.assertEqual(err.exception.args[0], "Circular buffer is full")
+
+    def test_a_read_frees_up_capacity_for_another_write(self):
+        buf = CircularBuffer(1)
+        buf.write("1")
+        self.assertEqual(buf.read(), "1")
+        buf.write("2")
+        self.assertEqual(buf.read(), "2")
+
+    def test_read_position_is_maintained_even_across_multiple_writes(self):
+        buf = CircularBuffer(3)
+        buf.write("1")
+        buf.write("2")
+        self.assertEqual(buf.read(), "1")
+        buf.write("3")
+        self.assertEqual(buf.read(), "2")
+        self.assertEqual(buf.read(), "3")
+
+    def test_items_cleared_out_of_buffer_can_t_be_read(self):
+        buf = CircularBuffer(1)
+        buf.write("1")
+        buf.clear()
+        with self.assertRaises(BufferError) as err:
+            buf.read()
+
+        self.assertEqual(type(err.exception), BufferEmptyException)
+        self.assertEqual(err.exception.args[0], "Circular buffer is empty")
+
+    def test_clear_frees_up_capacity_for_another_write(self):
+        buf = CircularBuffer(1)
+        buf.write("1")
+        buf.clear()
+        buf.write("2")
+        self.assertEqual(buf.read(), "2")
+
+    def test_clear_does_nothing_on_empty_buffer(self):
+        buf = CircularBuffer(1)
+        buf.clear()
+        buf.write("1")
+        self.assertEqual(buf.read(), "1")
+
+    def test_overwrite_acts_like_write_on_non_full_buffer(self):
+        buf = CircularBuffer(2)
+        buf.write("1")
+        buf.overwrite("2")
+        self.assertEqual(buf.read(), "1")
+        self.assertEqual(buf.read(), "2")
+
+    def test_overwrite_replaces_the_oldest_item_on_full_buffer(self):
+        buf = CircularBuffer(2)
+        buf.write("1")
+        buf.write("2")
+        buf.overwrite("3")
+        self.assertEqual(buf.read(), "2")
+        self.assertEqual(buf.read(), "3")
+
+    def test_overwrite_replaces_the_oldest_item_remaining_in_buffer_following_a_read(
+        self,
+    ):
+        buf = CircularBuffer(3)
+        buf.write("1")
+        buf.write("2")
+        buf.write("3")
+        self.assertEqual(buf.read(), "1")
+        buf.write("4")
+        buf.overwrite("5")
+        self.assertEqual(buf.read(), "3")
+        self.assertEqual(buf.read(), "4")
+        self.assertEqual(buf.read(), "5")
+
+    def test_initial_clear_does_not_affect_wrapping_around(self):
+        buf = CircularBuffer(2)
+        buf.clear()
+        buf.write("1")
+        buf.write("2")
+        buf.overwrite("3")
+        buf.overwrite("4")
+        self.assertEqual(buf.read(), "3")
+        self.assertEqual(buf.read(), "4")
+        with self.assertRaises(BufferError) as err:
+            buf.read()
+
+        self.assertEqual(type(err.exception), BufferEmptyException)
+        self.assertEqual(err.exception.args[0], "Circular buffer is empty")
+
+
+=== Target Test Code ===
+package circular
+
+import (
+	"io"
+	"testing"
+)
+
+// Here is one way you can have a test case verify that the expected
+// interfaces are implemented.
+
+var _ io.ByteReader = new(Buffer)
+var _ io.ByteWriter = new(Buffer)
+
+// testBuffer and methods support the tests, providing log and fail messages.
+
+type testBuffer struct {
+	*testing.T
+	b *Buffer
+}
+
+func nb(size int, t *testing.T) testBuffer {
+	t.Logf("NewBuffer(%d)", size)
+	return testBuffer{t, NewBuffer(size)}
+}
+
+func (tb testBuffer) read(want byte) {
+	switch c, err := tb.b.ReadByte(); {
+	case err != nil:
+		var _ error = err
+		tb.Fatalf("ReadByte() failed unexpectedly: %v", err)
+	case c != want:
+		tb.Fatalf("ReadByte() = %c, want %c.", c, want)
+	}
+	tb.Logf("ReadByte %c", want)
+}
+
+func (tb testBuffer) readFail() {
+	c, err := tb.b.ReadByte()
+	if err == nil {
+		tb.Fatalf("ReadByte() = %c, expected a failure", c)
+	}
+	var _ error = err
+	tb.Log("ReadByte() fails as expected")
+}
+
+func (tb testBuffer) write(c byte) {
+	if err := tb.b.WriteByte(c); err != nil {
+		var _ error = err
+		tb.Fatalf("WriteByte(%c) failed unexpectedly: %v", c, err)
+	}
+	tb.Logf("WriteByte(%c)", c)
+}
+
+func (tb testBuffer) writeFail(c byte) {
+	err := tb.b.WriteByte(c)
+	if err == nil {
+		tb.Fatalf("WriteByte(%c) succeeded, expected a failure", c)
+	}
+	var _ error = err
+	tb.Logf("WriteByte(%c) fails as expected", c)
+}
+
+func (tb testBuffer) reset() {
+	tb.b.Reset()
+	tb.Log("Reset()")
+}
+
+func (tb testBuffer) overwrite(c byte) {
+	tb.b.Overwrite(c)
+	tb.Logf("Overwrite(%c)", c)
+}
+
+// tests.  separate functions so log will have descriptive test name.
+
+func TestReadEmptyBuffer(t *testing.T) {
+	tb := nb(1, t)
+	tb.readFail()
+}
+
+func TestWriteAndReadOneItem(t *testing.T) {
+	tb := nb(1, t)
+	tb.write('1')
+	tb.read('1')
+	tb.readFail()
+}
+
+func TestWriteAndReadMultipleItems(t *testing.T) {
+	tb := nb(2, t)
+	tb.write('1')
+	tb.write('2')
+	tb.read('1')
+	tb.read('2')
+	tb.readFail()
+}
+
+func TestReset(t *testing.T) {
+	tb := nb(3, t)
+	tb.write('1')
+	tb.write('2')
+	tb.write('3')
+	tb.reset()
+	tb.write('1')
+	tb.write('3')
+	tb.read('1')
+	tb.write('4')
+	tb.read('3')
+}
+
+func TestAlternateWriteAndRead(t *testing.T) {
+	tb := nb(2, t)
+	tb.write('1')
+	tb.read('1')
+	tb.write('2')
+	tb.read('2')
+}
+
+func TestReadOldestItem(t *testing.T) {
+	tb := nb(3, t)
+	tb.write('1')
+	tb.write('2')
+	tb.read('1')
+	tb.write('3')
+	tb.read('2')
+	tb.read('3')
+}
+
+func TestWriteFullBuffer(t *testing.T) {
+	tb := nb(2, t)
+	tb.write('1')
+	tb.write('2')
+	tb.writeFail('A')
+}
+
+func TestOverwriteFull(t *testing.T) {
+	tb := nb(2, t)
+	tb.write('1')
+	tb.write('2')
+	tb.overwrite('A')
+	tb.read('2')
+	tb.read('A')
+	tb.readFail()
+}
+
+func TestOverwriteNonFull(t *testing.T) {
+	tb := nb(2, t)
+	tb.write('1')
+	tb.overwrite('2')
+	tb.read('1')
+	tb.read('2')
+	tb.readFail()
+}
+
+func TestAlternateReadAndOverwrite(t *testing.T) {
+	tb := nb(5, t)
+	tb.write('1')
+	tb.write('2')
+	tb.write('3')
+	tb.read('1')
+	tb.read('2')
+	tb.write('4')
+	tb.read('3')
+	tb.write('5')
+	tb.write('6')
+	tb.write('7')
+	tb.write('8')
+	tb.overwrite('A')
+	tb.overwrite('B')
+	tb.read('6')
+	tb.read('7')
+	tb.read('8')
+	tb.read('A')
+	tb.read('B')
+	tb.readFail()
+}
+
+func BenchmarkOverwrite(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	c := NewBuffer(100)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		c.Overwrite(0)
+	}
+	b.SetBytes(int64(b.N))
+}
+
+func BenchmarkWriteRead(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	c := NewBuffer(100)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		c.WriteByte(0)
+		c.ReadByte()
+	}
+	b.SetBytes(int64(b.N))
+}
+
+
+=== Initial Translation ===
+// exercises/practice/circular-buffer/.meta/example.go
+package circular
+
+import (
+	"errors"
+)
+
+// Buffer is a circular buffer of bytes.
+type Buffer struct {
+	buffer     []byte
+	readPoint  int
+	writePoint int
+}
+
+// NewBuffer creates a new circular buffer with the given size.
+func NewBuffer(size int) *Buffer {
+	return &Buffer{
+		buffer:     make([]byte, size),
+		readPoint:  0,
+		writePoint: 0,
+	}
+}
+
+// ReadByte reads a byte from the buffer and advances the read pointer.
+// Returns an error if the buffer is empty.
+func (b *Buffer) ReadByte() (byte, error) {
+	if !b.hasData() {
+		return 0, errors.New("Circular buffer is empty")
+	}
+	
+	data := b.buffer[b.readPoint]
+	b.buffer[b.readPoint] = 0
+	b.readPoint = (b.readPoint + 1) % len(b.buffer)
+	return data, nil
+}
+
+// WriteByte writes a byte to the buffer and advances the write pointer.
+// Returns an error if the buffer is full.
+func (b *Buffer) WriteByte(c byte) error {
+	if b.isFull() {
+		return errors.New("Circular buffer is full")
+	}
+	
+	b.buffer[b.writePoint] = c
+	b.writePoint = (b.writePoint + 1) % len(b.buffer)
+	return nil
+}
+
+// Overwrite writes a byte to the buffer and advances the write pointer.
+// If the buffer is full, the oldest data is overwritten.
+func (b *Buffer) Overwrite(c byte) {
+	b.buffer[b.writePoint] = c
+	
+	if b.isFull() && b.writePoint == b.readPoint {
+		b.readPoint = (b.readPoint + 1) % len(b.buffer)
+	}
+	
+	b.writePoint = (b.writePoint + 1) % len(b.buffer)
+}
+
+// Reset clears the buffer by resetting all bytes to zero.
+func (b *Buffer) Reset() {
+	b.buffer = make([]byte, len(b.buffer))
+	b.readPoint = 0
+	b.writePoint = 0
+}
+
+// isFull returns true if the buffer is full.
+func (b *Buffer) isFull() bool {
+	for _, v := range b.buffer {
+		if v == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// hasData returns true if the buffer has any data.
+func (b *Buffer) hasData() bool {
+	for _, v := range b.buffer {
+		if v != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/circular-buffer	0.434s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

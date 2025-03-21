@@ -1,0 +1,2037 @@
+=== Initial Source Code ===
+Source file: exercises/practice/phone-number/.meta/example.py
+import re
+from string import punctuation
+
+
+class PhoneNumber:
+    def __init__(self, number):
+        self.number = self._clean(number)
+        self.area_code = self.number[:3]
+        self.exchange_code = self.number[3:6]
+        self.subscriber_number = self.number[-4:]
+
+    def pretty(self):
+        return f'({self.area_code})-{self.exchange_code}-{self.subscriber_number}'
+
+    def _clean(self, number):
+        preprocess = re.sub(r'[() +-.]', '', number)
+
+        if any(item for item in preprocess if item.isalpha()):
+            raise ValueError('letters not permitted')
+
+        if any(item for item in preprocess if item in punctuation):
+            raise ValueError('punctuations not permitted')
+
+        return self._normalize(preprocess)
+
+    def _normalize(self, number):
+        if len(number) < 10:
+            raise ValueError('must not be fewer than 10 digits')
+
+        if len(number) > 11:
+            raise ValueError('must not be greater than 11 digits')
+
+        if len(number) == 10 or len(number) == 11 and number.startswith('1'):
+            if number[-10] == '0':
+                raise ValueError('area code cannot start with zero')
+            elif number[-10] == '1':
+                raise ValueError('area code cannot start with one')
+            elif number[-7] == '0':
+                raise ValueError('exchange code cannot start with zero')
+            elif number[-7] == '1':
+                raise ValueError('exchange code cannot start with one')
+            else:
+                valid = number[-10] in '23456789' and number[-7] in '23456789'
+
+        else:
+            valid = False
+            if number[0] in '023456789':
+                raise ValueError('11 digits must start with 1')
+
+        if valid:
+            return number[-10:]
+
+        return None # [Pylint]: R1710;
+
+
+=== Source Interface ===
+class PhoneNumber:
+    def __init__(self, number):
+        pass
+
+
+=== Target Interface ===
+package phonenumber
+
+func Number(phoneNumber string) (string, error) {
+	panic("Please implement the Number function")
+}
+
+func AreaCode(phoneNumber string) (string, error) {
+	panic("Please implement the AreaCode function")
+}
+
+func Format(phoneNumber string) (string, error) {
+	panic("Please implement the Format function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/phone-number/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from phone_number import (
+    PhoneNumber,
+)
+
+
+class PhoneNumberTest(unittest.TestCase):
+    def test_cleans_the_number(self):
+        number = PhoneNumber("(223) 456-7890").number
+        self.assertEqual(number, "2234567890")
+
+    def test_cleans_numbers_with_dots(self):
+        number = PhoneNumber("223.456.7890").number
+        self.assertEqual(number, "2234567890")
+
+    def test_cleans_numbers_with_multiple_spaces(self):
+        number = PhoneNumber("223 456   7890   ").number
+        self.assertEqual(number, "2234567890")
+
+    def test_invalid_when_9_digits(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("123456789")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "must not be fewer than 10 digits")
+
+    def test_invalid_when_11_digits_does_not_start_with_a_1(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("22234567890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "11 digits must start with 1")
+
+    def test_valid_when_11_digits_and_starting_with_1(self):
+        number = PhoneNumber("12234567890").number
+        self.assertEqual(number, "2234567890")
+
+    def test_valid_when_11_digits_and_starting_with_1_even_with_punctuation(self):
+        number = PhoneNumber("+1 (223) 456-7890").number
+        self.assertEqual(number, "2234567890")
+
+    def test_invalid_when_more_than_11_digits(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("321234567890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "must not be greater than 11 digits")
+
+    def test_invalid_with_letters(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("523-abc-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "letters not permitted")
+
+    def test_invalid_with_punctuations(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("523-@:!-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "punctuations not permitted")
+
+    def test_invalid_if_area_code_starts_with_0(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("(023) 456-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "area code cannot start with zero")
+
+    def test_invalid_if_area_code_starts_with_1(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("(123) 456-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "area code cannot start with one")
+
+    def test_invalid_if_exchange_code_starts_with_0(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("(223) 056-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "exchange code cannot start with zero")
+
+    def test_invalid_if_exchange_code_starts_with_1(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("(223) 156-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "exchange code cannot start with one")
+
+    def test_invalid_if_area_code_starts_with_0_on_valid_11_digit_number(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("1 (023) 456-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "area code cannot start with zero")
+
+    def test_invalid_if_area_code_starts_with_1_on_valid_11_digit_number(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("1 (123) 456-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "area code cannot start with one")
+
+    def test_invalid_if_exchange_code_starts_with_0_on_valid_11_digit_number(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("1 (223) 056-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "exchange code cannot start with zero")
+
+    def test_invalid_if_exchange_code_starts_with_1_on_valid_11_digit_number(self):
+        with self.assertRaises(ValueError) as err:
+            PhoneNumber("1 (223) 156-7890")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "exchange code cannot start with one")
+
+    # Additional tests for this track
+    def test_area_code(self):
+        number = PhoneNumber("2234567890")
+        self.assertEqual(number.area_code, "223")
+
+    def test_pretty_print(self):
+        number = PhoneNumber("2234567890")
+        self.assertEqual(number.pretty(), "(223)-456-7890")
+
+    def test_pretty_print_with_full_us_phone_number(self):
+        number = PhoneNumber("12234567890")
+        self.assertEqual(number.pretty(), "(223)-456-7890")
+
+
+=== Target Test Code ===
+package phonenumber
+
+import (
+	"testing"
+)
+
+func TestNumber(t *testing.T) {
+	runTests("Number", Number, func(tc testCase) string { return tc.expectedNumber }, t)
+}
+
+func BenchmarkNumber(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Number(test.input)
+		}
+	}
+}
+
+func TestAreaCode(t *testing.T) {
+	runTests("AreaCode", AreaCode, func(tc testCase) string { return tc.expectedAreaCode }, t)
+}
+
+func BenchmarkAreaCode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			AreaCode(test.input)
+		}
+	}
+}
+
+func TestFormat(t *testing.T) {
+	runTests("Format", Format, func(tc testCase) string { return tc.expectedFormatted }, t)
+}
+
+func BenchmarkFormat(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Format(test.input)
+		}
+	}
+}
+
+func runTests(
+	funcName string,
+	f func(s string) (string, error),
+	getExpected func(tc testCase) string,
+	t *testing.T,
+) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, actualErr := f(tc.input)
+			switch {
+			case tc.expectErr:
+				if actualErr == nil {
+					t.Fatalf("%s(%q) expected error, got: %q", funcName, tc.input, actual)
+				}
+			case actualErr != nil:
+				t.Fatalf("%s(%q) returned error: %v, want: %q", funcName, tc.input, actualErr, getExpected(tc))
+			case actual != getExpected(tc):
+				t.Fatalf("%s(%q) = %q, want: %q", funcName, tc.input, actual, getExpected(tc))
+			}
+		})
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/phone-number/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number            string
+	AreaCode          string
+	ExchangeCode      string
+	SubscriberNumber  string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, space, plus, dash, and period
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check for any letters or extra punctuations
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if ch < '0' || ch > '9' {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	// Normalize the cleaned number
+	norm, err := normalize(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return norm, nil
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (phone_number.go) and phonenumber (phone_number_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/phone-number
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number           string
+	AreaCode         string
+	ExchangeCode     string
+	SubscriberNumber string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, space, plus, dash, period
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check for any letters or non-digit characters
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if !unicode.IsDigit(ch) {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	// Normalize the cleaned number
+	norm, err := normalize(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return norm, nil
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+// exercises/practice/phone-number/phone_number_test.go
+package phonenumber
+
+import (
+	"testing"
+)
+
+// testCase represents a single test case for the phone number functions.
+type testCase struct {
+	description       string
+	input             string
+	expectedNumber    string
+	expectedAreaCode  string
+	expectedFormatted string
+	expectErr        bool
+}
+
+var testCases = []testCase{
+	{
+		description:       "valid phone number with formatting",
+		input:             "(223) 456-7890",
+		expectedNumber:    "2234567890",
+		expectedAreaCode:  "223",
+		expectedFormatted: "(223)-456-7890",
+		expectErr:        false,
+	},
+	{
+		description:       "invalid due to letters",
+		input:             "(123) 456-789O",
+		expectedNumber:    "",
+		expectErr:        true,
+	},
+	{
+		description:       "invalid due to punctuations",
+		input:             "(223) 456-78@0",
+		expectedNumber:    "",
+		expectErr:        true,
+	},
+	{
+		description:       "invalid: fewer than 10 digits",
+		input:             "123456789",
+		expectedNumber:    "",
+		expectErr:        true,
+	},
+	{
+		description:       "invalid: 11 digits but does not start with 1",
+		input:             "22234567890",
+		expectedNumber:    "",
+		expectErr:        true,
+	},
+	{
+		description:       "invalid: area code starts with 0",
+		input:             "(023)4567890",
+		expectedNumber:    "",
+		expectErr:        true,
+	},
+	{
+		description:       "invalid: area code starts with 1",
+		input:             "(123)4567890",
+		expectedNumber:    "",
+		expectErr:        true,
+	},
+	{
+		description:       "invalid: exchange code starts with 0",
+		input:             "(223)0567890",
+		expectedNumber:    "",
+		expectErr:        true,
+	},
+	{
+		description:       "invalid: exchange code starts with 1",
+		input:             "(223)1567890",
+		expectedNumber:    "",
+		expectErr:        true,
+	},
+}
+
+func runTests(
+	funcName string,
+	f func(s string) (string, error),
+	getExpected func(tc testCase) string,
+	t *testing.T,
+) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := f(tc.input)
+			switch {
+			case tc.expectErr:
+				if err == nil {
+					t.Fatalf("%s(%q) expected error, got: %q", funcName, tc.input, actual)
+				}
+			case err != nil:
+				t.Fatalf("%s(%q) returned error: %v, want: %q", funcName, tc.input, err, getExpected(tc))
+			case actual != getExpected(tc):
+				t.Fatalf("%s(%q) = %q, want: %q", funcName, tc.input, actual, getExpected(tc))
+			}
+		})
+	}
+}
+
+func TestNumber(t *testing.T) {
+	runTests("Number", Number, func(tc testCase) string { return tc.expectedNumber }, t)
+}
+
+func TestAreaCode(t *testing.T) {
+	runTests("AreaCode", AreaCode, func(tc testCase) string { return tc.expectedAreaCode }, t)
+}
+
+func TestFormat(t *testing.T) {
+	runTests("Format", Format, func(tc testCase) string { return tc.expectedFormatted }, t)
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number.go:132:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number           string
+	AreaCode         string
+	ExchangeCode     string
+	SubscriberNumber string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, space, plus, dash, period
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check for any letters or non-digit characters
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if !unicode.IsDigit(ch) {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	// Normalize the cleaned number
+	norm, err := normalize(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return norm, nil
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number_test.go:8:37: undefined: testCase
+./phone_number_test.go:16:24: undefined: testCases
+./phone_number_test.go:23:41: undefined: testCase
+./phone_number_test.go:31:24: undefined: testCases
+./phone_number_test.go:38:37: undefined: testCase
+./phone_number_test.go:46:24: undefined: testCases
+./phone_number_test.go:55:22: undefined: testCase
+./phone_number_test.go:58:21: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number           string
+	AreaCode         string
+	ExchangeCode     string
+	SubscriberNumber string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, space, plus, dash, period
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check for any letters or non-digit characters
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if !unicode.IsDigit(ch) {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	// Normalize the cleaned number
+	norm, err := normalize(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return norm, nil
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number_test.go:8:37: undefined: testCase
+./phone_number_test.go:16:24: undefined: testCases
+./phone_number_test.go:23:41: undefined: testCase
+./phone_number_test.go:31:24: undefined: testCases
+./phone_number_test.go:38:37: undefined: testCase
+./phone_number_test.go:46:24: undefined: testCases
+./phone_number_test.go:55:22: undefined: testCase
+./phone_number_test.go:58:21: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number           string
+	AreaCode         string
+	ExchangeCode     string
+	SubscriberNumber string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, space, plus, dash, period
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check for any letters or non-digit characters
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if !unicode.IsDigit(ch) {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	// Normalize the cleaned number
+	norm, err := normalize(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return norm, nil
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number_test.go:8:37: undefined: testCase
+./phone_number_test.go:16:24: undefined: testCases
+./phone_number_test.go:23:41: undefined: testCase
+./phone_number_test.go:31:24: undefined: testCases
+./phone_number_test.go:38:37: undefined: testCase
+./phone_number_test.go:46:24: undefined: testCases
+./phone_number_test.go:55:22: undefined: testCase
+./phone_number_test.go:58:21: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number           string
+	AreaCode         string
+	ExchangeCode     string
+	SubscriberNumber string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, space, plus, dash, period
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check for any letters or non-digit characters
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if !unicode.IsDigit(ch) {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	// Normalize the cleaned number
+	norm, err := normalize(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return norm, nil
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number_test.go:8:37: undefined: testCase
+./phone_number_test.go:16:24: undefined: testCases
+./phone_number_test.go:23:41: undefined: testCase
+./phone_number_test.go:31:24: undefined: testCases
+./phone_number_test.go:38:37: undefined: testCase
+./phone_number_test.go:46:24: undefined: testCases
+./phone_number_test.go:55:22: undefined: testCase
+./phone_number_test.go:58:21: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number           string
+	AreaCode         string
+	ExchangeCode     string
+	SubscriberNumber string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, space, plus, dash, period
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check for any letters or non-digit characters
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if !unicode.IsDigit(ch) {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	// Normalize the cleaned number
+	norm, err := normalize(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return norm, nil
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number_test.go:8:37: undefined: testCase
+./phone_number_test.go:16:24: undefined: testCases
+./phone_number_test.go:23:41: undefined: testCase
+./phone_number_test.go:31:24: undefined: testCases
+./phone_number_test.go:38:37: undefined: testCase
+./phone_number_test.go:46:24: undefined: testCases
+./phone_number_test.go:55:22: undefined: testCase
+./phone_number_test.go:58:21: undefined: testCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number           string
+	AreaCode         string
+	ExchangeCode     string
+	SubscriberNumber string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, space, plus, dash, period
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check for any letters or non-digit characters
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if !unicode.IsDigit(ch) {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	// Normalize the cleaned number
+	norm, err := normalize(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return norm, nil
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number_test.go:8:37: undefined: testCase
+./phone_number_test.go:16:24: undefined: testCases
+./phone_number_test.go:23:41: undefined: testCase
+./phone_number_test.go:31:24: undefined: testCases
+./phone_number_test.go:38:37: undefined: testCase
+./phone_number_test.go:46:24: undefined: testCases
+./phone_number_test.go:55:22: undefined: testCase
+./phone_number_test.go:58:21: undefined: testCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/phone-number/phone_number_test.go
+package phonenumber
+
+import (
+	"testing"
+)
+
+// testCase represents a single test case for the phone number functions.
+// It includes the input, expected normalized number, expected area code,
+// expected formatted string, and whether an error is expected.
+
+type testCase struct {
+	description       string
+	input             string
+	expectedNumber    string
+	expectedAreaCode  string
+	expectedFormatted string
+	expectErr        bool
+}
+
+var testCases = []testCase{
+	{
+		description:       "valid phone number with formatting",
+		input:             "(223) 456-7890",
+		expectedNumber:    "2234567890",
+		expectedAreaCode:  "223",
+		expectedFormatted: "(223)-456-7890",
+		expectErr:        false,
+	},
+	{
+		description:    "invalid due to letters",
+		input:          "(123) 456-789O",
+		expectedNumber: "",
+		expectErr:      true,
+	},
+	{
+		description:    "invalid due to punctuations",
+		input:          "(223) 456-78@0",
+		expectedNumber: "",
+		expectErr:      true,
+	},
+	{
+		description:    "invalid: fewer than 10 digits",
+		input:          "123456789",
+		expectedNumber: "",
+		expectErr:      true,
+	},
+	{
+		description:    "invalid: 11 digits but does not start with 1",
+		input:          "22234567890",
+		expectedNumber: "",
+		expectErr:      true,
+	},
+	{
+		description:    "invalid: area code starts with 0",
+		input:          "(023)4567890",
+		expectedNumber: "",
+		expectErr:      true,
+	},
+	{
+		description:    "invalid: area code starts with 1",
+		input:          "(123)4567890",
+		expectedNumber: "",
+		expectErr:      true,
+	},
+	{
+		description:    "invalid: exchange code starts with 0",
+		input:          "(223)0567890",
+		expectedNumber: "",
+		expectErr:      true,
+	},
+	{
+		description:    "invalid: exchange code starts with 1",
+		input:          "(223)1567890",
+		expectedNumber: "",
+		expectErr:      true,
+	},
+}
+
+func runTests(
+	funcName string,
+	f func(s string) (string, error),
+	getExpected func(tc testCase) string,
+	t *testing.T,
+) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, actualErr := f(tc.input)
+			switch {
+			case tc.expectErr:
+				if actualErr == nil {
+					t.Fatalf("%s(%q) expected error, got: %q", funcName, tc.input, actual)
+				}
+			case actualErr != nil:
+				t.Fatalf("%s(%q) returned error: %v, want: %q", funcName, tc.input, actualErr, getExpected(tc))
+			case actual != getExpected(tc):
+				t.Fatalf("%s(%q) = %q, want: %q", funcName, tc.input, actual, getExpected(tc))
+			}
+		})
+	}
+}
+
+func TestNumber(t *testing.T) {
+	runTests("Number", Number, func(tc testCase) string { return tc.expectedNumber }, t)
+}
+
+func BenchmarkNumber(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Number(test.input)
+		}
+	}
+}
+
+func TestAreaCode(t *testing.T) {
+	runTests("AreaCode", AreaCode, func(tc testCase) string { return tc.expectedAreaCode }, t)
+}
+
+func BenchmarkAreaCode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			AreaCode(test.input)
+		}
+	}
+}
+
+func TestFormat(t *testing.T) {
+	runTests("Format", Format, func(tc testCase) string { return tc.expectedFormatted }, t)
+}
+
+func BenchmarkFormat(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Format(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number_test.go:7:6: TestNumber redeclared in this block
+	./phone_number.go:103:6: other declaration of TestNumber
+./phone_number_test.go:11:6: BenchmarkNumber redeclared in this block
+	./phone_number.go:107:6: other declaration of BenchmarkNumber
+./phone_number_test.go:22:6: TestAreaCode redeclared in this block
+	./phone_number.go:118:6: other declaration of TestAreaCode
+./phone_number_test.go:26:6: BenchmarkAreaCode redeclared in this block
+	./phone_number.go:122:6: other declaration of BenchmarkAreaCode
+./phone_number_test.go:37:6: TestFormat redeclared in this block
+	./phone_number.go:133:6: other declaration of TestFormat
+./phone_number_test.go:41:6: BenchmarkFormat redeclared in this block
+	./phone_number.go:137:6: other declaration of BenchmarkFormat
+./phone_number_test.go:52:6: runTests redeclared in this block
+	./phone_number.go:80:6: other declaration of runTests
+./phone_number.go:104:21: undefined: Number
+./phone_number.go:113:4: undefined: Number
+./phone_number.go:119:23: undefined: AreaCode
+./phone_number.go:119:23: too many errors
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/phone-number/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number           string
+	AreaCode         string
+	ExchangeCode     string
+	SubscriberNumber string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, space, plus, dash, period
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check for any letters or non-digit characters
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if !unicode.IsDigit(ch) {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	// Normalize the cleaned number
+	norm, err := normalize(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return norm, nil
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (phone_number.go) and phonenumber (phone_number_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/phone-number
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/phone-number/.meta/example.go
+package phonenumber
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"unicode"
+)
+
+// PhoneNumber represents a cleaned and validated phone number.
+// It stores the normalized 10-digit number, its area code, exchange code, and subscriber number.
+// This struct is analogous to the Python PhoneNumber class.
+
+type PhoneNumber struct {
+	Number           string
+	AreaCode         string
+	ExchangeCode     string
+	SubscriberNumber string
+}
+
+// NewPhoneNumber creates a new PhoneNumber instance by cleaning and normalizing the input string.
+// It returns an error if the phone number is invalid.
+func NewPhoneNumber(number string) (*PhoneNumber, error) {
+	norm, err := clean(number)
+	if err != nil {
+		return nil, err
+	}
+	return &PhoneNumber{
+		Number:           norm,
+		AreaCode:         norm[:3],
+		ExchangeCode:     norm[3:6],
+		SubscriberNumber: norm[6:10],
+	}, nil
+}
+
+// Pretty returns the phone number in the format (AAA)-EEE-SSSS.
+func (p *PhoneNumber) Pretty() string {
+	return fmt.Sprintf("(%s)-%s-%s", p.AreaCode, p.ExchangeCode, p.SubscriberNumber)
+}
+
+// clean removes common formatting characters from the input phone number string
+// and then validates that it contains only digits. It also checks for forbidden letters or punctuations.
+// If valid, it returns a normalized string by delegating to normalize().
+func clean(number string) (string, error) {
+	// Remove characters: parentheses, spaces, plus sign, dashes, and periods
+	re := regexp.MustCompile(`[()\+\-\. ]`)
+	cleaned := re.ReplaceAllString(number, "")
+
+	// Check that there are no letters and that every character is a digit
+	for _, ch := range cleaned {
+		if unicode.IsLetter(ch) {
+			return "", errors.New("letters not permitted")
+		}
+		if !unicode.IsDigit(ch) {
+			return "", errors.New("punctuations not permitted")
+		}
+	}
+
+	return normalize(cleaned)
+}
+
+// normalize validates the phone number length and checks the area and exchange codes.
+// It returns the final 10-digit string if valid, or an error if invalid.
+func normalize(number string) (string, error) {
+	if len(number) < 10 {
+		return "", errors.New("must not be fewer than 10 digits")
+	}
+	if len(number) > 11 {
+		return "", errors.New("must not be greater than 11 digits")
+	}
+
+	var norm string
+	if len(number) == 11 {
+		if number[0] != '1' {
+			return "", errors.New("11 digits must start with 1")
+		}
+		norm = number[1:]
+	} else {
+		norm = number
+	}
+
+	if norm[0] == '0' {
+		return "", errors.New("area code cannot start with zero")
+	}
+	if norm[0] == '1' {
+		return "", errors.New("area code cannot start with one")
+	}
+	if norm[3] == '0' {
+		return "", errors.New("exchange code cannot start with zero")
+	}
+	if norm[3] == '1' {
+		return "", errors.New("exchange code cannot start with one")
+	}
+
+	return norm, nil
+}
+
+// Number returns the normalized 10-digit phone number by cleaning the input string.
+func Number(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Number, nil
+}
+
+// AreaCode returns the area code of the phone number by cleaning the input string.
+func AreaCode(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.AreaCode, nil
+}
+
+// Format returns the phone number in the pretty format (AAA)-EEE-SSSS by cleaning the input string.
+func Format(phoneNumber string) (string, error) {
+	p, err := NewPhoneNumber(phoneNumber)
+	if err != nil {
+		return "", err
+	}
+	return p.Pretty(), nil
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/phone-number [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/phone-number [exercism/phone-number.test]
+./phone_number_test.go:8:37: undefined: testCase
+./phone_number_test.go:16:24: undefined: testCases
+./phone_number_test.go:23:41: undefined: testCase
+./phone_number_test.go:31:24: undefined: testCases
+./phone_number_test.go:38:37: undefined: testCase
+./phone_number_test.go:46:24: undefined: testCases
+./phone_number_test.go:55:22: undefined: testCase
+./phone_number_test.go:58:21: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

@@ -1,0 +1,502 @@
+=== Initial Source Code ===
+Source file: exercises/practice/octal/.meta/example.py
+def parse_octal(digits):
+    digits = _validate_octal(digits)
+    return sum(int(digit) * 8 ** idx
+               for (idx, digit) in enumerate(reversed(digits)))
+
+
+def _validate_octal(digits):
+    for digit in digits:
+        if not '0' <= digit < '8':
+            raise ValueError("Invalid octal digit: " + digit)
+    return digits
+
+
+=== Source Interface ===
+def parse_octal(digits):
+    pass
+
+
+=== Target Interface ===
+package octal
+
+func ParseOctal(input string, expectedNum int64, expectErr bool) {
+	panic("Please implement the ParseOctal function")
+}
+
+
+=== Source Test Code ===
+"""Tests for the octal exercise
+
+Implementation note:
+If the string supplied to parse_octal cannot be parsed as an octal number
+your program should raise a ValueError with a meaningful error message.
+"""
+import unittest
+
+from octal import parse_octal
+
+
+class OctalTest(unittest.TestCase):
+    def test_octal_1_is_decimal_1(self):
+        self.assertEqual(parse_octal("1"), 1)
+
+    def test_octal_10_is_decimal_8(self):
+        self.assertEqual(parse_octal("10"), 8)
+
+    def test_octal_17_is_decimal_15(self):
+        self.assertEqual(parse_octal("17"), 15)
+
+    def test_octal_130_is_decimal_88(self):
+        self.assertEqual(parse_octal("130"), 88)
+
+    def test_octal_2047_is_decimal_1063(self):
+        self.assertEqual(parse_octal("2047"), 1063)
+
+    def test_octal_1234567_is_decimal_342391(self):
+        self.assertEqual(parse_octal("1234567"), 342391)
+
+    def test_8_is_seen_as_invalid(self):
+        with self.assertRaisesWithMessage(ValueError):
+            parse_octal("8")
+
+    def test_invalid_octal_is_recognized(self):
+        with self.assertRaisesWithMessage(ValueError):
+            parse_octal("carrot")
+
+    def test_6789_is_seen_as_invalid(self):
+        with self.assertRaisesWithMessage(ValueError):
+            parse_octal("6789")
+
+    def test_valid_octal_formatted_string_011_is_decimal_9(self):
+        self.assertEqual(parse_octal("011"), 9)
+
+    # Utility functions
+    def assertRaisesWithMessage(self, exception):
+        return self.assertRaisesRegex(exception, r".+")
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+=== Target Test Code ===
+package octal
+
+import (
+	"testing"
+)
+
+var testCases = []struct {
+	input       string
+	expectedNum int64
+	expectErr   bool
+}{
+	{"1", 1, false},
+	{"10", 8, false},
+	{"1234567", 342391, false},
+	{"carrot", 0, true},
+	{"35682", 0, true},
+}
+
+func TestParseOctal(t *testing.T) {
+	for _, test := range testCases {
+		actualNum, actualErr := ParseOctal(test.input)
+		// check actualNum only if no error expected
+		if !test.expectErr && actualNum != test.expectedNum {
+			t.Fatalf("ParseOctal(%s): expected[%d], actual [%d]",
+				test.input, test.expectedNum, actualNum)
+		}
+		// if we expect an error and there isn't one
+		if test.expectErr && actualErr == nil {
+			t.Errorf("ParseOctal(%s): expected an error, but error is nil", test.input)
+		}
+		// if we don't expect an error and there is one
+		if !test.expectErr && actualErr != nil {
+			var _ error = actualErr
+			t.Errorf("ParseOctal(%s): expected no error, but error is: %s", test.input, actualErr)
+		}
+	}
+}
+
+func BenchmarkParseOctal(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+
+	for i := 0; i < b.N; i++ {
+
+		for _, test := range testCases {
+			ParseOctal(test.input)
+		}
+
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// parseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that each digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func parseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+// ParseOctal is the exported function that converts an octal number provided as a string into its
+// decimal representation, and asserts that the result matches the expected output. It panics if the
+// conversion result does not meet the expectations regarding the result or error state.
+//
+// input: the octal string to convert
+// expectedNum: the expected decimal number after conversion
+// expectErr: a boolean indicating whether an error is expected
+func ParseOctal(input string, expectedNum int64, expectErr bool) {
+	result, err := parseOctal(input)
+	if expectErr {
+		if err == nil {
+			panic(fmt.Sprintf("expected error for input %q, but got result %d", input, result))
+		}
+	} else {
+		if err != nil {
+			panic(fmt.Sprintf("unexpected error for input %q: %v", input, err))
+		}
+		if result != expectedNum {
+			panic(fmt.Sprintf("expected %d for input %q, but got %d", expectedNum, input, result))
+		}
+	}
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/octal/.meta/example.go
+package meta
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (octal.go) and octal (octal_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/octal
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/octal/.meta/example.go
+package octal
+
+import (
+	"fmt"
+)
+
+// ParseOctal converts an octal number (in string form) to its decimal representation.
+// It validates that every digit is between '0' and '7'.
+// Returns an int64 value of the octal conversion or an error if an invalid digit is encountered.
+func ParseOctal(input string) (int64, error) {
+	var result int64 = 0
+	for _, ch := range input {
+		if ch < '0' || ch > '7' {
+			return 0, fmt.Errorf("invalid octal digit: %c", ch)
+		}
+		result = result*8 + int64(ch-'0')
+	}
+	return result, nil
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/octal	0.279s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

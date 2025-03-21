@@ -1,0 +1,415 @@
+=== Initial Source Code ===
+Source file: exercises/practice/prime-factors/.meta/example.py
+def factors(value):
+    factor_list = []
+    divisor = 2
+    while value > 1:
+        while value % divisor == 0:
+            factor_list.append(divisor)
+            value /= divisor
+
+        divisor += 1
+
+    return factor_list
+
+
+=== Source Interface ===
+def factors(value):
+    pass
+
+
+=== Target Interface ===
+package prime
+
+func Factors(n int64) []int64 {
+	panic("Please implement the Factors function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/prime-factors/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from prime_factors import (
+    factors,
+)
+
+
+class PrimeFactorsTest(unittest.TestCase):
+    def test_no_factors(self):
+        self.assertEqual(factors(1), [])
+
+    def test_prime_number(self):
+        self.assertEqual(factors(2), [2])
+
+    def test_another_prime_number(self):
+        self.assertEqual(factors(3), [3])
+
+    def test_square_of_a_prime(self):
+        self.assertEqual(factors(9), [3, 3])
+
+    def test_product_of_first_prime(self):
+        self.assertEqual(factors(4), [2, 2])
+
+    def test_cube_of_a_prime(self):
+        self.assertEqual(factors(8), [2, 2, 2])
+
+    def test_product_of_second_prime(self):
+        self.assertEqual(factors(27), [3, 3, 3])
+
+    def test_product_of_third_prime(self):
+        self.assertEqual(factors(625), [5, 5, 5, 5])
+
+    def test_product_of_first_and_second_prime(self):
+        self.assertEqual(factors(6), [2, 3])
+
+    def test_product_of_primes_and_non_primes(self):
+        self.assertEqual(factors(12), [2, 2, 3])
+
+    def test_product_of_primes(self):
+        self.assertEqual(factors(901255), [5, 17, 23, 461])
+
+    def test_factors_include_a_large_prime(self):
+        self.assertEqual(factors(93819012551), [11, 9539, 894119])
+
+
+=== Target Test Code ===
+package prime
+
+import (
+	"slices"
+	"testing"
+)
+
+func TestPrimeFactors(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Factors(tc.input)
+			slices.Sort(actual)
+			slices.Sort(tc.expected)
+			if !slices.Equal(actual, tc.expected) {
+				t.Fatalf("Factors(%d)\n got:%#v\nwant:%#v", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkPrimeFactors(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Factors(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+package prime
+
+// Factors calculates the prime factors of a given value.
+func Factors(n int64) []int64 {
+    factorList := []int64{}
+    divisor := int64(2)
+    for n > 1 {
+        for n%divisor == 0 {
+            factorList = append(factorList, divisor)
+            n /= divisor
+        }
+        divisor++
+    }
+    return factorList
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+FAIL	exercism/prime-factors [setup failed]
+FAIL
+
+=== STDERR ===
+# exercism/prime-factors
+prime_factors_test.go:4:2: package slices is not in GOROOT (/usr/local/go/src/slices)
+
+
+=== Retry Attempt 1 ===
+package prime
+
+// Factors calculates the prime factors of a given value.
+func Factors(n int64) []int64 {
+    factorList := []int64{}
+    divisor := int64(2)
+    for n > 1 {
+        for n%divisor == 0 {
+            factorList = append(factorList, divisor)
+            n /= divisor
+        }
+        divisor++
+    }
+    return factorList
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+FAIL	exercism/prime-factors [setup failed]
+FAIL
+
+=== STDERR ===
+# exercism/prime-factors
+prime_factors_test.go:4:2: package slices is not in GOROOT (/usr/local/go/src/slices)
+
+
+=== Retry Attempt 2 ===
+package prime
+
+// Factors calculates the prime factors of a given value.
+func Factors(n int64) []int64 {
+    factorList := []int64{}
+    divisor := int64(2)
+    for n > 1 {
+        for n%divisor == 0 {
+            factorList = append(factorList, divisor)
+            n /= divisor
+        }
+        divisor++
+    }
+    return factorList
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+FAIL	exercism/prime-factors [setup failed]
+FAIL
+
+=== STDERR ===
+# exercism/prime-factors
+prime_factors_test.go:4:2: package slices is not in GOROOT (/usr/local/go/src/slices)
+
+
+=== Retry Attempt 3 ===
+package prime
+
+// Factors calculates the prime factors of a given value.
+func Factors(n int64) []int64 {
+    factorList := []int64{}
+    divisor := int64(2)
+    for n > 1 {
+        for n%divisor == 0 {
+            factorList = append(factorList, divisor)
+            n /= divisor
+        }
+        divisor++
+    }
+    return factorList
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+FAIL	exercism/prime-factors [setup failed]
+FAIL
+
+=== STDERR ===
+# exercism/prime-factors
+prime_factors_test.go:4:2: package slices is not in GOROOT (/usr/local/go/src/slices)
+
+
+=== Retry Attempt 4 ===
+package prime
+
+// Factors calculates the prime factors of a given value.
+func Factors(n int64) []int64 {
+    factorList := []int64{}
+    divisor := int64(2)
+    for n > 1 {
+        for n%divisor == 0 {
+            factorList = append(factorList, divisor)
+            n /= divisor
+        }
+        divisor++
+    }
+    return factorList
+}
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+FAIL	exercism/prime-factors [setup failed]
+FAIL
+
+=== STDERR ===
+# exercism/prime-factors
+prime_factors_test.go:4:2: package slices is not in GOROOT (/usr/local/go/src/slices)
+
+
+=== Retry Attempt 5 ===
+package prime
+
+// Factors calculates the prime factors of a given value.
+func Factors(n int64) []int64 {
+    factorList := []int64{}
+    divisor := int64(2)
+    for n > 1 {
+        for n%divisor == 0 {
+            factorList = append(factorList, divisor)
+            n /= divisor
+        }
+        divisor++
+    }
+    return factorList
+}
+
+=== Test Results (Attempt 5) ===
+Return code: 1
+=== STDOUT ===
+FAIL	exercism/prime-factors [setup failed]
+FAIL
+
+=== STDERR ===
+# exercism/prime-factors
+prime_factors_test.go:4:2: package slices is not in GOROOT (/usr/local/go/src/slices)
+
+
+=== Retry Attempt 6 ===
+package prime
+
+import "sort"
+
+// Factors calculates the prime factors of a given value.
+func Factors(n int64) []int64 {
+    factorList := []int64{}
+    divisor := int64(2)
+    for n > 1 {
+        for n%divisor == 0 {
+            factorList = append(factorList, divisor)
+            n /= divisor
+        }
+        divisor++
+    }
+    return factorList
+}
+
+func TestPrimeFactors(t *testing.T) {
+    testCases := []struct {
+        description string
+        input       int64
+        expected    []int64
+    }{
+        {
+            description: "no factors",
+            input:       1,
+            expected:    []int64{},
+        },
+        {
+            description: "prime number",
+            input:       2,
+            expected:    []int64{2},
+        },
+        {
+            description: "another prime number",
+            input:       3,
+            expected:    []int64{3},
+        },
+        {
+            description: "square of a prime",
+            input:       9,
+            expected:    []int64{3, 3},
+        },
+        {
+            description: "product of first prime",
+            input:       4,
+            expected:    []int64{2, 2},
+        },
+        {
+            description: "cube of a prime",
+            input:       8,
+            expected:    []int64{2, 2, 2},
+        },
+        {
+            description: "product of second prime",
+            input:       27,
+            expected:    []int64{3, 3, 3},
+        },
+        {
+            description: "product of third prime",
+            input:       625,
+            expected:    []int64{5, 5, 5, 5},
+        },
+        {
+            description: "product of first and second prime",
+            input:       6,
+            expected:    []int64{2, 3},
+        },
+        {
+            description: "product of primes and non-primes",
+            input:       12,
+            expected:    []int64{2, 2, 3},
+        },
+        {
+            description: "product of primes",
+            input:       901255,
+            expected:    []int64{5, 17, 23, 461},
+        },
+        {
+            description: "factors include a large prime",
+            input:       93819012551,
+            expected:    []int64{11, 9539, 894119},
+        },
+    }
+
+    for _, tc := range testCases {
+        t.Run(tc.description, func(t *testing.T) {
+            actual := Factors(tc.input)
+            sort.Slice(actual, func(i, j int) bool { return actual[i] < actual[j] })
+            sort.Slice(tc.expected, func(i, j int) bool { return tc.expected[i] < tc.expected[j] })
+            if !equalSlices(actual, tc.expected) {
+                t.Fatalf("Factors(%d)\n got:%#v\nwant:%#v", tc.input, actual, tc.expected)
+            }
+        })
+    }
+}
+
+func equalSlices(a, b []int64) bool {
+    if len(a) != len(b) {
+        return false
+    }
+    for i, v := range a {
+        if v != b[i] {
+            return false
+        }
+    }
+    return true
+}
+
+func BenchmarkPrimeFactors(b *testing.B) {
+    if testing.Short() {
+        b.Skip("skipping benchmark in short mode.")
+    }
+    for i := 0; i < b.N; i++ {
+        Factors(901255)
+    }
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+FAIL	exercism/prime-factors [setup failed]
+FAIL
+
+=== STDERR ===
+# exercism/prime-factors
+prime_factors_test.go:4:2: package slices is not in GOROOT (/usr/local/go/src/slices)
+
+
+=== ERROR ===
+Error processing sample (returncode=1): 
+
+=== FINAL STATUS: ERROR ===

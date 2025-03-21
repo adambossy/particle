@@ -1,0 +1,2083 @@
+=== Initial Source Code ===
+Source file: exercises/practice/tree-building/.meta/example.py
+class Record:
+    def __init__(self, record_id, parent_id):
+        self.record_id = record_id
+        self.parent_id = parent_id
+
+    def equal_id(self):
+        return self.record_id == self.parent_id
+
+
+class Node:
+    def __init__(self, node_id):
+        self.node_id = node_id
+        self.children = []
+
+
+def validate_record(record):
+    if record.equal_id() and record.record_id != 0:
+        raise ValueError('Only root should have equal record and parent id.')
+
+    if not record.equal_id() and record.parent_id >= record.record_id:
+        raise ValueError("Node parent_id should be smaller than it's record_id.")
+
+
+def BuildTree(records):
+    parent_dict = {}
+    node_dict = {}
+    ordered_id = sorted(idx.record_id for idx in records)
+
+    for record in records:
+        validate_record(record)
+        parent_dict[record.record_id] = record.parent_id
+        node_dict[record.record_id] = Node(record.record_id)
+
+    root_id = 0
+    root = None
+
+    for index, record_id in enumerate(ordered_id):
+        if index != record_id:
+            raise ValueError('Record id is invalid or out of order.')
+
+        if record_id == root_id:
+            root = node_dict[record_id]
+        else:
+            parent_id = parent_dict[record_id]
+            node_dict[parent_id].children.append(node_dict[record_id])
+
+    return root
+
+
+=== Source Interface ===
+class Record:
+    def __init__(self, record_id, parent_id):
+        self.record_id = record_id
+        self.parent_id = parent_id
+
+
+class Node:
+    def __init__(self, node_id):
+        self.node_id = node_id
+        self.children = []
+
+
+def BuildTree(records):
+    root = None
+    records.sort(key=lambda x: x.record_id)
+    ordered_id = [i.record_id for i in records]
+    if records:
+        if ordered_id[-1] != len(ordered_id) - 1:
+            raise ValueError('broken tree')
+        if ordered_id[0] != 0:
+            raise ValueError('invalid')
+    trees = []
+    parent = {}
+    for i in range(len(ordered_id)):
+        for j in records:
+            if ordered_id[i] == j.record_id:
+                if j.record_id == 0:
+                    if j.parent_id != 0:
+                        raise ValueError('error!')
+                if j.record_id < j.parent_id:
+                    raise ValueError('something went wrong!')
+                if j.record_id == j.parent_id:
+                    if j.record_id != 0:
+                        raise ValueError('error!')
+                trees.append(Node(ordered_id[i]))
+    for i in range(len(ordered_id)):
+        for j in trees:
+            if i == j.node_id:
+                parent = j
+        for j in records:
+            if j.parent_id == i:
+                for k in trees:
+                    if k.node_id == 0:
+                        continue
+                    if j.record_id == k.node_id:
+                        child = k
+                        parent.children.append(child)
+    if len(trees) > 0:
+        root = trees[0]
+    return root
+
+
+=== Target Interface ===
+package tree
+
+type Record struct {
+	ID     int
+	Parent int
+	// feel free to add fields as you see fit
+}
+
+type Node struct {
+	ID       int
+	Children []*Node
+	// feel free to add fields as you see fit
+}
+
+func Build(records []Record) (*Node, error) {
+	panic("Please implement the Build function")
+}
+
+
+=== Source Test Code ===
+import unittest
+
+from tree_building import Record, BuildTree
+
+
+class TreeBuildingTest(unittest.TestCase):
+    """
+        Record(record_id, parent_id): records given to be processed
+        Node(node_id): Node in tree
+        BuildTree(records): records as argument and returns tree
+        BuildTree should raise ValueError if given records are invalid
+    """
+
+    def test_empty_list_input(self):
+        records = []
+        root = BuildTree(records)
+        self.assertIsNone(root)
+
+    def test_one_node(self):
+        records = [
+            Record(0, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_leaf(root, node_id=0)
+
+    def test_three_nodes_in_order(self):
+        records = [
+            Record(0, 0),
+            Record(1, 0),
+            Record(2, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, node_id=0, children_count=2)
+        self.assert_node_is_leaf(root.children[0], node_id=1)
+        self.assert_node_is_leaf(root.children[1], node_id=2)
+
+    def test_three_nodes_in_reverse_order(self):
+        records = [
+            Record(2, 0),
+            Record(1, 0),
+            Record(0, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, node_id=0, children_count=2)
+        self.assert_node_is_leaf(root.children[0], node_id=1)
+        self.assert_node_is_leaf(root.children[1], node_id=2)
+
+    def test_more_than_two_children(self):
+        records = [
+            Record(0, 0),
+            Record(1, 0),
+            Record(2, 0),
+            Record(3, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, node_id=0, children_count=3)
+        self.assert_node_is_leaf(root.children[0], node_id=1)
+        self.assert_node_is_leaf(root.children[1], node_id=2)
+        self.assert_node_is_leaf(root.children[2], node_id=3)
+
+    def test_binary_tree(self):
+        records = [
+            Record(6, 2),
+            Record(0, 0),
+            Record(3, 1),
+            Record(2, 0),
+            Record(4, 1),
+            Record(5, 2),
+            Record(1, 0)
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, 0, 2)
+        self.assert_node_is_branch(root.children[0], 1, 2)
+        self.assert_node_is_branch(root.children[1], 2, 2)
+        self.assert_node_is_leaf(root.children[0].children[0], 3)
+        self.assert_node_is_leaf(root.children[0].children[1], 4)
+        self.assert_node_is_leaf(root.children[1].children[0], 5)
+        self.assert_node_is_leaf(root.children[1].children[1], 6)
+
+    def test_unbalanced_tree(self):
+        records = [
+            Record(0, 0),
+            Record(1, 0),
+            Record(2, 0),
+            Record(3, 1),
+            Record(4, 1),
+            Record(5, 1),
+            Record(6, 2),
+        ]
+        root = BuildTree(records)
+
+        self.assert_node_is_branch(root, 0, 2)
+        self.assert_node_is_branch(root.children[0], 1, 3)
+        self.assert_node_is_branch(root.children[1], 2, 1)
+        self.assert_node_is_leaf(root.children[0].children[0], 3)
+        self.assert_node_is_leaf(root.children[0].children[1], 4)
+        self.assert_node_is_leaf(root.children[0].children[2], 5)
+        self.assert_node_is_leaf(root.children[1].children[0], 6)
+
+    def test_root_node_has_parent(self):
+        records = [
+            Record(0, 1),
+            Record(1, 0)
+        ]
+        # Root parent_id should be equal to record_id(0)
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Node parent_id should be smaller than it's record_id.")
+
+    def test_no_root_node(self):
+        records = [
+            Record(1, 0),
+            Record(2, 0)
+        ]
+        # Record with record_id 0 (root) is missing
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Record id is invalid or out of order.")
+
+    def test_non_continuous(self):
+        records = [
+            Record(2, 0),
+            Record(4, 2),
+            Record(1, 0),
+            Record(0, 0)
+        ]
+        # Record with record_id 3 is missing
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Record id is invalid or out of order.")
+
+    def test_cycle_directly(self):
+        records = [
+            Record(5, 2),
+            Record(3, 2),
+            Record(2, 2),
+            Record(4, 1),
+            Record(1, 0),
+            Record(0, 0),
+            Record(6, 3)
+        ]
+        # Cycle caused by Record 2 with parent_id pointing to itself
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Only root should have equal record and parent id.")
+
+    def test_cycle_indirectly(self):
+        records = [
+            Record(5, 2),
+            Record(3, 2),
+            Record(2, 6),
+            Record(4, 1),
+            Record(1, 0),
+            Record(0, 0),
+            Record(6, 3)
+        ]
+        # Cycle caused by Record 2 with parent_id(6) greater than record_id(2)
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Node parent_id should be smaller than it's record_id.")
+
+    def test_higher_id_parent_of_lower_id(self):
+        records = [
+            Record(0, 0),
+            Record(2, 0),
+            Record(1, 2)
+        ]
+        # Record 1 have parent_id(2) greater than record_id(1)
+        with self.assertRaises(ValueError) as err:
+            BuildTree(records)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Node parent_id should be smaller than it's record_id.")
+
+    def assert_node_is_branch(self, node, node_id, children_count):
+        self.assertEqual(node.node_id, node_id)
+        self.assertNotEqual(len(node.children), 0)
+        self.assertEqual(len(node.children), children_count)
+
+    def assert_node_is_leaf(self, node, node_id):
+        self.assertEqual(node.node_id, node_id)
+        self.assertEqual(len(node.children), 0)
+
+
+=== Target Test Code ===
+//nolint:gosec // In the context of this exercise, it is fine to use math.Rand instead of crypto.Rand.
+package tree
+
+import (
+	"fmt"
+	"math/rand"
+	"testing"
+)
+
+// Define a function Build(records []Record) (*Node, error)
+// where Record is a struct containing int fields ID and Parent
+// and Node is a struct containing int field ID and []*Node field Children.
+
+var successTestCases = []struct {
+	name     string
+	input    []Record
+	expected *Node
+}{
+	{
+		name:     "empty input",
+		input:    []Record{},
+		expected: nil,
+	},
+	{
+		name: "one node",
+		input: []Record{
+			{ID: 0},
+		},
+		expected: &Node{
+			ID: 0,
+		},
+	},
+	{
+		name: "three nodes in order",
+		input: []Record{
+			{ID: 0},
+			{ID: 1, Parent: 0},
+			{ID: 2, Parent: 0},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{ID: 1},
+				{ID: 2},
+			},
+		},
+	},
+	{
+		name: "three nodes in reverse order",
+		input: []Record{
+			{ID: 2, Parent: 0},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{ID: 1},
+				{ID: 2},
+			},
+		},
+	},
+	{
+		name: "three levels of nesting",
+		input: []Record{
+			{ID: 2, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 3, Parent: 2},
+			{ID: 0},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{
+					ID: 1,
+					Children: []*Node{
+						{
+							ID: 2,
+							Children: []*Node{
+								{ID: 3},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		name: "more than two children",
+		input: []Record{
+			{ID: 3, Parent: 0},
+			{ID: 2, Parent: 0},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{ID: 1},
+				{ID: 2},
+				{ID: 3},
+			},
+		},
+	},
+	{
+		name: "binary tree",
+		input: []Record{
+			{ID: 5, Parent: 1},
+			{ID: 3, Parent: 2},
+			{ID: 2, Parent: 0},
+			{ID: 4, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+			{ID: 6, Parent: 2},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{
+					ID: 1,
+					Children: []*Node{
+						{ID: 4},
+						{ID: 5},
+					},
+				},
+				{
+					ID: 2,
+					Children: []*Node{
+						{ID: 3},
+						{ID: 6},
+					},
+				},
+			},
+		},
+	},
+	{
+		name: "unbalanced tree",
+		input: []Record{
+			{ID: 5, Parent: 2},
+			{ID: 3, Parent: 2},
+			{ID: 2, Parent: 0},
+			{ID: 4, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+			{ID: 6, Parent: 2},
+		},
+		expected: &Node{
+			ID: 0,
+			Children: []*Node{
+				{
+					ID: 1,
+					Children: []*Node{
+						{ID: 4},
+					},
+				},
+				{
+					ID: 2,
+					Children: []*Node{
+						{ID: 3},
+						{ID: 5},
+						{ID: 6},
+					},
+				},
+			},
+		},
+	},
+}
+
+var failureTestCases = []struct {
+	name  string
+	input []Record
+}{
+	{
+		name: "one root node and has parent",
+		input: []Record{
+			{ID: 0, Parent: 1},
+		},
+	},
+	{
+		name: "root node has parent",
+		input: []Record{
+			{ID: 0, Parent: 1},
+			{ID: 1, Parent: 0},
+		},
+	},
+	{
+		name: "no root node",
+		input: []Record{
+			{ID: 1, Parent: 0},
+		},
+	},
+	{
+		name: "duplicate node",
+		input: []Record{
+			{ID: 0, Parent: 0},
+			{ID: 1, Parent: 0},
+			{ID: 1, Parent: 0},
+		},
+	},
+	{
+		name: "duplicate root",
+		input: []Record{
+			{ID: 0, Parent: 0},
+			{ID: 0, Parent: 0},
+		},
+	},
+	{
+		name: "non-continuous",
+		input: []Record{
+			{ID: 2, Parent: 0},
+			{ID: 4, Parent: 2},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+		},
+	},
+	{
+		name: "cycle directly",
+		input: []Record{
+			{ID: 5, Parent: 2},
+			{ID: 3, Parent: 2},
+			{ID: 2, Parent: 2},
+			{ID: 4, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+			{ID: 6, Parent: 3},
+		},
+	},
+	{
+		name: "cycle indirectly",
+		input: []Record{
+			{ID: 5, Parent: 2},
+			{ID: 3, Parent: 2},
+			{ID: 2, Parent: 6},
+			{ID: 4, Parent: 1},
+			{ID: 1, Parent: 0},
+			{ID: 0},
+			{ID: 6, Parent: 3},
+		},
+	},
+	{
+		name: "higher id parent of lower id",
+		input: []Record{
+			{ID: 0},
+			{ID: 2, Parent: 0},
+			{ID: 1, Parent: 2},
+		},
+	},
+}
+
+func (n Node) String() string {
+	return fmt.Sprintf("%d:%s", n.ID, n.Children)
+}
+
+func TestMakeTreeSuccess(t *testing.T) {
+	for _, tt := range successTestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := Build(tt.input)
+			if err != nil {
+				var _ error = err
+				t.Fatalf("Build for test case %q returned error %q. Error not expected.",
+					tt.name, err)
+			}
+			if !nodeEqual(actual, tt.expected) {
+				t.Fatalf("Build for test case %q returned %s but was expected to return %s.",
+					tt.name, actual, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMakeTreeFailure(t *testing.T) {
+	for _, tt := range failureTestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := Build(tt.input)
+			if err == nil {
+				t.Fatalf("Build for test case %q returned %s but was expected to fail.",
+					tt.name, actual)
+			}
+		})
+	}
+}
+
+func shuffleRecords(records []Record) []Record {
+	gen := rand.New(rand.NewSource(42))
+	newRecords := make([]Record, len(records))
+	for i, idx := range gen.Perm(len(records)) {
+		newRecords[i] = records[idx]
+	}
+	return newRecords
+}
+
+// Binary tree
+func makeTwoTreeRecords() []Record {
+	records := make([]Record, 1<<16)
+	for i := range records {
+		if i == 0 {
+			records[i] = Record{ID: 0}
+		} else {
+			records[i] = Record{ID: i, Parent: i >> 1}
+		}
+	}
+	return shuffleRecords(records)
+}
+
+var twoTreeRecords = makeTwoTreeRecords()
+
+func BenchmarkTwoTree(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Build(twoTreeRecords)
+	}
+}
+
+// Each node but the root node and leaf nodes has ten children.
+func makeTenTreeRecords() []Record {
+	records := make([]Record, 10000)
+	for i := range records {
+		if i == 0 {
+			records[i] = Record{ID: 0}
+		} else {
+			records[i] = Record{ID: i, Parent: i / 10}
+		}
+	}
+	return shuffleRecords(records)
+}
+
+var tenTreeRecords = makeTenTreeRecords()
+
+func BenchmarkTenTree(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Build(tenTreeRecords)
+	}
+}
+
+func makeShallowRecords() []Record {
+	records := make([]Record, 10000)
+	for i := range records {
+		records[i] = Record{ID: i, Parent: 0}
+	}
+	return shuffleRecords(records)
+}
+
+var shallowRecords = makeShallowRecords()
+
+func BenchmarkShallowTree(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Build(shallowRecords)
+	}
+}
+
+func nodeEqual(node1, node2 *Node) bool {
+	switch {
+	case node1 == nil && node2 == nil:
+		return true
+	case node1 == nil && node2 != nil:
+		return false
+	case node1 != nil && node2 == nil:
+		return false
+	default:
+		return node1.ID == node2.ID && nodeSliceEqual(node1.Children, node2.Children)
+	}
+}
+
+func nodeSliceEqual(nodes1, nodes2 []*Node) bool {
+	if len(nodes1) == 0 && len(nodes2) == 0 {
+		return true
+	}
+	if len(nodes1) != len(nodes2) {
+		return false
+	}
+	for i := range nodes1 {
+		if !nodeEqual(nodes1[i], nodes2[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Initial Translation ===
+// exercises/practice/tree-building/.meta/example.go
+package example
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent ID.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// EqualID checks if the record's ID equals its Parent field.
+func (r Record) EqualID() bool {
+	return r.ID == r.Parent
+}
+
+// Node represents a node in the tree with its ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// validateRecord validates a Record according to the specified rules.
+// Only the root record (ID 0) is allowed to have equal ID and Parent.
+// For non-root records, the Parent must be smaller than the ID.
+func validateRecord(r Record) error {
+	if r.EqualID() && r.ID != 0 {
+		return errors.New("Only root should have equal record and parent id.")
+	}
+	if !r.EqualID() && r.Parent >= r.ID {
+		return errors.New("Node parent_id should be smaller than its record_id.")
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It validates the records and builds a map of nodes according to their IDs.
+// It also checks that the record IDs are contiguous and start at 0.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	// Create maps for parent and node associations
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	
+	// Gather ordered IDs
+	orderedIDs := make([]int, 0, len(records))
+	for _, record := range records {
+		if err := validateRecord(record); err != nil {
+			return nil, err
+		}
+		parentMap[record.ID] = record.Parent
+		nodeMap[record.ID] = &Node{ID: record.ID}
+		onordered := false
+		// We can use the orderedIDs slice to collect IDs.
+		for _, id := range orderedIDs {
+			if id == record.ID {
+				onordered = true
+				break
+			}
+		}
+		if !onordered {
+			orderedIDs = append(orderedIDs, record.ID)
+		}
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that the record IDs are contiguous and start at 0
+	for index, recordID := range orderedIDs {
+		if index != recordID {
+			return nil, errors.New("Record id is invalid or out of order.")
+		}
+	}
+
+	var root *Node
+	rootID := 0
+
+	// Build tree by connecting parent and child nodes
+	for _, recordID := range orderedIDs {
+		if recordID == rootID {
+			root = nodeMap[recordID]
+		} else {
+			parentID, ok := parentMap[recordID]
+			if !ok {
+				return nil, fmt.Errorf("missing parent for record %d", recordID)
+			}
+			parentNode, ok := nodeMap[parentID]
+			if !ok {
+				return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+			}
+			parentNode.Children = append(parentNode.Children, nodeMap[recordID])
+		}
+	}
+
+	return root, nil
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages example (tree_building.go) and tree (tree_building_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/tree-building
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/tree-building/.meta/example.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent.
+// For a valid record, the root record (ID 0) should have Parent 0,
+// and all non-root records should have Parent less than their ID.
+// Additionally, no duplicate records are allowed.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with its ID and any children nodes.
+// The tree is built based on Record relationships.
+//
+// For example, a Record with ID = 2 and Parent = 0 will become a child of the node with ID 0.
+//
+// Only the root node is allowed to have an equal ID and Parent.
+// For non-root nodes, Parent must be less than ID.
+//
+// Build constructs a tree from a slice of Records and returns a pointer to the root Node.
+// It returns an error if the input records do not form a valid tree.
+
+// validateRecord validates a Record according to the following rules:
+// - Only the root record (ID 0) can have Parent equal to ID.
+// - Non-root records must have Parent less than ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 && r.Parent != 0 {
+		return errors.New("root record must have parent 0")
+	}
+	if r.ID != 0 {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs various validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+//
+// If the input is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate the record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that IDs are continuous and start at 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("Record id is invalid or out of order.")
+		}
+	}
+
+	var root *Node
+
+	// Build the tree: the node with ID 0 must be the root.
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Node represents a node in the tree.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:114:16: other declaration of String
+
+
+=== Retry Attempt 2 ===
+// exercism/tree-building/tree_building.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent.
+// For a valid record, the root record (ID 0) should have Parent 0,
+// and all non-root records should have Parent less than their ID.
+// Additionally, no duplicate records are allowed.
+//
+// For example, a Record with ID = 2 and Parent = 0 will become a child of the node with ID 0.
+// Only the root node is allowed to have Parent equal to ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 {
+		if r.Parent != 0 {
+			return errors.New("root record must have parent 0")
+		}
+	} else {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs the following validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+//
+// If the input slice is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate the record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that IDs are continuous and start at 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("record id is invalid or out of order")
+		}
+	}
+
+	var root *Node
+
+	// Build the tree
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Record represents a record with an ID and a Parent.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging purposes.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:105:16: other declaration of String
+
+
+=== Retry Attempt 3 ===
+// exercism/tree-building/tree_building.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent.
+// For a valid record, the root record (ID 0) should have Parent 0,
+// and all non-root records should have Parent less than their ID.
+// Additionally, no duplicate records are allowed.
+//
+// For example, a Record with ID = 2 and Parent = 0 will become a child of the node with ID 0.
+// Only the root node is allowed to have Parent equal to ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 {
+		if r.Parent != 0 {
+			return errors.New("root record must have parent 0")
+		}
+	} else {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs the following validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+//
+// If the input slice is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate the record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that IDs are continuous and start at 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("record id is invalid or out of order")
+		}
+	}
+
+	var root *Node
+
+	// Build the tree
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Record represents a record with an ID and a Parent.
+// It is used as input to Build to construct the tree.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging purposes.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:106:16: other declaration of String
+
+
+=== Retry Attempt 4 ===
+// exercism/tree-building/tree_building.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent.
+// For a valid record, the root record (ID 0) should have Parent 0,
+// and all non-root records should have Parent less than their ID.
+// Additionally, no duplicate records are allowed.
+//
+// For example, a Record with ID = 2 and Parent = 0 will become a child of the node with ID 0.
+// Only the root node is allowed to have Parent equal to ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 {
+		if r.Parent != 0 {
+			return errors.New("root record must have parent 0")
+		}
+	} else {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs the following validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+//
+// If the input slice is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate the record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that IDs are continuous and start at 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("record id is invalid or out of order")
+		}
+	}
+
+	var root *Node
+
+	// Build the tree
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Record represents a record with an ID and a Parent.
+// It is used as input to Build to construct the tree.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging purposes.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:106:16: other declaration of String
+
+
+=== Retry Attempt 5 ===
+// exercism/tree-building/tree_building.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent.
+// For a valid record, the root record (ID 0) should have Parent 0,
+// and all non-root records should have Parent less than their ID.
+// Additionally, no duplicate records are allowed.
+//
+// For example, a Record with ID = 2 and Parent = 0 will become a child of the node with ID 0.
+// Only the root node is allowed to have Parent equal to ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 {
+		if r.Parent != 0 {
+			return errors.New("root record must have parent 0")
+		}
+	} else {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs the following validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+//
+// If the input slice is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate the record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that IDs are continuous and start at 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("record id is invalid or out of order")
+		}
+	}
+
+	var root *Node
+
+	// Build the tree
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Record represents a record with an ID and a Parent.
+// It is used as input to Build to construct the tree.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging purposes.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:106:16: other declaration of String
+
+
+=== Retry Attempt 6 ===
+// exercism/tree-building/tree_building.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent.
+// For a valid record, the root record (ID 0) should have Parent 0,
+// and all non-root records should have Parent less than their ID.
+// Additionally, no duplicate records are allowed.
+//
+// For example, a Record with ID = 2 and Parent = 0 will become a child of the node with ID 0.
+// Only the root node is allowed to have Parent equal to ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 {
+		if r.Parent != 0 {
+			return errors.New("root record must have parent 0")
+		}
+	} else {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs the following validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+//
+// If the input slice is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate the record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that IDs are continuous and start at 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("record id is invalid or out of order")
+		}
+	}
+
+	var root *Node
+
+	// Build the tree
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Record represents a record with an ID and a Parent.
+// It is used as input to Build to construct the tree.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging purposes.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:106:16: other declaration of String
+
+
+=== Retry Attempt 7 ===
+// exercism/tree-building/tree_building.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent.
+// For a valid record, the root record (ID 0) should have Parent 0,
+// and all non-root records should have Parent less than their ID.
+// Additionally, no duplicate records are allowed.
+//
+// For example, a Record with ID = 2 and Parent = 0 will become a child of the node with ID 0.
+// Only the root node is allowed to have Parent equal to ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 {
+		if r.Parent != 0 {
+			return errors.New("root record must have parent 0")
+		}
+	} else {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs the following validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+//
+// If the input slice is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate the record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that IDs are continuous and start at 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("record id is invalid or out of order")
+		}
+	}
+
+	var root *Node
+
+	// Build the tree
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Record represents a record with an ID and a Parent.
+// It is used as input to Build to construct the tree.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging purposes.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:106:16: other declaration of String
+
+
+=== Retry Attempt 8 ===
+// exercism/tree-building/tree_building.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent.
+// For a valid record, the root record (ID 0) should have Parent 0,
+// and all non-root records should have Parent less than their ID.
+// Additionally, no duplicate records are allowed.
+//
+// For example, a Record with ID = 2 and Parent = 0 will become a child of the node with ID 0.
+// Only the root node is allowed to have Parent equal to ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 {
+		if r.Parent != 0 {
+			return errors.New("root record must have parent 0")
+		}
+	} else {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs the following validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+//
+// If the input slice is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate the record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that IDs are continuous and start at 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("record id is invalid or out of order")
+		}
+	}
+
+	var root *Node
+
+	// Build the tree
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Record represents a record with an ID and a Parent.
+// It is used as input to Build to construct the tree.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging purposes.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:106:16: other declaration of String
+
+
+=== Retry Attempt 9 ===
+// exercism/tree-building/tree_building.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Record represents a record with an ID and a Parent.
+// For a valid record, the root record (ID 0) should have Parent 0,
+// and all non-root records should have Parent less than their ID.
+// Additionally, no duplicate records are allowed.
+//
+// For example, a Record with ID = 2 and Parent = 0 will become a child of the node with ID 0.
+// Only the root node is allowed to have Parent equal to ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 {
+		if r.Parent != 0 {
+			return errors.New("root record must have parent 0")
+		}
+	} else {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs the following validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+//
+// If the input slice is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate the record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Check that IDs are continuous and start at 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("record id is invalid or out of order")
+		}
+	}
+
+	var root *Node
+
+	// Build the tree
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Record represents a record with an ID and a Parent.
+// It is used as input to Build to construct the tree.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging purposes.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:106:16: other declaration of String
+
+
+=== Retry Attempt 10 ===
+// exercism/tree-building/tree_building.go
+package tree
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// validateRecord validates a record based on the following rules:
+// - The root record (ID 0) must have Parent 0.
+// - Non-root records must have Parent < ID.
+func validateRecord(r Record) error {
+	if r.ID == 0 {
+		if r.Parent != 0 {
+			return errors.New("root record must have parent 0")
+		}
+	} else {
+		if r.Parent >= r.ID {
+			return errors.New("node parent_id should be smaller than its record_id")
+		}
+	}
+	return nil
+}
+
+// Build constructs a tree from the slice of records and returns the root node.
+// It performs the following validations:
+// - The records must have contiguous IDs starting from 0.
+// - There should be no duplicate records.
+// - The records must satisfy the parent-child relationship constraints.
+// If the input slice is empty, it returns nil without error.
+func Build(records []Record) (*Node, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(records))
+	parentMap := make(map[int]int, len(records))
+	nodeMap := make(map[int]*Node, len(records))
+	orderedIDs := make([]int, 0, len(records))
+
+	for _, r := range records {
+		// Validate each record
+		if err := validateRecord(r); err != nil {
+			return nil, err
+		}
+
+		// Check for duplicates
+		if seen[r.ID] {
+			return nil, fmt.Errorf("duplicate record: %d", r.ID)
+		}
+		seen[r.ID] = true
+
+		parentMap[r.ID] = r.Parent
+		nodeMap[r.ID] = &Node{ID: r.ID}
+		orderedIDs = append(orderedIDs, r.ID)
+	}
+
+	sort.Ints(orderedIDs)
+
+	// Ensure IDs are continuous starting from 0
+	for i, id := range orderedIDs {
+		if i != id {
+			return nil, errors.New("record id is invalid or out of order")
+		}
+	}
+
+	var root *Node
+
+	// Build tree by linking each record to its parent
+	for _, id := range orderedIDs {
+		if id == 0 {
+			root = nodeMap[id]
+			continue
+		}
+		parentID := parentMap[id]
+		parentNode, ok := nodeMap[parentID]
+		if !ok {
+			return nil, fmt.Errorf("parent node not found for parent id %d", parentID)
+		}
+		parentNode.Children = append(parentNode.Children, nodeMap[id])
+	}
+
+	return root, nil
+}
+
+// Record represents a record with an ID and a Parent.
+// It is used as input to Build to construct the tree.
+type Record struct {
+	ID     int
+	Parent int
+}
+
+// Node represents a node in the tree with an ID and a slice of children nodes.
+type Node struct {
+	ID       int
+	Children []*Node
+}
+
+// String returns a string representation of the Node for debugging purposes.
+func (n *Node) String() string {
+	if n == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%v", n.ID, n.Children)
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/tree-building [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/tree-building [exercism/tree-building.test]
+./tree_building_test.go:250:15: Node.String redeclared in this block
+	./tree_building.go:101:16: other declaration of String
+
+
+=== FINAL STATUS: FAILED ===

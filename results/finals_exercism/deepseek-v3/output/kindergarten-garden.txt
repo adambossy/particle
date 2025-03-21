@@ -1,0 +1,933 @@
+=== Initial Source Code ===
+Source file: exercises/practice/kindergarten-garden/.meta/example.py
+class Garden:
+
+    STUDENTS = [
+        'Alice',
+        'Bob',
+        'Charlie',
+        'David',
+        'Eve',
+        'Fred',
+        'Ginny',
+        'Harriet',
+        'Ileana',
+        'Joseph',
+        'Kincaid',
+        'Larry',
+    ]
+    PLANTS = {'C': 'Clover', 'G': 'Grass', 'R': 'Radishes', 'V': 'Violets'}
+
+    def __init__(self, diagram, students=None):
+        students = sorted(students or self.STUDENTS)
+        front, back = diagram.splitlines()
+        self.cups = {}
+        for idx, student in enumerate(students[: len(front)]):
+            start = idx * 2
+            stop = start + 2
+            self.cups.setdefault(student, [])
+            self.cups[student].extend(
+                self.PLANTS[plant] for plant in front[start:stop]
+            )
+            self.cups[student].extend(
+                self.PLANTS[plant] for plant in back[start:stop]
+            )
+
+    def plants(self, student):
+        return self.cups.get(student, [])
+
+
+=== Source Interface ===
+class Garden:
+    def __init__(self, diagram, students):
+        pass
+
+
+=== Target Interface ===
+package kindergarten
+
+// Define the Garden type here.
+
+// The diagram argument starts each row with a '\n'.  This allows Go's
+// raw string literals to present diagrams in source code nicely as two
+// rows flush left, for example,
+//
+//     diagram := `
+//     VVCCGG
+//     VVCCGG`
+
+func NewGarden(diagram string, children []string) (*Garden, error) {
+	panic("Please implement the NewGarden function")
+}
+
+func (g *Garden) Plants(child string) ([]string, bool) {
+	panic("Please implement the Plants function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/kindergarten-garden/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from kindergarten_garden import (
+    Garden,
+)
+
+
+class KindergartenGardenTest(unittest.TestCase):
+    def test_partial_garden_garden_with_single_student(self):
+        garden = Garden("RC\nGG")
+        self.assertEqual(
+            garden.plants("Alice"), ["Radishes", "Clover", "Grass", "Grass"]
+        )
+
+    def test_partial_garden_different_garden_with_single_student(self):
+        garden = Garden("VC\nRC")
+        self.assertEqual(
+            garden.plants("Alice"), ["Violets", "Clover", "Radishes", "Clover"]
+        )
+
+    def test_partial_garden_garden_with_two_students(self):
+        garden = Garden("VVCG\nVVRC")
+        self.assertEqual(
+            garden.plants("Bob"), ["Clover", "Grass", "Radishes", "Clover"]
+        )
+
+    def test_partial_garden_second_student_s_garden(self):
+        garden = Garden("VVCCGG\nVVCCGG")
+        self.assertEqual(garden.plants("Bob"), ["Clover", "Clover", "Clover", "Clover"])
+
+    def test_partial_garden_third_student_s_garden(self):
+        garden = Garden("VVCCGG\nVVCCGG")
+        self.assertEqual(garden.plants("Charlie"), ["Grass", "Grass", "Grass", "Grass"])
+
+    def test_full_garden_for_alice_first_student_s_garden(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(
+            garden.plants("Alice"), ["Violets", "Radishes", "Violets", "Radishes"]
+        )
+
+    def test_full_garden_for_bob_second_student_s_garden(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(garden.plants("Bob"), ["Clover", "Grass", "Clover", "Clover"])
+
+    def test_full_garden_for_charlie(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(
+            garden.plants("Charlie"), ["Violets", "Violets", "Clover", "Grass"]
+        )
+
+    def test_full_garden_for_david(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(
+            garden.plants("David"), ["Radishes", "Violets", "Clover", "Radishes"]
+        )
+
+    def test_full_garden_for_eve(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(garden.plants("Eve"), ["Clover", "Grass", "Radishes", "Grass"])
+
+    def test_full_garden_for_fred(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(
+            garden.plants("Fred"), ["Grass", "Clover", "Violets", "Clover"]
+        )
+
+    def test_full_garden_for_ginny(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(garden.plants("Ginny"), ["Clover", "Grass", "Grass", "Clover"])
+
+    def test_full_garden_for_harriet(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(
+            garden.plants("Harriet"), ["Violets", "Radishes", "Radishes", "Violets"]
+        )
+
+    def test_full_garden_for_ileana(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(
+            garden.plants("Ileana"), ["Grass", "Clover", "Violets", "Clover"]
+        )
+
+    def test_full_garden_for_joseph(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(
+            garden.plants("Joseph"), ["Violets", "Clover", "Violets", "Grass"]
+        )
+
+    def test_full_garden_for_kincaid_second_to_last_student_s_garden(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(
+            garden.plants("Kincaid"), ["Grass", "Clover", "Clover", "Grass"]
+        )
+
+    def test_full_garden_for_larry_last_student_s_garden(self):
+        garden = Garden("VRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV")
+        self.assertEqual(
+            garden.plants("Larry"), ["Grass", "Violets", "Clover", "Violets"]
+        )
+
+    # Additional tests for this track
+
+    def test_students_are_unordered_first_student(self):
+        garden = Garden(
+            "VCRRGVRG\nRVGCCGCV", students=["Samantha", "Patricia", "Xander", "Roger"]
+        )
+        self.assertEqual(
+            garden.plants("Patricia"), ["Violets", "Clover", "Radishes", "Violets"]
+        )
+
+    def test_students_are_unordered_last_student(self):
+        garden = Garden(
+            "VCRRGVRG\nRVGCCGCV", students=["Samantha", "Patricia", "Xander", "Roger"]
+        )
+        self.assertEqual(
+            garden.plants("Xander"), ["Radishes", "Grass", "Clover", "Violets"]
+        )
+
+
+=== Target Test Code ===
+package kindergarten
+
+import (
+	"reflect"
+	"sort"
+	"testing"
+)
+
+type lookup struct {
+	child  string
+	plants []string
+	ok     bool
+}
+
+type gardenTest struct {
+	description string
+	diagram     string
+	children    []string
+	expectError bool
+	lookups     []lookup
+}
+
+var tests = []gardenTest{
+	{
+		description: "garden with single student",
+		diagram:     "\nRC\nGG",
+		children:    []string{"Alice"},
+		expectError: false,
+		lookups:     []lookup{{child: "Alice", plants: []string{"radishes", "clover", "grass", "grass"}, ok: true}},
+	},
+	{
+		description: "different garden with single student",
+		diagram:     "\nVC\nRC",
+		children:    []string{"Alice"},
+		expectError: false,
+		lookups:     []lookup{{child: "Alice", plants: []string{"violets", "clover", "radishes", "clover"}, ok: true}},
+	},
+	{
+		description: "garden with two students",
+		diagram:     "\nVVCG\nVVRC",
+		children:    []string{"Alice", "Bob"},
+		expectError: false,
+		lookups:     []lookup{{child: "Bob", plants: []string{"clover", "grass", "radishes", "clover"}, ok: true}},
+	},
+	{
+		description: "garden with three students",
+		diagram:     "\nVVCCGG\nVVCCGG",
+		children:    []string{"Alice", "Bob", "Charlie"},
+		expectError: false,
+		lookups: []lookup{
+			{child: "Bob", plants: []string{"clover", "clover", "clover", "clover"}, ok: true},
+			{child: "Charlie", plants: []string{"grass", "grass", "grass", "grass"}, ok: true},
+		},
+	},
+	test5,
+	test6,
+	{
+		description: "lookup invalid name",
+		diagram:     "\nRC\nGG",
+		children:    []string{"Alice"},
+		expectError: false,
+		lookups:     []lookup{{child: "Bob", plants: []string{"radishes", "clover", "grass", "grass"}, ok: false}},
+	},
+	// failure tests
+	{
+		description: "wrong diagram format",
+		diagram:     "RC\nGG",
+		children:    []string{"Alice"},
+		expectError: true,
+		lookups:     nil,
+	},
+	{
+		description: "mismatched rows",
+		diagram:     "\nRCCC\nGG",
+		children:    []string{""},
+		expectError: true,
+		lookups:     nil,
+	},
+	{
+		description: "odd number of cups",
+		diagram:     "\nRCC\nGGC",
+		children:    []string{"Alice"},
+		expectError: true,
+		lookups:     nil,
+	},
+	{
+		description: "duplicate name",
+		diagram:     "\nRCCC\nGGCC",
+		children:    []string{"Alice", "Alice"},
+		expectError: true,
+		lookups:     nil,
+	},
+	{
+		description: "invalid cup codes",
+		diagram:     "\nrc\ngg",
+		children:    []string{"Alice"},
+		expectError: true,
+		lookups:     nil,
+	},
+}
+
+var test5 = gardenTest{
+	description: "full garden",
+	diagram:     "\nVRCGVVRVCGGCCGVRGCVCGCGV\nVRCCCGCRRGVCGCRVVCVGCGCV",
+	children:    []string{"Alice", "Bob", "Charlie", "David", "Eve", "Fred", "Ginny", "Harriet", "Ileana", "Joseph", "Kincaid", "Larry"},
+	expectError: false,
+	lookups: []lookup{
+		{child: "Alice", plants: []string{"violets", "radishes", "violets", "radishes"}, ok: true},
+		{child: "Bob", plants: []string{"clover", "grass", "clover", "clover"}, ok: true},
+		{child: "Charlie", plants: []string{"violets", "violets", "clover", "grass"}, ok: true},
+		{child: "David", plants: []string{"radishes", "violets", "clover", "radishes"}, ok: true},
+		{child: "Eve", plants: []string{"clover", "grass", "radishes", "grass"}, ok: true},
+		{child: "Fred", plants: []string{"grass", "clover", "violets", "clover"}, ok: true},
+		{child: "Ginny", plants: []string{"clover", "grass", "grass", "clover"}, ok: true},
+		{child: "Harriet", plants: []string{"violets", "radishes", "radishes", "violets"}, ok: true},
+		{child: "Ileana", plants: []string{"grass", "clover", "violets", "clover"}, ok: true},
+		{child: "Joseph", plants: []string{"violets", "clover", "violets", "grass"}, ok: true},
+		{child: "Kincaid", plants: []string{"grass", "clover", "clover", "grass"}, ok: true},
+		{child: "Larry", plants: []string{"grass", "violets", "clover", "violets"}, ok: true},
+	}}
+
+var (
+	test6names = []string{"Samantha", "Patricia", "Xander", "Roger"}
+	test6      = gardenTest{
+		description: "names out of order",
+		diagram:     "\nVCRRGVRG\nRVGCCGCV",
+		children:    test6names,
+		expectError: false,
+		lookups: []lookup{
+			{child: "Patricia", plants: []string{"violets", "clover", "radishes", "violets"}, ok: true},
+			{child: "Roger", plants: []string{"radishes", "radishes", "grass", "clover"}, ok: true},
+			{child: "Samantha", plants: []string{"grass", "violets", "clover", "grass"}, ok: true},
+			{child: "Xander", plants: []string{"radishes", "grass", "clover", "violets"}, ok: true},
+		},
+	}
+)
+
+func TestGarden(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.description, func(t *testing.T) {
+			actual, err := NewGarden(test.diagram, test.children)
+			switch {
+			case test.expectError:
+				if err == nil {
+					t.Fatal("NewGarden expected error but got nil")
+				}
+			case err != nil:
+				t.Fatalf("NewGarden returned unexpected error: %v ", err)
+			}
+			for _, l := range test.lookups {
+				switch plants, ok := actual.Plants(l.child); {
+				case ok != l.ok:
+					t.Fatalf("Lookup %s returned ok = %t, want %t", l.child, ok, l.ok)
+				case ok && !reflect.DeepEqual(plants, l.plants):
+					t.Fatalf("Lookup %s = %q, want: %q", l.child, plants, l.plants)
+				}
+			}
+		})
+	}
+}
+
+// The lazy way to meet the alphabetizing requirement is with sort.Strings
+// on the argument slice.  That's an in-place sort though and it's bad practice
+// to have a side effect.
+func TestNamesNotModified(t *testing.T) {
+	cp := append([]string{}, test6names...)
+	_, err := NewGarden(test6.diagram, cp)
+	if err != nil || sort.StringsAreSorted(cp) {
+		t.Fatalf("error in test setup: TestNamesNotModified requires valid garden and unsorted children")
+	}
+	if !reflect.DeepEqual(cp, test6names) {
+		t.Fatalf("NewGarden modified children argment. Arguments should not be modified.")
+	}
+}
+
+// A test taken from the Ruby tests.  It checks that Garden objects
+// are self-contained and do not rely on package variables.
+func TestTwoGardens(t *testing.T) {
+	diagram := `
+VCRRGVRG
+RVGCCGCV`
+	g1, err1 := NewGarden(diagram, []string{"Alice", "Bob", "Charlie", "Dan"})
+	g2, err2 := NewGarden(diagram, []string{"Bob", "Charlie", "Dan", "Erin"})
+	if err1 != nil || err2 != nil {
+		t.Fatalf("error in test setup: Two garden test needs valid gardens")
+	}
+	tf := func(g *Garden, n int, child string, expPlants []string) {
+		switch plants, ok := g.Plants(child); {
+		case !ok:
+			t.Fatalf("error in test setup: Garden %d lookup %s returned ok = false, want true. Check if the child exists in the garden", n, child)
+		case !reflect.DeepEqual(plants, expPlants):
+			t.Fatalf("Garden %d lookup %s = %q, want %q.",
+				n, child, plants, expPlants)
+		}
+	}
+	tf(g1, 1, "Bob", []string{"radishes", "radishes", "grass", "clover"})
+	tf(g2, 2, "Bob", []string{"violets", "clover", "radishes", "violets"})
+	tf(g1, 1, "Charlie", []string{"grass", "violets", "clover", "grass"})
+	tf(g2, 2, "Charlie", []string{"radishes", "radishes", "grass", "clover"})
+}
+
+func BenchmarkNewGarden(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			NewGarden(test.diagram, test.children)
+		}
+	}
+}
+
+func BenchmarkGarden_Plants(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	g, err := NewGarden(test5.diagram, test5.children)
+	if err != nil {
+		b.Fatalf("error in benchmark setup: BenchmarkGarden_Plants requires valid garden")
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, l := range test5.lookups {
+			g.Plants(l.child)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/kindergarten-garden/.meta/example.go
+package kindergarten
+
+import (
+	"sort"
+	"strings"
+)
+
+var (
+	STUDENTS = []string{
+		"Alice",
+		"Bob",
+		"Charlie",
+		"David",
+		"Eve",
+		"Fred",
+		"Ginny",
+		"Harriet",
+		"Ileana",
+		"Joseph",
+		"Kincaid",
+		"Larry",
+	}
+	PLANTS = map[string]string{
+		"C": "Clover",
+		"G": "Grass",
+		"R": "Radishes",
+		"V": "Violets",
+	}
+)
+
+type Garden struct {
+	cups map[string][]string
+}
+
+func NewGarden(diagram string, children []string) (*Garden, error) {
+	students := children
+	if len(students) == 0 {
+		students = make([]string, len(STUDENTS))
+		copy(students, STUDENTS)
+	}
+	sort.Strings(students)
+
+	rows := strings.Split(strings.TrimSpace(diagram), "\n")
+	front, back := rows[0], rows[1]
+
+	cups := make(map[string][]string)
+	for idx, student := range students {
+		if idx*2 >= len(front) {
+			break
+		}
+		start := idx * 2
+		stop := start + 2
+		cups[student] = append(cups[student], PLANTS[string(front[start])], PLANTS[string(front[start+1])])
+		cups[student] = append(cups[student], PLANTS[string(back[start])], PLANTS[string(back[start+1])])
+	}
+
+	return &Garden{cups: cups}, nil
+}
+
+func (g *Garden) Plants(child string) ([]string, bool) {
+	plants, ok := g.cups[child]
+	return plants, ok
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/kindergarten-garden [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/kindergarten-garden [exercism/kindergarten-garden.test]
+./kindergarten_garden.go:53:3: stop declared but not used
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/kindergarten-garden/.meta/example.go
+package kindergarten
+
+import (
+	"sort"
+	"strings"
+)
+
+var (
+	STUDENTS = []string{
+		"Alice",
+		"Bob",
+		"Charlie",
+		"David",
+		"Eve",
+		"Fred",
+		"Ginny",
+		"Harriet",
+		"Ileana",
+		"Joseph",
+		"Kincaid",
+		"Larry",
+	}
+	PLANTS = map[string]string{
+		"C": "Clover",
+		"G": "Grass",
+		"R": "Radishes",
+		"V": "Violets",
+	}
+)
+
+type Garden struct {
+	cups map[string][]string
+}
+
+func NewGarden(diagram string, children []string) (*Garden, error) {
+	students := children
+	if len(students) == 0 {
+		students = make([]string, len(STUDENTS))
+		copy(students, STUDENTS)
+	}
+	sort.Strings(students)
+
+	rows := strings.Split(strings.TrimSpace(diagram), "\n")
+	if len(rows) != 2 {
+		return nil, fmt.Errorf("invalid diagram format")
+	}
+	front, back := rows[0], rows[1]
+
+	if len(front) != len(back) {
+		return nil, fmt.Errorf("mismatched rows")
+	}
+	if len(front)%2 != 0 {
+		return nil, fmt.Errorf("odd number of cups")
+	}
+
+	cups := make(map[string][]string)
+	for idx, student := range students {
+		if idx*2 >= len(front) {
+			break
+		}
+		start := idx * 2
+		cups[student] = append(cups[student], PLANTS[string(front[start])], PLANTS[string(front[start+1])])
+		cups[student] = append(cups[student], PLANTS[string(back[start])], PLANTS[string(back[start+1])])
+	}
+
+	return &Garden{cups: cups}, nil
+}
+
+func (g *Garden) Plants(child string) ([]string, bool) {
+	plants, ok := g.cups[child]
+	return plants, ok
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/kindergarten-garden [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/kindergarten-garden [exercism/kindergarten-garden.test]
+./kindergarten_garden.go:46:15: undefined: fmt
+./kindergarten_garden.go:51:15: undefined: fmt
+./kindergarten_garden.go:54:15: undefined: fmt
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/kindergarten-garden/.meta/example.go
+package kindergarten
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// STUDENTS is a default list of student names
+var STUDENTS = []string{
+	"Alice",
+	"Bob",
+	"Charlie",
+	"David",
+	"Eve",
+	"Fred",
+	"Ginny",
+	"Harriet",
+	"Ileana",
+	"Joseph",
+	"Kincaid",
+	"Larry",
+}
+
+// PLANTS maps plant codes to plant names
+var PLANTS = map[string]string{
+	"C": "Clover",
+	"G": "Grass",
+	"R": "Radishes",
+	"V": "Violets",
+}
+
+// Garden represents a kindergarten garden
+type Garden struct {
+	cups map[string][]string
+}
+
+// NewGarden creates a new Garden from a diagram and list of children
+func NewGarden(diagram string, children []string) (*Garden, error) {
+	students := children
+	if len(students) == 0 {
+		students = make([]string, len(STUDENTS))
+		copy(students, STUDENTS)
+	}
+	sort.Strings(students)
+
+	rows := strings.Split(strings.TrimSpace(diagram), "\n")
+	if len(rows) != 2 {
+		return nil, fmt.Errorf("invalid diagram format")
+	}
+	front, back := rows[0], rows[1]
+
+	if len(front) != len(back) {
+		return nil, fmt.Errorf("mismatched rows")
+	}
+	if len(front)%2 != 0 {
+		return nil, fmt.Errorf("odd number of cups")
+	}
+
+	cups := make(map[string][]string)
+	for idx, student := range students {
+		if idx*2 >= len(front) {
+			break
+		}
+		start := idx * 2
+		cups[student] = append(cups[student], PLANTS[string(front[start])], PLANTS[string(front[start+1])])
+		cups[student] = append(cups[student], PLANTS[string(back[start])], PLANTS[string(back[start+1])])
+	}
+
+	return &Garden{cups: cups}, nil
+}
+
+// Plants returns the plants for a given child
+func (g *Garden) Plants(child string) ([]string, bool) {
+	plants, ok := g.cups[child]
+	return plants, ok
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestGarden (0.00s)
+    --- FAIL: TestGarden/garden_with_single_student (0.00s)
+        kindergarten_garden_test.go:155: Lookup Alice = ["Radishes" "Clover" "Grass" "Grass"], want: ["radishes" "clover" "grass" "grass"]
+    --- FAIL: TestGarden/different_garden_with_single_student (0.00s)
+        kindergarten_garden_test.go:155: Lookup Alice = ["Violets" "Clover" "Radishes" "Clover"], want: ["violets" "clover" "radishes" "clover"]
+    --- FAIL: TestGarden/garden_with_two_students (0.00s)
+        kindergarten_garden_test.go:155: Lookup Bob = ["Clover" "Grass" "Radishes" "Clover"], want: ["clover" "grass" "radishes" "clover"]
+    --- FAIL: TestGarden/garden_with_three_students (0.00s)
+        kindergarten_garden_test.go:155: Lookup Bob = ["Clover" "Clover" "Clover" "Clover"], want: ["clover" "clover" "clover" "clover"]
+    --- FAIL: TestGarden/full_garden (0.00s)
+        kindergarten_garden_test.go:155: Lookup Alice = ["Violets" "Radishes" "Violets" "Radishes"], want: ["violets" "radishes" "violets" "radishes"]
+    --- FAIL: TestGarden/names_out_of_order (0.00s)
+        kindergarten_garden_test.go:155: Lookup Patricia = ["Violets" "Clover" "Radishes" "Violets"], want: ["violets" "clover" "radishes" "violets"]
+    --- FAIL: TestGarden/wrong_diagram_format (0.00s)
+        kindergarten_garden_test.go:145: NewGarden expected error but got nil
+    --- FAIL: TestGarden/duplicate_name (0.00s)
+        kindergarten_garden_test.go:145: NewGarden expected error but got nil
+    --- FAIL: TestGarden/invalid_cup_codes (0.00s)
+        kindergarten_garden_test.go:145: NewGarden expected error but got nil
+--- FAIL: TestNamesNotModified (0.00s)
+    kindergarten_garden_test.go:169: error in test setup: TestNamesNotModified requires valid garden and unsorted children
+--- FAIL: TestTwoGardens (0.00s)
+    kindergarten_garden_test.go:192: Garden 1 lookup Bob = ["Radishes" "Radishes" "Grass" "Clover"], want ["radishes" "radishes" "grass" "clover"].
+FAIL
+FAIL	exercism/kindergarten-garden	0.293s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/kindergarten-garden/.meta/example.go
+package kindergarten
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+	"unicode"
+)
+
+// STUDENTS is a default list of student names
+var STUDENTS = []string{
+	"Alice",
+	"Bob",
+	"Charlie",
+	"David",
+	"Eve",
+	"Fred",
+	"Ginny",
+	"Harriet",
+	"Ileana",
+	"Joseph",
+	"Kincaid",
+	"Larry",
+}
+
+// PLANTS maps plant codes to plant names
+var PLANTS = map[string]string{
+	"C": "clover",
+	"G": "grass",
+	"R": "radishes",
+	"V": "violets",
+}
+
+// Garden represents a kindergarten garden
+type Garden struct {
+	cups map[string][]string
+}
+
+// NewGarden creates a new Garden from a diagram and list of children
+func NewGarden(diagram string, children []string) (*Garden, error) {
+	if len(children) == 0 {
+		children = make([]string, len(STUDENTS))
+		copy(children, STUDENTS)
+	}
+
+	// Ensure children are unique
+	seen := make(map[string]bool)
+	for _, child := range children {
+		if seen[child] {
+			return nil, fmt.Errorf("duplicate name")
+		}
+		seen[child] = true
+	}
+
+	sort.Strings(children)
+
+	rows := strings.Split(strings.TrimSpace(diagram), "\n")
+	if len(rows) != 2 {
+		return nil, fmt.Errorf("invalid diagram format")
+	}
+	front, back := rows[0], rows[1]
+
+	if len(front) != len(back) {
+		return nil, fmt.Errorf("mismatched rows")
+	}
+	if len(front)%2 != 0 {
+		return nil, fmt.Errorf("odd number of cups")
+	}
+
+	// Validate cup codes
+	for _, r := range front + back {
+		if !unicode.IsUpper(r) {
+			return nil, fmt.Errorf("invalid cup codes")
+		}
+	}
+
+	cups := make(map[string][]string)
+	for idx, student := range children {
+		if idx*2 >= len(front) {
+			break
+		}
+		start := idx * 2
+		cups[student] = append(cups[student], PLANTS[string(front[start])], PLANTS[string(front[start+1])])
+		cups[student] = append(cups[student], PLANTS[string(back[start])], PLANTS[string(back[start+1])])
+	}
+
+	return &Garden{cups: cups}, nil
+}
+
+// Plants returns the plants for a given child
+func (g *Garden) Plants(child string) ([]string, bool) {
+	plants, ok := g.cups[child]
+	return plants, ok
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestGarden (0.00s)
+    --- FAIL: TestGarden/wrong_diagram_format (0.00s)
+        kindergarten_garden_test.go:145: NewGarden expected error but got nil
+--- FAIL: TestNamesNotModified (0.00s)
+    kindergarten_garden_test.go:169: error in test setup: TestNamesNotModified requires valid garden and unsorted children
+FAIL
+FAIL	exercism/kindergarten-garden	0.279s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/kindergarten-garden/.meta/example.go
+package kindergarten
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+	"unicode"
+)
+
+// STUDENTS is a default list of student names
+var STUDENTS = []string{
+	"Alice",
+	"Bob",
+	"Charlie",
+	"David",
+	"Eve",
+	"Fred",
+	"Ginny",
+	"Harriet",
+	"Ileana",
+	"Joseph",
+	"Kincaid",
+	"Larry",
+}
+
+// PLANTS maps plant codes to plant names
+var PLANTS = map[string]string{
+	"C": "clover",
+	"G": "grass",
+	"R": "radishes",
+	"V": "violets",
+}
+
+// Garden represents a kindergarten garden
+type Garden struct {
+	cups map[string][]string
+}
+
+// NewGarden creates a new Garden from a diagram and list of children
+func NewGarden(diagram string, children []string) (*Garden, error) {
+	if !strings.HasPrefix(diagram, "\n") {
+		return nil, fmt.Errorf("invalid diagram format")
+	}
+
+	if len(children) == 0 {
+		children = make([]string, len(STUDENTS))
+		copy(children, STUDENTS)
+	}
+
+	// Ensure children are unique
+	seen := make(map[string]bool)
+	for _, child := range children {
+		if seen[child] {
+			return nil, fmt.Errorf("duplicate name")
+		}
+		seen[child] = true
+	}
+
+	sort.Strings(children)
+
+	rows := strings.Split(strings.TrimSpace(diagram), "\n")
+	if len(rows) != 2 {
+		return nil, fmt.Errorf("invalid diagram format")
+	}
+	front, back := rows[0], rows[1]
+
+	if len(front) != len(back) {
+		return nil, fmt.Errorf("mismatched rows")
+	}
+	if len(front)%2 != 0 {
+		return nil, fmt.Errorf("odd number of cups")
+	}
+
+	// Validate cup codes
+	for _, r := range front + back {
+		if !unicode.IsUpper(r) {
+			return nil, fmt.Errorf("invalid cup codes")
+		}
+	}
+
+	cups := make(map[string][]string)
+	for idx, student := range children {
+		if idx*2 >= len(front) {
+			break
+		}
+		start := idx * 2
+		cups[student] = append(cups[student], PLANTS[string(front[start])], PLANTS[string(front[start+1])])
+		cups[student] = append(cups[student], PLANTS[string(back[start])], PLANTS[string(back[start+1])])
+	}
+
+	return &Garden{cups: cups}, nil
+}
+
+// Plants returns the plants for a given child
+func (g *Garden) Plants(child string) ([]string, bool) {
+	plants, ok := g.cups[child]
+	return plants, ok
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestNamesNotModified (0.00s)
+    kindergarten_garden_test.go:169: error in test setup: TestNamesNotModified requires valid garden and unsorted children
+FAIL
+FAIL	exercism/kindergarten-garden	0.273s
+FAIL
+
+=== STDERR ===
+
+
+=== ERROR ===
+Error processing sample (returncode=1): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Request didn't generate first token before the given deadline"}}
+
+=== FINAL STATUS: ERROR ===

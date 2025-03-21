@@ -1,0 +1,1321 @@
+=== Initial Source Code ===
+Source file: exercises/practice/pov/.meta/example.py
+from json import dumps
+
+
+class Tree:
+    def __init__(self, label, children=None):
+        self.label = label
+        self.children = children if children is not None else []
+
+    def __dict__(self):
+        return {self.label: [member.__dict__() for member in sorted(self.children)]}
+
+    def __str__(self, indent=None):
+        return dumps(self.__dict__(), indent=indent)
+
+    def __lt__(self, other):
+        return self.label < other.label
+
+    def __eq__(self, other):
+        return self.__dict__() == other.__dict__()
+
+    def __iter__(self):
+        yield self.label
+        for child in self.children:
+            for grandchild in child:
+                yield grandchild
+
+    def dup(self):
+        return Tree(self.label, [member.dup() for member in self.children])
+
+    def add(self, other):
+        tree = self.dup()
+        tree.children.append(other)
+        return tree
+
+    def remove(self, node):
+        tree = self.dup()
+        for child in list(tree.children):
+            tree.children.remove(child)
+            if child.label == node:
+                break
+            tree.children.append(child.remove(node))
+        return tree
+
+    def from_pov(self, from_node):
+        stack = [self]
+        visited = set()
+
+        while stack:
+            tree = stack.pop(0)
+            if tree.label in visited:
+                continue
+
+            visited.add(tree.label)
+            if from_node == tree.label:
+                return tree
+
+            for child in tree.children:
+                stack.append(child.add(tree.remove(child.label)))
+
+        raise ValueError('Tree could not be reoriented')
+
+
+
+    def path_to(self, from_node, to_node):
+        reordered = self.from_pov(from_node)
+        stack = reordered.children
+        path = [from_node]
+
+        while path[-1] != to_node:
+            try:
+                tree = stack.pop()
+            except IndexError as error:
+                raise ValueError('No path found') from error
+            if to_node in tree:
+                path.append(tree.label)
+                stack = tree.children
+        return path
+
+
+=== Source Interface ===
+from json import dumps
+
+
+class Tree:
+    def __init__(self, label, children=None):
+        self.label = label
+        self.children = children if children is not None else []
+
+    def __dict__(self):
+        return {self.label: [c.__dict__() for c in sorted(self.children)]}
+
+    def __str__(self, indent=None):
+        return dumps(self.__dict__(), indent=indent)
+
+    def __lt__(self, other):
+        return self.label < other.label
+
+    def __eq__(self, other):
+        return self.__dict__() == other.__dict__()
+
+    def from_pov(self, from_node):
+        pass
+
+    def path_to(self, from_node, to_node):
+        pass
+
+
+=== Target Interface ===
+package pov
+
+type Tree struct {
+	// Add the needed fields here
+}
+
+// New creates and returns a new Tree with the given root value and children.
+func New(value string, children ...*Tree) *Tree {
+	panic("Please implement this function")
+}
+
+// Value returns the value at the root of a tree.
+func (tr *Tree) Value() string {
+	panic("Please implement this function")
+}
+
+// Children returns a slice containing the children of a tree.
+// There is no need to sort the elements in the result slice,
+// they can be in any order.
+func (tr *Tree) Children() []*Tree {
+	panic("Please implement this function")
+}
+
+// String describes a tree in a compact S-expression format.
+// This helps to make test outputs more readable.
+// Feel free to adapt this method as you see fit.
+func (tr *Tree) String() string {
+	if tr == nil {
+		return "nil"
+	}
+	result := tr.Value()
+	if len(tr.Children()) == 0 {
+		return result
+	}
+	for _, ch := range tr.Children() {
+		result += " " + ch.String()
+	}
+	return "(" + result + ")"
+}
+
+// POV problem-specific functions
+
+// FromPov returns the pov from the node specified in the argument.
+func (tr *Tree) FromPov(from string) *Tree {
+	panic("Please implement this function")
+}
+
+// PathTo returns the shortest path between two nodes in the tree.
+func (tr *Tree) PathTo(from, to string) []string {
+	panic("Please implement this function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/pov/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from pov import (
+    Tree,
+)
+
+
+class PovTest(unittest.TestCase):
+    def test_results_in_the_same_tree_if_the_input_tree_is_a_singleton(self):
+        tree = Tree("x")
+        expected = Tree("x")
+        self.assertTreeEquals(tree.from_pov("x"), expected)
+
+    def test_can_reroot_a_tree_with_a_parent_and_one_sibling(self):
+        tree = Tree("parent", [Tree("x"), Tree("sibling")])
+        expected = Tree("x", [Tree("parent", [Tree("sibling")])])
+        self.assertTreeEquals(tree.from_pov("x"), expected)
+
+    def test_can_reroot_a_tree_with_a_parent_and_many_siblings(self):
+        tree = Tree("parent", [Tree("a"), Tree("x"), Tree("b"), Tree("c")])
+        expected = Tree("x", [Tree("parent", [Tree("a"), Tree("b"), Tree("c")])])
+        self.assertTreeEquals(tree.from_pov("x"), expected)
+
+    def test_can_reroot_a_tree_with_new_root_deeply_nested_in_tree(self):
+        tree = Tree(
+            "level-0",
+            [Tree("level-1", [Tree("level-2", [Tree("level-3", [Tree("x")])])])],
+        )
+        expected = Tree(
+            "x",
+            [Tree("level-3", [Tree("level-2", [Tree("level-1", [Tree("level-0")])])])],
+        )
+        self.assertTreeEquals(tree.from_pov("x"), expected)
+
+    def test_moves_children_of_the_new_root_to_same_level_as_former_parent(self):
+        tree = Tree("parent", [Tree("x", [Tree("kid-0"), Tree("kid-1")])])
+        expected = Tree("x", [Tree("kid-0"), Tree("kid-1"), Tree("parent")])
+        self.assertTreeEquals(tree.from_pov("x"), expected)
+
+    def test_can_reroot_a_complex_tree_with_cousins(self):
+        tree = Tree(
+            "grandparent",
+            [
+                Tree(
+                    "parent",
+                    [
+                        Tree("x", [Tree("kid-0"), Tree("kid-1")]),
+                        Tree("sibling-0"),
+                        Tree("sibling-1"),
+                    ],
+                ),
+                Tree("uncle", [Tree("cousin-0"), Tree("cousin-1")]),
+            ],
+        )
+        expected = Tree(
+            "x",
+            [
+                Tree("kid-1"),
+                Tree("kid-0"),
+                Tree(
+                    "parent",
+                    [
+                        Tree("sibling-0"),
+                        Tree("sibling-1"),
+                        Tree(
+                            "grandparent",
+                            [Tree("uncle", [Tree("cousin-0"), Tree("cousin-1")])],
+                        ),
+                    ],
+                ),
+            ],
+        )
+        self.assertTreeEquals(tree.from_pov("x"), expected)
+
+    def test_errors_if_target_does_not_exist_in_a_singleton_tree(self):
+        tree = Tree("x")
+        with self.assertRaises(ValueError) as err:
+            tree.from_pov("nonexistent")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Tree could not be reoriented")
+
+    def test_errors_if_target_does_not_exist_in_a_large_tree(self):
+        tree = Tree(
+            "parent",
+            [
+                Tree("x", [Tree("kid-0"), Tree("kid-1")]),
+                Tree("sibling-0"),
+                Tree("sibling-1"),
+            ],
+        )
+        with self.assertRaises(ValueError) as err:
+            tree.from_pov("nonexistent")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "Tree could not be reoriented")
+
+    def test_can_find_path_to_parent(self):
+        tree = Tree("parent", [Tree("x"), Tree("sibling")])
+        expected = ["x", "parent"]
+        self.assertEqual(tree.path_to("x", "parent"), expected)
+
+    def test_can_find_path_to_sibling(self):
+        tree = Tree("parent", [Tree("a"), Tree("x"), Tree("b"), Tree("c")])
+        expected = ["x", "parent", "b"]
+        self.assertEqual(tree.path_to("x", "b"), expected)
+
+    def test_can_find_path_to_cousin(self):
+        tree = Tree(
+            "grandparent",
+            [
+                Tree(
+                    "parent",
+                    [
+                        Tree("x", [Tree("kid-0"), Tree("kid-1")]),
+                        Tree("sibling-0"),
+                        Tree("sibling-1"),
+                    ],
+                ),
+                Tree("uncle", [Tree("cousin-0"), Tree("cousin-1")]),
+            ],
+        )
+        expected = ["x", "parent", "grandparent", "uncle", "cousin-1"]
+        self.assertEqual(tree.path_to("x", "cousin-1"), expected)
+
+    def test_can_find_path_not_involving_root(self):
+        tree = Tree(
+            "grandparent",
+            [Tree("parent", [Tree("x"), Tree("sibling-0"), Tree("sibling-1")])],
+        )
+        expected = ["x", "parent", "sibling-1"]
+        self.assertEqual(tree.path_to("x", "sibling-1"), expected)
+
+    def test_can_find_path_from_nodes_other_than_x(self):
+        tree = Tree("parent", [Tree("a"), Tree("x"), Tree("b"), Tree("c")])
+        expected = ["a", "parent", "c"]
+        self.assertEqual(tree.path_to("a", "c"), expected)
+
+    def test_errors_if_destination_does_not_exist(self):
+        tree = Tree(
+            "parent",
+            [
+                Tree("x", [Tree("kid-0"), Tree("kid-1")]),
+                Tree("sibling-0"),
+                Tree("sibling-1"),
+            ],
+        )
+        with self.assertRaises(ValueError) as err:
+            tree.path_to("x", "nonexistent")
+        self.assertEqual(type(err.exception), ValueError)
+
+        self.assertEqual(err.exception.args[0], "No path found")
+
+    def test_errors_if_source_does_not_exist(self):
+        tree = Tree(
+            "parent",
+            [
+                Tree("x", [Tree("kid-0"), Tree("kid-1")]),
+                Tree("sibling-0"),
+                Tree("sibling-1"),
+            ],
+        )
+        with self.assertRaises(ValueError) as err:
+            tree.path_to("nonexistent", "x")
+        self.assertEqual(type(err.exception), ValueError)
+
+        self.assertEqual(err.exception.args[0], "Tree could not be reoriented")
+
+    # Custom Utility Functions
+    def assertTreeEquals(self, result, expected):
+        self.assertEqual(result, expected, "{} != {}".format(result, expected))
+
+
+=== Target Test Code ===
+package pov
+
+import (
+	"sort"
+	"testing"
+)
+
+func TestNewNotNil(t *testing.T) {
+	tests := []struct {
+		name string
+		tree *Tree
+	}{
+		{
+			name: "singleton",
+			tree: New("x"),
+		},
+		{
+			name: "parent and one sibling",
+			tree: New("parent", New("x"), New("sibling")),
+		},
+		{
+			name: "parent and kids",
+			tree: New("parent", New("x", New("kid-0"), New("kid-1"))),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.tree == nil {
+				t.Fatalf("tree should not be nil")
+			}
+		})
+	}
+}
+
+func TestValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		root     string
+		children []*Tree
+	}{
+		{
+			name:     "singleton",
+			root:     "x",
+			children: nil,
+		},
+		{
+			name:     "parent and one sibling",
+			root:     "parent",
+			children: []*Tree{New("x"), New("sibling")},
+		},
+		{
+			name:     "parent and kids",
+			root:     "parent",
+			children: []*Tree{New("x", New("kid-0"), New("kid-1"))},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tree := New(tt.root, tt.children...)
+			got := tree.Value()
+			want := tt.root
+			if want != got {
+				t.Fatalf("expected: %v, got: %v", want, got)
+			}
+		})
+	}
+}
+
+func TestChildren(t *testing.T) {
+	tests := []struct {
+		name     string
+		root     string
+		children []*Tree
+	}{
+		{
+			name:     "singleton",
+			root:     "x",
+			children: nil,
+		},
+		{
+			name:     "parent and one sibling",
+			root:     "parent",
+			children: []*Tree{New("x"), New("sibling")},
+		},
+		{
+			name:     "parent and kids",
+			root:     "parent",
+			children: []*Tree{New("x", New("kid-0"), New("kid-1"))},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tree := New(tt.root, tt.children...)
+			got := tree.Children()
+			want := tt.children
+			if !treeSliceEqual(want, got) {
+				t.Fatalf("expected: %v, got: %v", want, got)
+			}
+		})
+	}
+}
+
+func TestFromPov(t *testing.T) {
+	tests := []struct {
+		description string
+		tree        *Tree
+		from        string
+		expected    *Tree
+	}{
+		{
+			description: "Results in the same tree if the input tree is a singleton",
+			tree:        New("x"),
+			from:        "x",
+			expected:    New("x"),
+		},
+		{
+			description: "Can reroot a tree with a parent and one sibling",
+			tree:        New("parent", New("x"), New("sibling")),
+			from:        "x",
+			expected:    New("x", New("parent", New("sibling"))),
+		},
+		{
+			description: "Can reroot a tree with a parent and many siblings",
+			tree:        New("parent", New("a"), New("x"), New("b"), New("c")),
+			from:        "x",
+			expected:    New("x", New("parent", New("a"), New("b"), New("c"))),
+		},
+		{
+			description: "Can reroot a tree with new root deeply nested in tree",
+			tree:        New("level-0", New("level-1", New("level-2", New("level-3", New("x"))))),
+			from:        "x",
+			expected:    New("x", New("level-3", New("level-2", New("level-1", New("level-0"))))),
+		},
+		{
+			description: "Moves children of the new root to same level as former parent",
+			tree:        New("parent", New("x", New("kid-0"), New("kid-1"))),
+			from:        "x",
+			expected:    New("x", New("kid-0"), New("kid-1"), New("parent")),
+		},
+		{
+			description: "Can reroot a complex tree with cousins",
+			tree: New("grandparent", New("parent",
+				New("x", New("kid-0"), New("kid-1")), New("sibling-0"),
+				New("sibling-1")), New("uncle", New("cousin-0"), New("cousin-1"))),
+			from: "x",
+			expected: New("x", New("kid-0"), New("kid-1"),
+				New("parent", New("sibling-0"), New("sibling-1"),
+					New("grandparent", New("uncle", New("cousin-0"), New("cousin-1"))))),
+		},
+		{
+			description: "Errors if target does not exist in a singleton tree",
+			tree:        New("x"),
+			from:        "nonexistent",
+			expected:    nil,
+		},
+		{
+			description: "Errors if target does not exist in a large tree",
+			tree: New("parent",
+				New("x", New("kid-0"), New("kid-1")), New("sibling-0"), New("sibling-1")),
+			from:     "nonexistent",
+			expected: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			got := tt.tree.FromPov(tt.from)
+			want := tt.expected
+			if !treeEqual(want, got) {
+				t.Fatalf("expected: %v, got: %v", want, got)
+			}
+		})
+	}
+}
+
+func TestPathTo(t *testing.T) {
+	tests := []struct {
+		description string
+		tree        *Tree
+		from        string
+		to          string
+		expected    []string
+	}{
+		{
+			description: "Can find path to parent",
+			tree:        New("parent", New("x"), New("sibling")),
+			from:        "x",
+			to:          "parent",
+			expected:    []string{"x", "parent"},
+		},
+		{
+			description: "Can find path to sibling",
+			tree:        New("parent", New("a"), New("x"), New("b"), New("c")),
+			from:        "x",
+			to:          "b",
+			expected:    []string{"x", "parent", "b"},
+		},
+		{
+			description: "Can find path to cousin",
+			tree: New("grandparent", New("parent",
+				New("x", New("kid-0"), New("kid-1")), New("sibling-0"),
+				New("sibling-1")), New("uncle", New("cousin-0"), New("cousin-1"))),
+			from:     "x",
+			to:       "cousin-1",
+			expected: []string{"x", "parent", "grandparent", "uncle", "cousin-1"},
+		},
+		{
+			description: "Can find path not involving root",
+			tree:        New("grandparent", New("parent", New("x"), New("sibling-0"), New("sibling-1"))),
+			from:        "x",
+			to:          "sibling-1",
+			expected:    []string{"x", "parent", "sibling-1"},
+		},
+		{
+			description: "Can find path from nodes other than x",
+			tree:        New("parent", New("a"), New("x"), New("b"), New("c")),
+			from:        "a",
+			to:          "c",
+			expected:    []string{"a", "parent", "c"},
+		},
+		{
+			description: "Errors if destination does not exist",
+			tree:        New("parent", New("x", New("kid-0"), New("kid-1")), New("sibling-0"), New("sibling-1")),
+			from:        "x",
+			to:          "nonexistent",
+			expected:    nil,
+		},
+		{
+			description: "Errors if source does not exist",
+			tree:        New("parent", New("x", New("kid-0"), New("kid-1")), New("sibling-0"), New("sibling-1")),
+			from:        "nonexistent",
+			to:          "x",
+			expected:    nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			got := tt.tree.PathTo(tt.from, tt.to)
+			want := tt.expected
+			if !stringSliceEqual(want, got) {
+				t.Fatalf("expected: %v, got: %v", want, got)
+			}
+		})
+	}
+}
+
+var benchmarkResultPov *Tree
+
+func BenchmarkFromPov(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	var result *Tree
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		tree := New("grandparent", New("parent",
+			New("x", New("kid-0"), New("kid-1")), New("sibling-0"),
+			New("sibling-1")), New("uncle", New("cousin-0"), New("cousin-1")))
+		from := "x"
+		result = tree.FromPov(from)
+	}
+	benchmarkResultPov = result
+}
+
+var benchmarkResultPathTo []string
+
+func BenchmarkPathTo(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	var result []string
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		tree := New("grandparent", New("parent",
+			New("x", New("kid-0"), New("kid-1")), New("sibling-0"),
+			New("sibling-1")), New("uncle", New("cousin-0"), New("cousin-1")))
+		from := "x"
+		to := "cousin-1"
+		result = tree.PathTo(from, to)
+	}
+	benchmarkResultPathTo = result
+}
+
+func treeEqual(tr1, tr2 *Tree) bool {
+	switch {
+	case tr1 == nil && tr2 == nil:
+		return true
+	case tr1 == nil && tr2 != nil:
+		return false
+	case tr1 != nil && tr2 == nil:
+		return false
+	default:
+		return tr1.Value() == tr2.Value() && treeSliceEqual(tr1.Children(), tr2.Children())
+	}
+}
+
+func treeSliceEqual(trs1, trs2 []*Tree) bool {
+	// allows permutation of children
+	if len(trs1) != len(trs2) {
+		return false
+	}
+	if len(trs1) == 0 && len(trs2) == 0 {
+		return true
+	}
+	sortByValue := func(xs []*Tree) func(int, int) bool {
+		return func(i, j int) bool {
+			return xs[i].Value() < xs[j].Value()
+		}
+	}
+	sort.Slice(trs1, sortByValue(trs1))
+	sort.Slice(trs2, sortByValue(trs2))
+	for i := range trs1 {
+		if !treeEqual(trs1[i], trs2[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func stringSliceEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	if len(a) == 0 {
+		return true
+	}
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Initial Translation ===
+// exercises/practice/pov/.meta/example.go
+package pov
+
+import (
+	"encoding/json"
+	"fmt"
+	"sort"
+)
+
+// Tree represents a tree data structure with a value and children
+type Tree struct {
+	value    string
+	children []*Tree
+}
+
+// New creates and returns a new Tree with the given root value and children.
+func New(value string, children ...*Tree) *Tree {
+	return &Tree{
+		value:    value,
+		children: children,
+	}
+}
+
+// Value returns the value at the root of a tree.
+func (tr *Tree) Value() string {
+	return tr.value
+}
+
+// Children returns a slice containing the children of a tree.
+func (tr *Tree) Children() []*Tree {
+	return tr.children
+}
+
+// String describes a tree in a compact S-expression format.
+func (tr *Tree) String() string {
+	if tr == nil {
+		return "nil"
+	}
+	result := tr.Value()
+	if len(tr.Children()) == 0 {
+		return result
+	}
+	for _, ch := range tr.Children() {
+		result += " " + ch.String()
+	}
+	return "(" + result + ")"
+}
+
+// dict converts the tree to a map representation for JSON serialization
+func (tr *Tree) dict() map[string][]interface{} {
+	childrenCopy := make([]*Tree, len(tr.children))
+	copy(childrenCopy, tr.children)
+	
+	// Sort children by value
+	sort.Slice(childrenCopy, func(i, j int) bool {
+		return childrenCopy[i].value < childrenCopy[j].value
+	})
+	
+	childrenDicts := make([]interface{}, len(childrenCopy))
+	for i, child := range childrenCopy {
+		childrenDicts[i] = child.dict()
+	}
+	
+	return map[string][]interface{}{tr.value: childrenDicts}
+}
+
+// JSONString returns a JSON string representation of the tree
+func (tr *Tree) JSONString(indent bool) string {
+	var jsonBytes []byte
+	var err error
+	
+	if indent {
+		jsonBytes, err = json.MarshalIndent(tr.dict(), "", "  ")
+	} else {
+		jsonBytes, err = json.Marshal(tr.dict())
+	}
+	
+	if err != nil {
+		return "Error serializing to JSON"
+	}
+	return string(jsonBytes)
+}
+
+// equals checks if two trees are equal
+func (tr *Tree) equals(other *Tree) bool {
+	d1, _ := json.Marshal(tr.dict())
+	d2, _ := json.Marshal(other.dict())
+	return string(d1) == string(d2)
+}
+
+// contains checks if the tree contains a node with the given value
+func (tr *Tree) contains(value string) bool {
+	if tr.value == value {
+		return true
+	}
+	
+	for _, child := range tr.children {
+		if child.contains(value) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// dup creates a deep copy of the tree
+func (tr *Tree) dup() *Tree {
+	childrenCopy := make([]*Tree, len(tr.children))
+	for i, child := range tr.children {
+		childrenCopy[i] = child.dup()
+	}
+	return New(tr.value, childrenCopy...)
+}
+
+// add adds a subtree as a child of this tree
+func (tr *Tree) add(other *Tree) *Tree {
+	tree := tr.dup()
+	tree.children = append(tree.children, other)
+	return tree
+}
+
+// remove removes a child node with the given value
+func (tr *Tree) remove(node string) *Tree {
+	tree := tr.dup()
+	newChildren := []*Tree{}
+	
+	for _, child := range tree.children {
+		if child.value == node {
+			// Skip this child
+		} else {
+			newChildren = append(newChildren, child.remove(node))
+		}
+	}
+	
+	tree.children = newChildren
+	return tree
+}
+
+// FromPov returns the pov from the node specified in the argument.
+func (tr *Tree) FromPov(from string) *Tree {
+	queue := []*Tree{tr}
+	visited := make(map[string]bool)
+	
+	for len(queue) > 0 {
+		tree := queue[0]
+		queue = queue[1:]
+		
+		if visited[tree.value] {
+			continue
+		}
+		
+		visited[tree.value] = true
+		
+		if from == tree.value {
+			return tree
+		}
+		
+		for _, child := range tree.children {
+			// Create a new tree with the child as root and the current tree (without the child) as a child
+			newTree := child.add(tree.remove(child.value))
+			queue = append(queue, newTree)
+		}
+	}
+	
+	panic(fmt.Sprintf("Tree could not be reoriented: %s", from))
+}
+
+// PathTo returns the shortest path between two nodes in the tree.
+func (tr *Tree) PathTo(from, to string) []string {
+	// Reorient the tree with from_node as the root
+	reoriented := tr.FromPov(from)
+	
+	stack := reoriented.children
+	path := []string{from}
+	
+	for path[len(path)-1] != to {
+		if len(stack) == 0 {
+			panic(fmt.Sprintf("No path found from %s to %s", from, to))
+		}
+		
+		tree := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		
+		if tree.contains(to) {
+			path = append(path, tree.value)
+			stack = tree.children
+		}
+	}
+	
+	return path
+}
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestFromPov (0.00s)
+    --- FAIL: TestFromPov/Errors_if_target_does_not_exist_in_a_singleton_tree (0.00s)
+panic: Tree could not be reoriented: nonexistent [recovered]
+	panic: Tree could not be reoriented: nonexistent
+
+goroutine 39 [running]:
+testing.tRunner.func1.2({0x102acd660, 0x1400005aca0})
+	/usr/local/go/src/testing/testing.go:1396 +0x1c8
+testing.tRunner.func1()
+	/usr/local/go/src/testing/testing.go:1399 +0x378
+panic({0x102acd660, 0x1400005aca0})
+	/usr/local/go/src/runtime/panic.go:884 +0x204
+exercism/pov.(*Tree).FromPov(0x1400004df18?, {0x102a8fdc6, 0xb})
+	/private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpruywyb6a/sandbox/exercises/practice/pov/pov.go:165 +0x350
+exercism/pov.TestFromPov.func1(0x14000123a00)
+	/private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpruywyb6a/sandbox/exercises/practice/pov/pov_test.go:168 +0x38
+testing.tRunner(0x14000123a00, 0x1400005ac80)
+	/usr/local/go/src/testing/testing.go:1446 +0x10c
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:1493 +0x300
+FAIL	exercism/pov	0.277s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/pov/.meta/example.go
+package pov
+
+import (
+	"encoding/json"
+	"fmt"
+	"sort"
+)
+
+// Tree represents a tree data structure with a value and children
+type Tree struct {
+	value    string
+	children []*Tree
+}
+
+// New creates and returns a new Tree with the given root value and children.
+func New(value string, children ...*Tree) *Tree {
+	return &Tree{
+		value:    value,
+		children: children,
+	}
+}
+
+// Value returns the value at the root of a tree.
+func (tr *Tree) Value() string {
+	return tr.value
+}
+
+// Children returns a slice containing the children of a tree.
+func (tr *Tree) Children() []*Tree {
+	return tr.children
+}
+
+// String describes a tree in a compact S-expression format.
+func (tr *Tree) String() string {
+	if tr == nil {
+		return "nil"
+	}
+	result := tr.Value()
+	if len(tr.Children()) == 0 {
+		return result
+	}
+	for _, ch := range tr.Children() {
+		result += " " + ch.String()
+	}
+	return "(" + result + ")"
+}
+
+// dict converts the tree to a map representation for JSON serialization
+func (tr *Tree) dict() map[string][]interface{} {
+	childrenCopy := make([]*Tree, len(tr.children))
+	copy(childrenCopy, tr.children)
+	
+	// Sort children by value
+	sort.Slice(childrenCopy, func(i, j int) bool {
+		return childrenCopy[i].value < childrenCopy[j].value
+	})
+	
+	childrenDicts := make([]interface{}, len(childrenCopy))
+	for i, child := range childrenCopy {
+		childrenDicts[i] = child.dict()
+	}
+	
+	return map[string][]interface{}{tr.value: childrenDicts}
+}
+
+// JSONString returns a JSON string representation of the tree
+func (tr *Tree) JSONString(indent bool) string {
+	var jsonBytes []byte
+	var err error
+	
+	if indent {
+		jsonBytes, err = json.MarshalIndent(tr.dict(), "", "  ")
+	} else {
+		jsonBytes, err = json.Marshal(tr.dict())
+	}
+	
+	if err != nil {
+		return "Error serializing to JSON"
+	}
+	return string(jsonBytes)
+}
+
+// equals checks if two trees are equal
+func (tr *Tree) equals(other *Tree) bool {
+	d1, _ := json.Marshal(tr.dict())
+	d2, _ := json.Marshal(other.dict())
+	return string(d1) == string(d2)
+}
+
+// contains checks if the tree contains a node with the given value
+func (tr *Tree) contains(value string) bool {
+	if tr.value == value {
+		return true
+	}
+	
+	for _, child := range tr.children {
+		if child.contains(value) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// dup creates a deep copy of the tree
+func (tr *Tree) dup() *Tree {
+	childrenCopy := make([]*Tree, len(tr.children))
+	for i, child := range tr.children {
+		childrenCopy[i] = child.dup()
+	}
+	return New(tr.value, childrenCopy...)
+}
+
+// add adds a subtree as a child of this tree
+func (tr *Tree) add(other *Tree) *Tree {
+	tree := tr.dup()
+	tree.children = append(tree.children, other)
+	return tree
+}
+
+// remove removes a child node with the given value
+func (tr *Tree) remove(node string) *Tree {
+	tree := tr.dup()
+	newChildren := []*Tree{}
+	
+	for _, child := range tree.children {
+		if child.value == node {
+			// Skip this child
+		} else {
+			newChildren = append(newChildren, child.remove(node))
+		}
+	}
+	
+	tree.children = newChildren
+	return tree
+}
+
+// FromPov returns the pov from the node specified in the argument.
+func (tr *Tree) FromPov(from string) *Tree {
+	queue := []*Tree{tr}
+	visited := make(map[string]bool)
+	
+	for len(queue) > 0 {
+		tree := queue[0]
+		queue = queue[1:]
+		
+		if visited[tree.value] {
+			continue
+		}
+		
+		visited[tree.value] = true
+		
+		if from == tree.value {
+			return tree
+		}
+		
+		for _, child := range tree.children {
+			// Create a new tree with the child as root and the current tree (without the child) as a child
+			newTree := child.add(tree.remove(child.value))
+			queue = append(queue, newTree)
+		}
+	}
+	
+	// Return nil instead of panicking when target doesn't exist
+	return nil
+}
+
+// PathTo returns the shortest path between two nodes in the tree.
+func (tr *Tree) PathTo(from, to string) []string {
+	// Reorient the tree with from_node as the root
+	reoriented := tr.FromPov(from)
+	if reoriented == nil {
+		return nil // Source node doesn't exist
+	}
+	
+	// Check if the target exists in the tree
+	if !tr.contains(to) {
+		return nil // Target node doesn't exist
+	}
+	
+	stack := reoriented.children
+	path := []string{from}
+	
+	for path[len(path)-1] != to {
+		if len(stack) == 0 {
+			return nil // No path found
+		}
+		
+		tree := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		
+		if tree.contains(to) {
+			path = append(path, tree.value)
+			stack = tree.children
+		}
+	}
+	
+	return path
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pov [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pov [exercism/pov.test]
+./pov.go:6:2: imported and not used: "fmt"
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/pov/.meta/example.go
+package pov
+
+import (
+	"encoding/json"
+	"sort"
+)
+
+// Tree represents a tree data structure with a value and children
+type Tree struct {
+	value    string
+	children []*Tree
+}
+
+// New creates and returns a new Tree with the given root value and children.
+func New(value string, children ...*Tree) *Tree {
+	return &Tree{
+		value:    value,
+		children: children,
+	}
+}
+
+// Value returns the value at the root of a tree.
+func (tr *Tree) Value() string {
+	return tr.value
+}
+
+// Children returns a slice containing the children of a tree.
+func (tr *Tree) Children() []*Tree {
+	return tr.children
+}
+
+// String describes a tree in a compact S-expression format.
+func (tr *Tree) String() string {
+	if tr == nil {
+		return "nil"
+	}
+	result := tr.Value()
+	if len(tr.Children()) == 0 {
+		return result
+	}
+	for _, ch := range tr.Children() {
+		result += " " + ch.String()
+	}
+	return "(" + result + ")"
+}
+
+// dict converts the tree to a map representation for JSON serialization
+func (tr *Tree) dict() map[string][]interface{} {
+	childrenCopy := make([]*Tree, len(tr.children))
+	copy(childrenCopy, tr.children)
+	
+	// Sort children by value
+	sort.Slice(childrenCopy, func(i, j int) bool {
+		return childrenCopy[i].value < childrenCopy[j].value
+	})
+	
+	childrenDicts := make([]interface{}, len(childrenCopy))
+	for i, child := range childrenCopy {
+		childrenDicts[i] = child.dict()
+	}
+	
+	return map[string][]interface{}{tr.value: childrenDicts}
+}
+
+// JSONString returns a JSON string representation of the tree
+func (tr *Tree) JSONString(indent bool) string {
+	var jsonBytes []byte
+	var err error
+	
+	if indent {
+		jsonBytes, err = json.MarshalIndent(tr.dict(), "", "  ")
+	} else {
+		jsonBytes, err = json.Marshal(tr.dict())
+	}
+	
+	if err != nil {
+		return "Error serializing to JSON"
+	}
+	return string(jsonBytes)
+}
+
+// equals checks if two trees are equal
+func (tr *Tree) equals(other *Tree) bool {
+	d1, _ := json.Marshal(tr.dict())
+	d2, _ := json.Marshal(other.dict())
+	return string(d1) == string(d2)
+}
+
+// contains checks if the tree contains a node with the given value
+func (tr *Tree) contains(value string) bool {
+	if tr.value == value {
+		return true
+	}
+	
+	for _, child := range tr.children {
+		if child.contains(value) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// dup creates a deep copy of the tree
+func (tr *Tree) dup() *Tree {
+	childrenCopy := make([]*Tree, len(tr.children))
+	for i, child := range tr.children {
+		childrenCopy[i] = child.dup()
+	}
+	return New(tr.value, childrenCopy...)
+}
+
+// add adds a subtree as a child of this tree
+func (tr *Tree) add(other *Tree) *Tree {
+	tree := tr.dup()
+	tree.children = append(tree.children, other)
+	return tree
+}
+
+// remove removes a child node with the given value
+func (tr *Tree) remove(node string) *Tree {
+	tree := tr.dup()
+	newChildren := []*Tree{}
+	
+	for _, child := range tree.children {
+		if child.value == node {
+			// Skip this child
+		} else {
+			newChildren = append(newChildren, child.remove(node))
+		}
+	}
+	
+	tree.children = newChildren
+	return tree
+}
+
+// FromPov returns the pov from the node specified in the argument.
+func (tr *Tree) FromPov(from string) *Tree {
+	queue := []*Tree{tr}
+	visited := make(map[string]bool)
+	
+	for len(queue) > 0 {
+		tree := queue[0]
+		queue = queue[1:]
+		
+		if visited[tree.value] {
+			continue
+		}
+		
+		visited[tree.value] = true
+		
+		if from == tree.value {
+			return tree
+		}
+		
+		for _, child := range tree.children {
+			// Create a new tree with the child as root and the current tree (without the child) as a child
+			newTree := child.add(tree.remove(child.value))
+			queue = append(queue, newTree)
+		}
+	}
+	
+	// Return nil instead of panicking when target doesn't exist
+	return nil
+}
+
+// PathTo returns the shortest path between two nodes in the tree.
+func (tr *Tree) PathTo(from, to string) []string {
+	// Reorient the tree with from_node as the root
+	reoriented := tr.FromPov(from)
+	if reoriented == nil {
+		return nil // Source node doesn't exist
+	}
+	
+	// Check if the target exists in the tree
+	if !tr.contains(to) {
+		return nil // Target node doesn't exist
+	}
+	
+	stack := reoriented.children
+	path := []string{from}
+	
+	for path[len(path)-1] != to {
+		if len(stack) == 0 {
+			return nil // No path found
+		}
+		
+		tree := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		
+		if tree.contains(to) {
+			path = append(path, tree.value)
+			stack = tree.children
+		}
+	}
+	
+	return path
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/pov	0.273s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

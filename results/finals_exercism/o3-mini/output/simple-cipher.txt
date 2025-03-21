@@ -1,0 +1,808 @@
+=== Initial Source Code ===
+Source file: exercises/practice/simple-cipher/.meta/example.py
+from string import ascii_lowercase
+from time import time
+import random
+from itertools import cycle
+
+
+class Cipher:
+
+    def __init__(self, key=None):
+        if key is None:
+            random.seed(time())
+            key = ''.join(random.choice(ascii_lowercase) for _ in range(100))
+        self.key = key
+
+    def encode(self, text):
+        return ''.join(
+            chr(((ord(character) - 2 * ord('a') + ord(key)) % 26) + ord('a'))
+            for character, key in zip(text, cycle(self.key))
+        )
+
+    def decode(self, text):
+        return ''.join(
+            chr(((ord(character) - ord(key) + 26) % 26) + ord('a'))
+            for character, key in zip(text, cycle(self.key))
+        )
+
+
+=== Source Interface ===
+class Cipher:
+    def __init__(self, key=None):
+        pass
+
+    def encode(self, text):
+        pass
+
+    def decode(self, text):
+        pass
+
+
+=== Target Interface ===
+package cipher
+
+// Define the shift and vigenere types here.
+// Both types should satisfy the Cipher interface.
+
+func NewCaesar() Cipher {
+	panic("Please implement the NewCaesar function")
+}
+
+func NewShift(distance int) Cipher {
+	panic("Please implement the NewShift function")
+}
+
+func (c shift) Encode(input string) string {
+	panic("Please implement the Encode function")
+}
+
+func (c shift) Decode(input string) string {
+	panic("Please implement the Decode function")
+}
+
+func NewVigenere(key string) Cipher {
+	panic("Please implement the NewVigenere function")
+}
+
+func (v vigenere) Encode(input string) string {
+	panic("Please implement the Encode function")
+}
+
+func (v vigenere) Decode(input string) string {
+	panic("Please implement the Decode function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/simple-cipher/canonical-data.json
+# File last updated on 2023-07-20
+
+import re
+import unittest
+
+from simple_cipher import (
+    Cipher,
+)
+
+
+class RandomKeyCipherTest(unittest.TestCase):
+    def test_can_encode(self):
+        cipher = Cipher()
+        plaintext = "aaaaaaaaaa"
+        self.assertEqual(cipher.encode(plaintext), cipher.key[0 : len(plaintext)])
+
+    def test_can_decode(self):
+        cipher = Cipher()
+        self.assertEqual(cipher.decode(cipher.key[0 : len("aaaaaaaaaa")]), "aaaaaaaaaa")
+
+    def test_is_reversible(self):
+        cipher = Cipher()
+        plaintext = "abcdefghij"
+        self.assertEqual(cipher.decode(cipher.encode(plaintext)), plaintext)
+
+    def test_key_is_made_only_of_lowercase_letters(self):
+        self.assertIsNotNone(re.match("^[a-z]+$", Cipher().key))
+
+
+class SubstitutionCipherTest(unittest.TestCase):
+    def test_can_encode(self):
+        cipher = Cipher("abcdefghij")
+        plaintext = "aaaaaaaaaa"
+        self.assertEqual(cipher.encode(plaintext), cipher.key)
+
+    def test_can_decode(self):
+        cipher = Cipher("abcdefghij")
+        self.assertEqual(cipher.decode(cipher.key), "aaaaaaaaaa")
+
+    def test_is_reversible(self):
+        cipher = Cipher("abcdefghij")
+        plaintext = "abcdefghij"
+        self.assertEqual(cipher.decode(cipher.encode(plaintext)), plaintext)
+
+    def test_can_double_shift_encode(self):
+        cipher = Cipher("iamapandabear")
+        plaintext = "iamapandabear"
+        self.assertEqual(cipher.encode(plaintext), "qayaeaagaciai")
+
+    def test_can_wrap_on_encode(self):
+        cipher = Cipher("abcdefghij")
+        plaintext = "zzzzzzzzzz"
+        self.assertEqual(cipher.encode(plaintext), "zabcdefghi")
+
+    def test_can_wrap_on_decode(self):
+        cipher = Cipher("abcdefghij")
+        self.assertEqual(cipher.decode("zabcdefghi"), "zzzzzzzzzz")
+
+    def test_can_encode_messages_longer_than_the_key(self):
+        cipher = Cipher("abc")
+        plaintext = "iamapandabear"
+        self.assertEqual(cipher.encode(plaintext), "iboaqcnecbfcr")
+
+    def test_can_decode_messages_longer_than_the_key(self):
+        cipher = Cipher("abc")
+        self.assertEqual(cipher.decode("iboaqcnecbfcr"), "iamapandabear")
+
+
+=== Target Test Code ===
+package cipher
+
+import (
+	"fmt"
+	"testing"
+)
+
+// type for testing implementations of the Cipher interface
+type cipherTest struct {
+	source string // source text, any UTF-8
+	cipher string // cipher text, result of Encode(st)
+	plain  string // decoded plain text, result of Decode(ct)
+}
+
+var caesarPrepped = []cipherTest{
+	{"iamapandabear", "ldpdsdqgdehdu", "iamapandabear"},
+	{"programmingisawesome", "surjudpplqjlvdzhvrph", "programmingisawesome"},
+	{"todayisholiday", "wrgdblvkrolgdb", "todayisholiday"},
+	{"venividivici", "yhqlylglylfl", "venividivici"},
+}
+
+var caesarTests = []cipherTest{
+	{"Go, go, gophers", "jrjrjrskhuv", "gogogophers"},
+	{"I am a panda bear.", "ldpdsdqgdehdu", "iamapandabear"},
+	{"Programming is AWESOME!", "surjudpplqjlvdzhvrph", "programmingisawesome"},
+	{"today is holiday", "wrgdblvkrolgdb", "todayisholiday"},
+	{"Twas the night before Christmas", "wzdvwkhqljkwehiruhfkulvwpdv", "twasthenightbeforechristmas"},
+	{" -- @#!", "", ""},
+	{"", "", ""},
+}
+
+func TestCaesar(t *testing.T) {
+	c := NewCaesar()
+	t.Run("no extra symbols", func(t *testing.T) {
+		testCipher(c, caesarPrepped, t)
+	})
+	t.Run("with extra symbols", func(t *testing.T) {
+		testCipher(c, caesarTests, t)
+	})
+}
+
+func testCipher(c Cipher, tests []cipherTest, t *testing.T) {
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Encode(%s)", test.source), func(tt *testing.T) {
+			if enc := c.Encode(test.source); enc != test.cipher {
+				tt.Fatalf("Encode(%s): got %q, want %q.", test.source, enc, test.cipher)
+			}
+		})
+		t.Run(fmt.Sprintf("Decode(%s)", test.cipher), func(tt *testing.T) {
+			if dec := c.Decode(test.cipher); dec != test.plain {
+				tt.Fatalf("Decode(%s): got %q, want %q.", test.cipher, dec, test.plain)
+			}
+		})
+	}
+}
+
+var NSATests = []cipherTest{
+	{"THE ENEMY IS NEAR", "qebbkbjvfpkbxo", "theenemyisnear"},
+	{"SPIES SEND SECRET MESSAGES",
+		"pmfbppbkapbzobqjbppxdbp",
+		"spiessendsecretmessages"},
+	{"THOMAS JEFFERSON DESIGNED A SUBSTITUTION CIPHER",
+		"qeljxpgbccboplkabpfdkbaxprypqfqrqflkzfmebo",
+		"thomasjeffersondesignedasubstitutioncipher"},
+	{"the quick brown fox jumps over the lazy dog",
+		"qebnrfzhyoltkclugrjmplsboqebixwvald",
+		"thequickbrownfoxjumpsoverthelazydog"},
+}
+
+func TestShift(t *testing.T) {
+	// test shift(3) against Caesar cases.
+	t.Run(fmt.Sprintf("key=%d", 3), func(t *testing.T) {
+		c := NewShift(3)
+		if c == nil {
+			t.Fatal("NewShift(3): got nil, want non-nil Cipher")
+		}
+		testCipher(c, caesarTests, t)
+	})
+
+	// NSA and WP say Caesar uses shift of -3
+	t.Run(fmt.Sprintf("key=%d", -3), func(t *testing.T) {
+		c := NewShift(-3)
+		if c == nil {
+			t.Fatal("NewShift(-3): got nil, want non-nil Cipher")
+		}
+		testCipher(c, NSATests, t)
+	})
+
+}
+
+func TestWrongShiftKey(t *testing.T) {
+	for _, s := range []int{-27, -26, 0, 26, 27} {
+		if NewShift(s) != nil {
+			t.Errorf("NewShift(%d): got non-nil, want nil", s)
+		}
+	}
+}
+
+var vtests = []struct {
+	key   string
+	tests []cipherTest
+}{
+	{"lemon", []cipherTest{{"ATTACKATDAWN", "lxfopvefrnhr", "attackatdawn"}}},
+	{"abcdefghij", []cipherTest{
+		{"aaaaaaaaaa", "abcdefghij", "aaaaaaaaaa"},
+		{"zzzzzzzzzz", "zabcdefghi", "zzzzzzzzzz"},
+	}},
+	{"iamapandabear", []cipherTest{
+		{"I am a panda bear.", "qayaeaagaciai", "iamapandabear"},
+	}},
+	{"duxrceqyaimciuucnelkeoxjhdyduu", []cipherTest{
+		{"Diffie Hellman", "gccwkixcltycv", "diffiehellman"},
+	}},
+	{"qgbvno", []cipherTest{
+		{"cof-FEE, 123!", "sugars", "coffee"},
+	}},
+}
+
+func TestVigenere(t *testing.T) {
+	for _, test := range vtests {
+		t.Run(fmt.Sprintf("key=%s", test.key), func(t *testing.T) {
+			v := NewVigenere(test.key)
+			if v == nil {
+				t.Fatalf("NewVigenere(%q): got nil, want non-nil Cipher",
+					test.key)
+			}
+			testCipher(v, test.tests, t)
+		})
+	}
+}
+
+func TestVigenereWrongKey(t *testing.T) {
+	for _, k := range []string{"", "a", "aa", "no way", "CAT", "3", "and,"} {
+		if NewVigenere(k) != nil {
+			t.Errorf("NewVigenere(%q): got non-nil, want nil", k)
+		}
+	}
+}
+
+// Benchmark combined time to run all tests.
+// Note other ciphers test different data; times cannot be compared.
+func BenchmarkEncodeCaesar(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	c := NewCaesar()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, test := range caesarTests {
+			c.Encode(test.source)
+		}
+	}
+}
+
+func BenchmarkDecodeCaesar(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	c := NewCaesar()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, test := range caesarTests {
+			c.Decode(test.cipher)
+		}
+	}
+}
+
+func BenchmarkNewShift(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for s := -27; s <= 27; s++ {
+			NewShift(s)
+		}
+	}
+}
+
+func BenchmarkEncodeShift(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	s := NewShift(5)
+	all := caesarTests
+	all = append(all, NSATests...)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, test := range all {
+			s.Encode(test.source)
+		}
+	}
+}
+
+func BenchmarkDecodeShift(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	s := NewShift(5)
+	all := caesarTests
+	all = append(all, NSATests...)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, test := range all {
+			s.Decode(test.cipher)
+		}
+	}
+}
+
+func BenchmarkNewVigenere(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range vtests {
+			NewVigenere(test.key)
+		}
+	}
+}
+
+func BenchmarkEncVigenere(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	v := make([]Cipher, len(vtests))
+	for i, test := range vtests {
+		v[i] = NewVigenere(test.key)
+		if v[i] == nil {
+			b.Skip("Benchmark requires valid Vigenere test cases")
+		}
+	}
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		for i, test := range vtests {
+			vi := v[i]
+			for _, test := range test.tests {
+				vi.Encode(test.source)
+			}
+		}
+	}
+}
+
+func BenchmarkDecVigenere(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	v := make([]Cipher, len(vtests))
+	for i, test := range vtests {
+		v[i] = NewVigenere(test.key)
+		if v[i] == nil {
+			b.Skip("Benchmark requires valid Vigenere test cases")
+		}
+	}
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		for i, test := range vtests {
+			vi := v[i]
+			for _, test := range test.tests {
+				vi.Decode(test.cipher)
+			}
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/simple-cipher/.meta/example.go
+package meta
+
+import (
+	"math/rand"
+	"time"
+)
+
+// Cipher provides encoding and decoding using a Vigenère-style cipher.
+// If no key is provided, a random 100-character key is generated from lowercase letters.
+type Cipher struct {
+	key string
+}
+
+// NewCipher creates and returns a new Cipher instance.
+// If key is an empty string, it generates a random key of length 100.
+func NewCipher(key string) *Cipher {
+	if key == "" {
+		rand.Seed(time.Now().UnixNano())
+		letters := []rune("abcdefghijklmnopqrstuvwxyz")
+		b := make([]rune, 100)
+		for i := range b {
+			b[i] = letters[rand.Intn(len(letters))]
+		}
+		key = string(b)
+	}
+	return &Cipher{key: key}
+}
+
+// Encode encodes the input text using the cipher's key.
+// It cycles through the key and for each character in the text applies the transformation:
+//   encodedChar = ((char - 2*'a' + keyChar) mod 26) + 'a'
+func (c *Cipher) Encode(text string) string {
+	r := []rune(text)
+	result := make([]rune, len(r))
+	keyRunes := []rune(c.key)
+	keyLen := len(keyRunes)
+
+	for i, ch := range r {
+		keyCh := keyRunes[i%keyLen]
+		// Calculate: (ch - 2*'a' + keyCh) mod 26, then add 'a'
+		// Note: both ch and keyCh are assumed to be lowercase letters.
+		shifted := (int(ch) - 2*int('a') + int(keyCh)) % 26
+		if shifted < 0 {
+			shifted += 26
+		}
+		result[i] = rune(shifted + int('a'))
+	}
+	return string(result)
+}
+
+// Decode decodes the input text using the cipher's key.
+// It cycles through the key and for each character in the text applies the reverse transformation:
+//   decodedChar = ((char - keyChar + 26) mod 26) + 'a'
+func (c *Cipher) Decode(text string) string {
+	r := []rune(text)
+	result := make([]rune, len(r))
+	keyRunes := []rune(c.key)
+	keyLen := len(keyRunes)
+
+	for i, ch := range r {
+		keyCh := keyRunes[i%keyLen]
+		shifted := (int(ch) - int(keyCh) + 26) % 26
+		if shifted < 0 {
+			shifted += 26
+		}
+		result[i] = rune(shifted + int('a'))
+	}
+	return string(result)
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (simple_cipher.go) and cipher (simple_cipher_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/simple-cipher
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/simple-cipher/.meta/example.go
+package meta
+
+import (
+	"strings"
+	"unicode"
+	"math/rand"
+	"time"
+)
+
+// Cipher is the interface for encoding and decoding text.
+// It expects the input to be processed by first lowercasing and removing non-letter characters.
+// The transformation depends on the implementation.
+
+type Cipher interface {
+	Encode(input string) string
+	Decode(input string) string
+}
+
+// NewCaesar returns a Caesar cipher, which is a shift cipher with a shift of 3.
+func NewCaesar() Cipher {
+	return NewShift(3)
+}
+
+// shift implements a simple shift cipher.
+// A valid shift value must be in the range 1..25 or -25..-1.
+// It removes non-letter characters and lowercases the input before processing.
+
+type shift struct {
+	shift int
+}
+
+// NewShift creates a new shift cipher with the given distance.
+// Returns nil if the distance is 0 or not in the range -25..-1 or 1..25.
+func NewShift(distance int) Cipher {
+	if distance == 0 || distance <= -26 || distance >= 26 {
+		return nil
+	}
+	return shift{shift: distance}
+}
+
+// Encode applies the shift cipher to the input text.
+// It lowercases the text and removes any non-alphabetic characters before encoding.
+func (s shift) Encode(input string) string {
+	text := sanitize(input)
+	var out []rune
+	for _, ch := range text {
+		if ch >= 'a' && ch <= 'z' {
+			// Apply shift with modulo arithmetic
+			newCh := 'a' + rune((int(ch-'a')+s.shift+26)%26)
+			out = append(out, newCh)
+		}
+	}
+	return string(out)
+}
+
+// Decode reverses the shift cipher on the input text.
+func (s shift) Decode(input string) string {
+	text := sanitize(input)
+	var out []rune
+	for _, ch := range text {
+		if ch >= 'a' && ch <= 'z' {
+			newCh := 'a' + rune((int(ch-'a')-s.shift+26)%26)
+			out = append(out, newCh)
+		}
+	}
+	return string(out)
+}
+
+// vigenere implements a Vigenère cipher.
+// It uses a key that must be at least 3 characters long and consist solely of lowercase letters.
+// The cipher lowercases the input and removes non-letter characters before processing.
+
+type vigenere struct {
+	key string
+}
+
+// NewVigenere creates a new Vigenère cipher with the provided key.
+// Returns nil if the key is invalid (empty, too short, contains non-lowercase letters).
+func NewVigenere(key string) Cipher {
+	if len(key) < 3 {
+		return nil
+	}
+	for _, r := range key {
+		if r < 'a' || r > 'z' {
+			return nil
+		}
+	}
+	return vigenere{key: key}
+}
+
+// Encode applies the Vigenère cipher to the input text.
+// It cycles through the key and shifts each letter accordingly.
+func (v vigenere) Encode(input string) string {
+	text := sanitize(input)
+	if len(text) == 0 {
+		return ""
+	}
+	out := make([]rune, len(text))
+	keyRunes := []rune(v.key)
+	kLen := len(keyRunes)
+
+	for i, ch := range text {
+		if ch >= 'a' && ch <= 'z' {
+			shift := int(keyRunes[i%kLen] - 'a')
+			newCh := 'a' + rune((int(ch-'a')+shift)%26)
+			out[i] = newCh
+		}
+	}
+	return string(out)
+}
+
+// Decode reverses the Vigenère cipher on the input text.
+func (v vigenere) Decode(input string) string {
+	text := sanitize(input)
+	if len(text) == 0 {
+		return ""
+	}
+	out := make([]rune, len(text))
+	keyRunes := []rune(v.key)
+	kLen := len(keyRunes)
+
+	for i, ch := range text {
+		if ch >= 'a' && ch <= 'z' {
+			shift := int(keyRunes[i%kLen] - 'a')
+			newCh := 'a' + rune((int(ch-'a')-shift+26)%26)
+			out[i] = newCh
+		}
+	}
+	return string(out)
+}
+
+// sanitize converts the string to lowercase and filters out non-letter characters.
+func sanitize(input string) string {
+	var b strings.Builder
+	for _, r := range input {
+		if unicode.IsLetter(r) {
+			b.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return b.String()
+}
+
+// Optionally, if randomness is needed for other implementations, seed the random generator.
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (simple_cipher.go) and cipher (simple_cipher_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/simple-cipher
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/simple-cipher/cipher.go
+package cipher
+
+import (
+	"math/rand"
+	"strings"
+	"time"
+	"unicode"
+)
+
+// Cipher is the interface for encoding and decoding text.
+// It expects the input to be processed by lowercasing and filtering out non-letter characters before encoding.
+// The transformation depends on the implementation.
+// Note: The implementations ignore any characters that are not letters.
+
+type Cipher interface {
+	Encode(input string) string
+	Decode(input string) string
+}
+
+// NewCaesar returns a Caesar cipher which is a shift cipher with a fixed shift of 3.
+func NewCaesar() Cipher {
+	return NewShift(3)
+}
+
+// shift implements a simple shift cipher.
+// A valid shift value must be in the range 1..25 or -25..-1.
+// The cipher sanitizes the input by lowercasing and removing non-letter characters.
+
+// shift is the implementation of the Cipher interface for shift ciphers.
+type shift struct {
+	shift int
+}
+
+// NewShift creates a new shift cipher with the given distance.
+// Returns nil if the distance is 0 or not in the range -25..-1 or 1..25.
+func NewShift(distance int) Cipher {
+	if distance == 0 || distance <= -26 || distance >= 26 {
+		return nil
+	}
+	return shift{shift: distance}
+}
+
+// Encode applies the shift cipher to the input text.
+// It lowercases the text and removes non-letter characters before encoding.
+func (s shift) Encode(input string) string {
+	text := sanitize(input)
+	var out []rune
+	for _, ch := range text {
+		if ch >= 'a' && ch <= 'z' {
+			newCh := 'a' + rune((int(ch-'a')+s.shift+26)%26)
+			out = append(out, newCh)
+		}
+	}
+	return string(out)
+}
+
+// Decode reverses the shift cipher on the input text.
+func (s shift) Decode(input string) string {
+	text := sanitize(input)
+	var out []rune
+	for _, ch := range text {
+		if ch >= 'a' && ch <= 'z' {
+			newCh := 'a' + rune((int(ch-'a')-s.shift+26)%26)
+			out = append(out, newCh)
+		}
+	}
+	return string(out)
+}
+
+// vigenere implements a Vigenère cipher.
+// It uses a key that must be at least 3 characters long and consist exclusively of lowercase letters.
+// The cipher sanitizes the input by lowercasing and removing non-letter characters before processing.
+
+type vigenere struct {
+	key string
+}
+
+// NewVigenere creates a new Vigenère cipher with the provided key.
+// Returns nil if the key is invalid (empty, too short, or contains non-lowercase letters).
+func NewVigenere(key string) Cipher {
+	if len(key) < 3 {
+		return nil
+	}
+	for _, r := range key {
+		if r < 'a' || r > 'z' {
+			return nil
+		}
+	}
+	return vigenere{key: key}
+}
+
+// Encode applies the Vigenère cipher to the input text.
+// It cycles over the key and shifts each letter accordingly.
+func (v vigenere) Encode(input string) string {
+	text := sanitize(input)
+	if len(text) == 0 {
+		return ""
+	}
+	out := make([]rune, len(text))
+	keyRunes := []rune(v.key)
+	kLen := len(keyRunes)
+	for i, ch := range text {
+		if ch >= 'a' && ch <= 'z' {
+			shift := int(keyRunes[i%kLen] - 'a')
+			newCh := 'a' + rune((int(ch-'a')+shift)%26)
+			out[i] = newCh
+		}
+	}
+	return string(out)
+}
+
+// Decode reverses the Vigenère cipher on the input text.
+func (v vigenere) Decode(input string) string {
+	text := sanitize(input)
+	if len(text) == 0 {
+		return ""
+	}
+	out := make([]rune, len(text))
+	keyRunes := []rune(v.key)
+	kLen := len(keyRunes)
+	for i, ch := range text {
+		if ch >= 'a' && ch <= 'z' {
+			shift := int(keyRunes[i%kLen] - 'a')
+			newCh := 'a' + rune((int(ch-'a')-shift+26)%26)
+			out[i] = newCh
+		}
+	}
+	return string(out)
+}
+
+// sanitize converts the string to lowercase and filters out any non-letter characters.
+func sanitize(input string) string {
+	var b strings.Builder
+	for _, r := range input {
+		if unicode.IsLetter(r) {
+			b.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return b.String()
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/simple-cipher	0.302s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,758 @@
+=== Initial Source Code ===
+Source file: exercises/practice/wordy/.meta/example.py
+from operator import add, mul, sub
+from operator import floordiv as div
+
+
+VALID_OPERATIONS = {'plus': add, 'minus': sub, 'multiplied by': mul, 'divided by': div}
+
+
+def answer(question):
+    if not bool(question[8:-1].strip().lower().split()):
+        raise ValueError('syntax error')
+
+    elif not question.startswith('What is '):
+        raise ValueError('unknown operation')
+
+    else:
+        words = question[8:-1].strip().lower().split()
+        words.reverse()
+
+    try:
+        main_value = int(words.pop())
+    except ValueError as error:
+        raise ValueError('syntax error') from error
+
+    while words:
+        operation = [words.pop()]
+        while words:
+            try:
+                next_to_evaluate = words.pop()
+                second_value = int(next_to_evaluate)
+                break
+            except ValueError as error:
+                if next_to_evaluate == operation[-1]:
+                    raise ValueError('syntax error') from error
+                else:
+                    operation.append(next_to_evaluate)
+        else:
+            if operation[-1] not in VALID_OPERATIONS and not operation[-1].isdigit() :
+                raise ValueError('unknown operation')
+            else:
+                raise ValueError('syntax error')
+
+        operation = ' '.join(operation)
+
+        try:
+            main_value = VALID_OPERATIONS[operation](main_value, second_value)
+        except KeyError as error:
+            raise ValueError('syntax error') from error
+
+    return main_value
+
+
+=== Source Interface ===
+def answer(question):
+    pass
+
+
+=== Target Interface ===
+package wordy
+
+func Answer(question string) (int, bool) {
+	panic("Please implement the Answer function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/wordy/canonical-data.json
+# File last updated on 2025-02-15
+
+import unittest
+
+from wordy import (
+    answer,
+)
+
+
+class WordyTest(unittest.TestCase):
+    def test_just_a_number(self):
+        self.assertEqual(answer("What is 5?"), 5)
+
+    def test_addition(self):
+        self.assertEqual(answer("What is 1 plus 1?"), 2)
+
+    def test_more_addition(self):
+        self.assertEqual(answer("What is 53 plus 2?"), 55)
+
+    def test_addition_with_negative_numbers(self):
+        self.assertEqual(answer("What is -1 plus -10?"), -11)
+
+    def test_large_addition(self):
+        self.assertEqual(answer("What is 123 plus 45678?"), 45801)
+
+    def test_subtraction(self):
+        self.assertEqual(answer("What is 4 minus -12?"), 16)
+
+    def test_multiplication(self):
+        self.assertEqual(answer("What is -3 multiplied by 25?"), -75)
+
+    def test_division(self):
+        self.assertEqual(answer("What is 33 divided by -3?"), -11)
+
+    def test_multiple_additions(self):
+        self.assertEqual(answer("What is 1 plus 1 plus 1?"), 3)
+
+    def test_addition_and_subtraction(self):
+        self.assertEqual(answer("What is 1 plus 5 minus -2?"), 8)
+
+    def test_multiple_subtraction(self):
+        self.assertEqual(answer("What is 20 minus 4 minus 13?"), 3)
+
+    def test_subtraction_then_addition(self):
+        self.assertEqual(answer("What is 17 minus 6 plus 3?"), 14)
+
+    def test_multiple_multiplication(self):
+        self.assertEqual(answer("What is 2 multiplied by -2 multiplied by 3?"), -12)
+
+    def test_addition_and_multiplication(self):
+        self.assertEqual(answer("What is -3 plus 7 multiplied by -2?"), -8)
+
+    def test_multiple_division(self):
+        self.assertEqual(answer("What is -12 divided by 2 divided by -3?"), 2)
+
+    def test_unknown_operation(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 52 cubed?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "unknown operation")
+
+    def test_reject_problem_missing_an_operand(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 1 plus?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_problem_with_no_operands_or_operators(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_two_operations_in_a_row(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 1 plus plus 2?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_two_numbers_in_a_row(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 1 plus 2 1?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_postfix_notation(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 1 2 plus?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_reject_prefix_notation(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is plus 1 2?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    # Additional tests for this track
+
+    def test_missing_operation(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 2 2 minus 3?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+    def test_missing_number(self):
+        with self.assertRaises(ValueError) as err:
+            answer("What is 7 plus multiplied by -2?")
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "syntax error")
+
+
+=== Target Test Code ===
+package wordy
+
+import "testing"
+
+func TestAnswer(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, ok := Answer(tc.question)
+			switch {
+			case tc.expectError:
+				if ok {
+					t.Fatalf("Answer(%q) expected error, got: %d", tc.question, actual)
+				}
+			case !ok:
+				t.Fatalf("Answer(%q) returned ok=%t, want: %d", tc.question, ok, tc.expected)
+			case actual != tc.expected:
+				t.Fatalf("Answer(%q) = %d, want: %d", tc.question, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// Benchmark combined time to answer all questions.
+func BenchmarkAnswer(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			Answer(test.question)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"errors"
+	"strings"
+)
+
+var validOperations = map[string]func(int, int) int{
+	"plus":          func(a, b int) int { return a + b },
+	"minus":         func(a, b int) int { return a - b },
+	"multiplied by": func(a, b int) int { return a * b },
+	"divided by":    func(a, b int) int { return a / b },
+}
+
+// Answer evaluates the given question and returns the result or an error.
+func Answer(question string) (int, bool) {
+	if len(strings.TrimSpace(question[8:len(question)-1])) == 0 {
+		return 0, false
+	}
+
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	words := strings.Split(strings.TrimSpace(question[8:len(question)-1]), " ")
+	for i, j := 0, len(words)-1; i < j; i, j = i+1, j-1 {
+		words[i], words[j] = words[j], words[i]
+	}
+
+	mainValue, err := parseInt(words[len(words)-1])
+	if err != nil {
+		return 0, false
+	}
+	words = words[:len(words)-1]
+
+	for len(words) > 0 {
+		operation := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondValue int
+		for len(words) > 0 {
+			nextToEvaluate := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			value, err := parseInt(nextToEvaluate)
+			if err == nil {
+				secondValue = value
+				break
+			}
+
+			if nextToEvaluate == operation[len(operation)-1] {
+				return 0, false
+			}
+			operation = append(operation, nextToEvaluate)
+		}
+
+		if len(operation) == 1 && !isValidOperation(operation[0]) && !isDigit(operation[0]) {
+			return 0, false
+		}
+
+		operationStr := strings.Join(operation, " ")
+
+		if !isValidOperation(operationStr) {
+			return 0, false
+		}
+
+		mainValue = validOperations[operationStr](mainValue, secondValue)
+	}
+
+	return mainValue, true
+}
+
+func parseInt(s string) (int, error) {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	return result, err
+}
+
+func isValidOperation(op string) bool {
+	_, exists := validOperations[op]
+	return exists
+}
+
+func isDigit(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy.go:5:2: imported and not used: "errors"
+./wordy.go:76:12: undefined: fmt
+./wordy_test.go:6:21: undefined: tests
+./wordy_test.go:29:24: undefined: tests
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"fmt"
+	"strings"
+)
+
+var validOperations = map[string]func(int, int) int{
+	"plus": func(a, b int) int { return a + b },
+	"minus": func(a, b int) int { return a - b },
+	"multiplied by": func(a, b int) int { return a * b },
+	"divided by": func(a, b int) int { return a / b },
+}
+
+// Answer evaluates the given question and returns the result or an error.
+func Answer(question string) (int, bool) {
+	if len(strings.TrimSpace(question[8:len(question)-1])) == 0 {
+		return 0, false
+	}
+
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	words := strings.Split(strings.TrimSpace(question[8:len(question)-1]), " ")
+	for i, j := 0, len(words)-1; i < j; i, j = i+1, j-1 {
+		words[i], words[j] = words[j], words[i]
+	}
+
+	mainValue, err := parseInt(words[len(words)-1])
+	if err != nil {
+		return 0, false
+	}
+	words = words[:len(words)-1]
+
+	for len(words) > 0 {
+		operation := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondValue int
+		for len(words) > 0 {
+			nextToEvaluate := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			value, err := parseInt(nextToEvaluate)
+			if err == nil {
+				secondValue = value
+				break
+			}
+
+			if nextToEvaluate == operation[len(operation)-1] {
+				return 0, false
+			}
+			operation = append(operation, nextToEvaluate)
+		}
+
+		if len(operation) == 1 && !isValidOperation(operation[0]) && !isDigit(operation[0]) {
+			return 0, false
+		}
+
+		operationStr := strings.Join(operation, " ")
+
+		if !isValidOperation(operationStr) {
+			return 0, false
+		}
+
+		mainValue = validOperations[operationStr](mainValue, secondValue)
+	}
+
+	return mainValue, true
+}
+
+func parseInt(s string) (int, error) {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	return result, err
+}
+
+func isValidOperation(op string) bool {
+	_, exists := validOperations[op]
+	return exists
+}
+
+func isDigit(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy_test.go:6:21: undefined: tests
+./wordy_test.go:29:24: undefined: tests
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"fmt"
+	"strings"
+)
+
+var validOperations = map[string]func(int, int) int{
+	"plus": func(a, b int) int { return a + b },
+	"minus": func(a, b int) int { return a - b },
+	"multiplied by": func(a, b int) int { return a * b },
+	"divided by": func(a, b int) int { return a / b },
+}
+
+// Answer evaluates the given question and returns the result or an error.
+func Answer(question string) (int, bool) {
+	if len(strings.TrimSpace(question[8:len(question)-1])) == 0 {
+		return 0, false
+	}
+
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	words := strings.Split(strings.TrimSpace(question[8:len(question)-1]), " ")
+	for i, j := 0, len(words)-1; i < j; i, j = i+1, j-1 {
+		words[i], words[j] = words[j], words[i]
+	}
+
+	mainValue, err := parseInt(words[len(words)-1])
+	if err != nil {
+		return 0, false
+	}
+	words = words[:len(words)-1]
+
+	for len(words) > 0 {
+		operation := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondValue int
+		for len(words) > 0 {
+			nextToEvaluate := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			value, err := parseInt(nextToEvaluate)
+			if err == nil {
+				secondValue = value
+				break
+			}
+
+			if nextToEvaluate == operation[len(operation)-1] {
+				return 0, false
+			}
+			operation = append(operation, nextToEvaluate)
+		}
+
+		if len(operation) == 1 && !isValidOperation(operation[0]) && !isDigit(operation[0]) {
+			return 0, false
+		}
+
+		operationStr := strings.Join(operation, " ")
+
+		if !isValidOperation(operationStr) {
+			return 0, false
+		}
+
+		mainValue = validOperations[operationStr](mainValue, secondValue)
+	}
+
+	return mainValue, true
+}
+
+func parseInt(s string) (int, error) {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	return result, err
+}
+
+func isValidOperation(op string) bool {
+	_, exists := validOperations[op]
+	return exists
+}
+
+func isDigit(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy_test.go:6:21: undefined: tests
+./wordy_test.go:29:24: undefined: tests
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"fmt"
+	"strings"
+)
+
+var validOperations = map[string]func(int, int) int{
+	"plus": func(a, b int) int { return a + b },
+	"minus": func(a, b int) int { return a - b },
+	"multiplied by": func(a, b int) int { return a * b },
+	"divided by": func(a, b int) int { return a / b },
+}
+
+// Answer evaluates the given question and returns the result or an error.
+func Answer(question string) (int, bool) {
+	if len(strings.TrimSpace(question[8:len(question)-1])) == 0 {
+		return 0, false
+	}
+
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	words := strings.Split(strings.TrimSpace(question[8:len(question)-1]), " ")
+	for i, j := 0, len(words)-1; i < j; i, j = i+1, j-1 {
+		words[i], words[j] = words[j], words[i]
+	}
+
+	mainValue, err := parseInt(words[len(words)-1])
+	if err != nil {
+		return 0, false
+	}
+	words = words[:len(words)-1]
+
+	for len(words) > 0 {
+		operation := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondValue int
+		for len(words) > 0 {
+			nextToEvaluate := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			value, err := parseInt(nextToEvaluate)
+			if err == nil {
+				secondValue = value
+				break
+			}
+
+			if nextToEvaluate == operation[len(operation)-1] {
+				return 0, false
+			}
+			operation = append(operation, nextToEvaluate)
+		}
+
+		if len(operation) == 1 && !isValidOperation(operation[0]) && !isDigit(operation[0]) {
+			return 0, false
+		}
+
+		operationStr := strings.Join(operation, " ")
+
+		if !isValidOperation(operationStr) {
+			return 0, false
+		}
+
+		mainValue = validOperations[operationStr](mainValue, secondValue)
+	}
+
+	return mainValue, true
+}
+
+func parseInt(s string) (int, error) {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	return result, err
+}
+
+func isValidOperation(op string) bool {
+	_, exists := validOperations[op]
+	return exists
+}
+
+func isDigit(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy_test.go:6:21: undefined: tests
+./wordy_test.go:29:24: undefined: tests
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/wordy/.meta/example.go
+package wordy
+
+import (
+	"fmt"
+	"strings"
+)
+
+var validOperations = map[string]func(int, int) int{
+	"plus": func(a, b int) int { return a + b },
+	"minus": func(a, b int) int { return a - b },
+	"multiplied by": func(a, b int) int { return a * b },
+	"divided by": func(a, b int) int { return a / b },
+}
+
+// Answer evaluates the given question and returns the result or an error.
+func Answer(question string) (int, bool) {
+	if len(strings.TrimSpace(question[8:len(question)-1])) == 0 {
+		return 0, false
+	}
+
+	if !strings.HasPrefix(question, "What is ") {
+		return 0, false
+	}
+
+	words := strings.Split(strings.TrimSpace(question[8:len(question)-1]), " ")
+	for i, j := 0, len(words)-1; i < j; i, j = i+1, j-1 {
+		words[i], words[j] = words[j], words[i]
+	}
+
+	mainValue, err := parseInt(words[len(words)-1])
+	if err != nil {
+		return 0, false
+	}
+	words = words[:len(words)-1]
+
+	for len(words) > 0 {
+		operation := []string{words[len(words)-1]}
+		words = words[:len(words)-1]
+
+		var secondValue int
+		for len(words) > 0 {
+			nextToEvaluate := words[len(words)-1]
+			words = words[:len(words)-1]
+
+			value, err := parseInt(nextToEvaluate)
+			if err == nil {
+				secondValue = value
+				break
+			}
+
+			if nextToEvaluate == operation[len(operation)-1] {
+				return 0, false
+			}
+			operation = append(operation, nextToEvaluate)
+		}
+
+		if len(operation) == 1 && !isValidOperation(operation[0]) && !isDigit(operation[0]) {
+			return 0, false
+		}
+
+		operationStr := strings.Join(operation, " ")
+
+		if !isValidOperation(operationStr) {
+			return 0, false
+		}
+
+		mainValue = validOperations[operationStr](mainValue, secondValue)
+	}
+
+	return mainValue, true
+}
+
+func parseInt(s string) (int, error) {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	return result, err
+}
+
+func isValidOperation(op string) bool {
+	_, exists := validOperations[op]
+	return exists
+}
+
+func isDigit(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/wordy [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/wordy [exercism/wordy.test]
+./wordy_test.go:6:21: undefined: tests
+./wordy_test.go:29:24: undefined: tests
+
+
+=== ERROR ===
+Error processing sample (returncode=2): 
+
+=== FINAL STATUS: ERROR ===

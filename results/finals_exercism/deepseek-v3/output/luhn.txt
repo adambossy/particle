@@ -1,0 +1,230 @@
+=== Initial Source Code ===
+Source file: exercises/practice/luhn/.meta/example.py
+class Luhn:
+    def __init__(self, card_num):
+        self.card_num = card_num
+        self.checksum = -1
+        digits = card_num.replace(' ', '')
+        length = len(digits)
+        if digits.isdigit() and length > 1:
+            self.checksum = 0
+            cadence = length % 2
+            for idx, digit in enumerate(digits):
+                num = int(digit)
+                if idx % 2 == cadence:
+                    num *= 2
+                    if num > 9:
+                        num -= 9
+                self.checksum += num
+
+    def valid(self):
+        return self.checksum % 10 == 0
+
+
+=== Source Interface ===
+class Luhn:
+    def __init__(self, card_num):
+        pass
+
+    def valid(self):
+        pass
+
+
+=== Target Interface ===
+package luhn
+
+func Valid(id string) bool {
+	panic("Please implement the Valid function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/luhn/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from luhn import (
+    Luhn,
+)
+
+
+class LuhnTest(unittest.TestCase):
+    def test_single_digit_strings_can_not_be_valid(self):
+        self.assertIs(Luhn("1").valid(), False)
+
+    def test_a_single_zero_is_invalid(self):
+        self.assertIs(Luhn("0").valid(), False)
+
+    def test_a_simple_valid_sin_that_remains_valid_if_reversed(self):
+        self.assertIs(Luhn("059").valid(), True)
+
+    def test_a_simple_valid_sin_that_becomes_invalid_if_reversed(self):
+        self.assertIs(Luhn("59").valid(), True)
+
+    def test_a_valid_canadian_sin(self):
+        self.assertIs(Luhn("055 444 285").valid(), True)
+
+    def test_invalid_canadian_sin(self):
+        self.assertIs(Luhn("055 444 286").valid(), False)
+
+    def test_invalid_credit_card(self):
+        self.assertIs(Luhn("8273 1232 7352 0569").valid(), False)
+
+    def test_invalid_long_number_with_an_even_remainder(self):
+        self.assertIs(Luhn("1 2345 6789 1234 5678 9012").valid(), False)
+
+    def test_invalid_long_number_with_a_remainder_divisible_by_5(self):
+        self.assertIs(Luhn("1 2345 6789 1234 5678 9013").valid(), False)
+
+    def test_valid_number_with_an_even_number_of_digits(self):
+        self.assertIs(Luhn("095 245 88").valid(), True)
+
+    def test_valid_number_with_an_odd_number_of_spaces(self):
+        self.assertIs(Luhn("234 567 891 234").valid(), True)
+
+    def test_valid_strings_with_a_non_digit_added_at_the_end_become_invalid(self):
+        self.assertIs(Luhn("059a").valid(), False)
+
+    def test_valid_strings_with_punctuation_included_become_invalid(self):
+        self.assertIs(Luhn("055-444-285").valid(), False)
+
+    def test_valid_strings_with_symbols_included_become_invalid(self):
+        self.assertIs(Luhn("055# 444$ 285").valid(), False)
+
+    def test_single_zero_with_space_is_invalid(self):
+        self.assertIs(Luhn(" 0").valid(), False)
+
+    def test_more_than_a_single_zero_is_valid(self):
+        self.assertIs(Luhn("0000 0").valid(), True)
+
+    def test_input_digit_9_is_correctly_converted_to_output_digit_9(self):
+        self.assertIs(Luhn("091").valid(), True)
+
+    def test_very_long_input_is_valid(self):
+        self.assertIs(Luhn("9999999999 9999999999 9999999999 9999999999").valid(), True)
+
+    def test_valid_luhn_with_an_odd_number_of_digits_and_non_zero_first_digit(self):
+        self.assertIs(Luhn("109").valid(), True)
+
+    def test_using_ascii_value_for_non_doubled_non_digit_isn_t_allowed(self):
+        self.assertIs(Luhn("055b 444 285").valid(), False)
+
+    def test_using_ascii_value_for_doubled_non_digit_isn_t_allowed(self):
+        self.assertIs(Luhn(":9").valid(), False)
+
+    def test_non_numeric_non_space_char_in_the_middle_with_a_sum_that_s_divisible_by_10_isn_t_allowed(
+        self,
+    ):
+        self.assertIs(Luhn("59%59").valid(), False)
+
+    # Additional tests for this track
+
+    def test_is_valid_can_be_called_repeatedly(self):
+        # This test was added, because we saw many implementations
+        # in which the first call to valid() worked, but the
+        # second call failed().
+        number = Luhn("055 444 285")
+        self.assertIs(number.valid(), True)
+        self.assertIs(number.valid(), True)
+
+
+=== Target Test Code ===
+package luhn
+
+import "testing"
+
+func TestValid(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Valid(tc.input); actual != tc.expected {
+				t.Fatalf("Valid(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkValid(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Valid(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/luhn/.meta/example.go
+package luhn
+
+// Luhn represents a Luhn validator.
+type Luhn struct {
+	cardNum  string
+	checksum int
+}
+
+// NewLuhn creates a new Luhn validator.
+func NewLuhn(cardNum string) *Luhn {
+	l := &Luhn{cardNum: cardNum, checksum: -1}
+	digits := ""
+	for _, r := range cardNum {
+		if r != ' ' {
+			digits += string(r)
+		}
+	}
+	length := len(digits)
+	if isDigits(digits) && length > 1 {
+		l.checksum = 0
+		cadence := length % 2
+		for idx, r := range digits {
+			num := int(r - '0')
+			if idx%2 == cadence {
+				num *= 2
+				if num > 9 {
+					num -= 9
+				}
+			}
+			l.checksum += num
+		}
+	}
+	return l
+}
+
+// Valid checks if the card number is valid according to the Luhn algorithm.
+func (l *Luhn) Valid() bool {
+	return l.checksum%10 == 0
+}
+
+// isDigits checks if a string consists only of digits.
+func isDigits(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/luhn [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/luhn [exercism/luhn.test]
+./luhn_test.go:6:21: undefined: testCases
+./luhn_test.go:8:17: undefined: Valid
+./luhn_test.go:20:22: undefined: testCases
+./luhn_test.go:21:4: undefined: Valid
+
+
+=== ERROR ===
+Error processing sample (returncode=2): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Missing end token '<｜tool▁calls▁end｜>' in function calls: <｜tool▁calls▁begin｜><｜tool▁call▁begin｜>function<｜t..."}}
+
+=== FINAL STATUS: ERROR ===

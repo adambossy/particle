@@ -1,0 +1,574 @@
+=== Initial Source Code ===
+Source file: exercises/practice/resistor-color-duo/.meta/example.py
+COLORS = [
+    'black',
+    'brown',
+    'red',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'violet',
+    'grey',
+    'white'
+]
+
+
+def value(colors):
+    return 10 * COLORS.index(colors[0]) + COLORS.index(colors[1])
+
+
+=== Source Interface ===
+def value(colors):
+    pass
+
+
+=== Target Interface ===
+package resistorcolorduo
+
+// Value should return the resistance value of a resistor with a given colors.
+func Value(colors []string) int {
+	panic("Implement the Value function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/resistor-color-duo/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from resistor_color_duo import (
+    value,
+)
+
+
+class ResistorColorDuoTest(unittest.TestCase):
+    def test_brown_and_black(self):
+        self.assertEqual(value(["brown", "black"]), 10)
+
+    def test_blue_and_grey(self):
+        self.assertEqual(value(["blue", "grey"]), 68)
+
+    def test_yellow_and_violet(self):
+        self.assertEqual(value(["yellow", "violet"]), 47)
+
+    def test_white_and_red(self):
+        self.assertEqual(value(["white", "red"]), 92)
+
+    def test_orange_and_orange(self):
+        self.assertEqual(value(["orange", "orange"]), 33)
+
+    def test_ignore_additional_colors(self):
+        self.assertEqual(value(["green", "brown", "orange"]), 51)
+
+    def test_black_and_brown_one_digit(self):
+        self.assertEqual(value(["black", "brown"]), 1)
+
+
+=== Target Test Code ===
+package resistorcolorduo
+
+import "testing"
+
+func TestValue(t *testing.T) {
+	for _, tc := range valueTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Value(tc.input)
+
+			if actual != tc.expected {
+				t.Fatalf("Value(%+q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// valueBench is intended to be used in BenchmarkValue to avoid compiler optimizations.
+var valueBench int
+
+func BenchmarkValue(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range valueTestCases {
+			valueBench = Value(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+var colors = []string{
+    "black",
+    "brown",
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "violet",
+    "grey",
+    "white",
+}
+
+// Value should return the resistance value of a resistor with a given colors.
+func Value(colors []string) int {
+    return 10*indexOf(colors[0]) + indexOf(colors[1])
+}
+
+func indexOf(color string) int {
+    for i, c := range colors {
+        if c == color {
+            return i
+        }
+    }
+    return -1
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/resistor-color-duo/.meta/example_test.go
+package resistorcolorduo
+
+import "testing"
+
+type valueTestCase struct {
+  description string
+  input       []string
+  expected    int
+}
+
+var valueTestCases = []valueTestCase{{
+  description: "Test case for valid inputs",
+  input:       []string{"brown", "black"},
+  expected:    10,
+}}
+
+func TestValue(t *testing.T) {
+  for _, tc := range valueTestCases {
+    t.Run(tc.description, func(t *testing.T) {
+      actual := Value(tc.input)
+
+      if actual != tc.expected {
+        t.Fatalf("Value(%+q): expected %d, actual %d", tc.input, tc.expected, actual)
+      }
+    })
+  }
+}
+
+// valueBench is intended to be used in BenchmarkValue to avoid compiler optimizations.
+var valueBench int
+
+func BenchmarkValue(b *testing.B) {
+  for i := 0; i < b.N; i++ {
+    for _, tc := range valueTestCases {
+      valueBench = Value(tc.input)
+    }
+  }
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:5:6: TestValue redeclared in this block
+	./resistor_color_duo.go:18:6: other declaration of TestValue
+./resistor_color_duo_test.go:8:14: undefined: Value
+./resistor_color_duo_test.go:18:5: valueBench redeclared in this block
+	./resistor_color_duo.go:31:5: other declaration of valueBench
+./resistor_color_duo_test.go:20:6: BenchmarkValue redeclared in this block
+	./resistor_color_duo.go:33:6: other declaration of BenchmarkValue
+./resistor_color_duo_test.go:23:17: undefined: Value
+./resistor_color_duo.go:21:17: undefined: Value
+./resistor_color_duo.go:36:20: undefined: Value
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+var colors = []string{
+    "black",
+    "brown",
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "violet",
+    "grey",
+    "white",
+}
+
+// Value should return the resistance value of a resistor with a given colors.
+func Value(input []string) int {
+    return 10*indexOf(input[0]) + indexOf(input[1])
+}
+
+func indexOf(color string) int {
+    for i, c := range colors {
+        if c == color {
+            return i
+        }
+    }
+    return -1
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/resistor-color-duo/.meta/example_test.go
+package resistorcolorduo
+
+import "testing"
+
+type valueTestCase struct {
+  description string
+  input       []string
+  expected    int
+}
+
+var valueTestCases = []valueTestCase{{
+  description: "Test case for valid inputs",
+  input:       []string{"brown", "black"},
+  expected:    10,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"blue", "grey"},
+  expected:    68,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"yellow", "violet"},
+  expected:    47,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"white", "red"},
+  expected:    92,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"orange", "orange"},
+  expected:    33,
+}}
+
+func TestValue(t *testing.T) {
+  for _, tc := range valueTestCases {
+    t.Run(tc.description, func(t *testing.T) {
+      actual := Value(tc.input)
+
+      if actual != tc.expected {
+        t.Fatalf("Value(%+q): expected %d, actual %d", tc.input, tc.expected, actual)
+      }
+    })
+  }
+}
+
+// valueBench is intended to be used in BenchmarkValue to avoid compiler optimizations.
+var valueBench int
+
+func BenchmarkValue(b *testing.B) {
+  for i := 0; i < b.N; i++ {
+    for _, tc := range valueTestCases {
+      valueBench = Value(tc.input)
+    }
+  }
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:5:6: TestValue redeclared in this block
+	./resistor_color_duo.go:34:6: other declaration of TestValue
+./resistor_color_duo_test.go:8:14: undefined: Value
+./resistor_color_duo_test.go:18:5: valueBench redeclared in this block
+	./resistor_color_duo.go:47:5: other declaration of valueBench
+./resistor_color_duo_test.go:20:6: BenchmarkValue redeclared in this block
+	./resistor_color_duo.go:49:6: other declaration of BenchmarkValue
+./resistor_color_duo_test.go:23:17: undefined: Value
+./resistor_color_duo.go:37:17: undefined: Value
+./resistor_color_duo.go:52:20: undefined: Value
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+var colors = []string{
+    "black",
+    "brown",
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "violet",
+    "grey",
+    "white",
+}
+
+// Value should return the resistance value of a resistor with a given colors.
+func Value(input []string) int {
+    return 10*indexOf(input[0]) + indexOf(input[1])
+}
+
+func indexOf(color string) int {
+    for i, c := range colors {
+        if c == color {
+            return i
+        }
+    }
+    return -1
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/resistor-color-duo/.meta/example_test.go
+package resistorcolorduo
+
+import "testing"
+
+type valueTestCase struct {
+  description string
+  input       []string
+  expected    int
+}
+
+var valueTestCases = []valueTestCase{{
+  description: "Test case for valid inputs",
+  input:       []string{"brown", "black"},
+  expected:    10,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"blue", "grey"},
+  expected:    68,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"yellow", "violet"},
+  expected:    47,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"white", "red"},
+  expected:    92,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"orange", "orange"},
+  expected:    33,
+}}
+
+func TestValue(t *testing.T) {
+  for _, tc := range valueTestCases {
+    t.Run(tc.description, func(t *testing.T) {
+      actual := Value(tc.input)
+
+      if actual != tc.expected {
+        t.Fatalf("Value(%+q): expected %d, actual %d", tc.input, tc.expected, actual)
+      }
+    })
+  }
+}
+
+// valueBench is intended to be used in BenchmarkValue to avoid compiler optimizations.
+var valueBench int
+
+func BenchmarkValue(b *testing.B) {
+  for i := 0; i < b.N; i++ {
+    for _, tc := range valueTestCases {
+      valueBench = Value(tc.input)
+    }
+  }
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:5:6: TestValue redeclared in this block
+	./resistor_color_duo.go:34:6: other declaration of TestValue
+./resistor_color_duo_test.go:8:14: undefined: Value
+./resistor_color_duo_test.go:18:5: valueBench redeclared in this block
+	./resistor_color_duo.go:47:5: other declaration of valueBench
+./resistor_color_duo_test.go:20:6: BenchmarkValue redeclared in this block
+	./resistor_color_duo.go:49:6: other declaration of BenchmarkValue
+./resistor_color_duo_test.go:23:17: undefined: Value
+./resistor_color_duo.go:37:17: undefined: Value
+./resistor_color_duo.go:52:20: undefined: Value
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+var colors = []string{
+    "black",
+    "brown",
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "violet",
+    "grey",
+    "white",
+}
+
+// Value should return the resistance value of a resistor with a given colors.
+func Value(input []string) int {
+    return 10*indexOf(input[0]) + indexOf(input[1])
+}
+
+func indexOf(color string) int {
+    for i, c := range colors {
+        if c == color {
+            return i
+        }
+    }
+    return -1
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/resistor-color-duo/.meta/example_test.go
+package resistorcolorduo
+
+import "testing"
+
+type valueTestCase struct {
+  description string
+  input       []string
+  expected    int
+}
+
+var valueTestCases = []valueTestCase{{
+  description: "Test case for valid inputs",
+  input:       []string{"brown", "black"},
+  expected:    10,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"blue", "grey"},
+  expected:    68,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"yellow", "violet"},
+  expected:    47,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"white", "red"},
+  expected:    92,
+}, {
+  description: "Test case for valid inputs",
+  input:       []string{"orange", "orange"},
+  expected:    33,
+}}
+
+func TestValue(t *testing.T) {
+  for _, tc := range valueTestCases {
+    t.Run(tc.description, func(t *testing.T) {
+      actual := Value(tc.input)
+
+      if actual != tc.expected {
+        t.Fatalf("Value(%+q): expected %d, actual %d", tc.input, tc.expected, actual)
+      }
+    })
+  }
+}
+
+// valueBench is intended to be used in BenchmarkValue to avoid compiler optimizations.
+var valueBench int
+
+func BenchmarkValue(b *testing.B) {
+  for i := 0; i < b.N; i++ {
+    for _, tc := range valueTestCases {
+      valueBench = Value(tc.input)
+    }
+  }
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:5:6: TestValue redeclared in this block
+	./resistor_color_duo.go:34:6: other declaration of TestValue
+./resistor_color_duo_test.go:8:14: undefined: Value
+./resistor_color_duo_test.go:18:5: valueBench redeclared in this block
+	./resistor_color_duo.go:47:5: other declaration of valueBench
+./resistor_color_duo_test.go:20:6: BenchmarkValue redeclared in this block
+	./resistor_color_duo.go:49:6: other declaration of BenchmarkValue
+./resistor_color_duo_test.go:23:17: undefined: Value
+./resistor_color_duo.go:37:17: undefined: Value
+./resistor_color_duo.go:52:20: undefined: Value
+
+
+=== ERROR ===
+Error processing sample (returncode=2): 
+
+=== FINAL STATUS: ERROR ===

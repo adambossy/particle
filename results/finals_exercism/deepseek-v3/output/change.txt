@@ -1,0 +1,680 @@
+=== Initial Source Code ===
+Source file: exercises/practice/change/.meta/example.py
+def find_fewest_coins(coins, target):
+    if target < 0:
+        raise ValueError("target can't be negative")
+    min_coins_required = [1e9] * (target + 1)
+    last_coin = [0] * (target + 1)
+    min_coins_required[0] = 0
+    last_coin[0] = -1
+    for change in range(1, target + 1):
+        final_result = min_coins_required[change]
+        for coin in coins:
+            if coin <= change:
+                result = min_coins_required[change - coin] + 1
+                if result < final_result:
+                    final_result = result
+                    last_coin[change] = change - coin
+        min_coins_required[change] = final_result
+    if min_coins_required[target] == 1e9:
+        raise ValueError("can't make target with given coins")
+    else:
+        last_coin_value = target
+        array = []
+        while last_coin[last_coin_value] != -1:
+            array.append(last_coin_value-last_coin[last_coin_value])
+            last_coin_value = last_coin[last_coin_value]
+        return array
+
+
+=== Source Interface ===
+def find_fewest_coins(coins, target):
+    pass
+
+
+=== Target Interface ===
+package change
+
+func Change(coins []int, target int) ([]int, error) {
+	panic("Please implement the Change function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/change/canonical-data.json
+# File last updated on 2024-03-05
+
+import unittest
+
+from change import (
+    find_fewest_coins,
+)
+
+
+class ChangeTest(unittest.TestCase):
+    def test_change_for_1_cent(self):
+        self.assertEqual(find_fewest_coins([1, 5, 10, 25], 1), [1])
+
+    def test_single_coin_change(self):
+        self.assertEqual(find_fewest_coins([1, 5, 10, 25, 100], 25), [25])
+
+    def test_multiple_coin_change(self):
+        self.assertEqual(find_fewest_coins([1, 5, 10, 25, 100], 15), [5, 10])
+
+    def test_change_with_lilliputian_coins(self):
+        self.assertEqual(find_fewest_coins([1, 4, 15, 20, 50], 23), [4, 4, 15])
+
+    def test_change_with_lower_elbonia_coins(self):
+        self.assertEqual(find_fewest_coins([1, 5, 10, 21, 25], 63), [21, 21, 21])
+
+    def test_large_target_values(self):
+        self.assertEqual(
+            find_fewest_coins([1, 2, 5, 10, 20, 50, 100], 999),
+            [2, 2, 5, 20, 20, 50, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+        )
+
+    def test_possible_change_without_unit_coins_available(self):
+        self.assertEqual(find_fewest_coins([2, 5, 10, 20, 50], 21), [2, 2, 2, 5, 10])
+
+    def test_another_possible_change_without_unit_coins_available(self):
+        self.assertEqual(find_fewest_coins([4, 5], 27), [4, 4, 4, 5, 5, 5])
+
+    def test_a_greedy_approach_is_not_optimal(self):
+        self.assertEqual(find_fewest_coins([1, 10, 11], 20), [10, 10])
+
+    def test_no_coins_make_0_change(self):
+        self.assertEqual(find_fewest_coins([1, 5, 10, 21, 25], 0), [])
+
+    def test_error_testing_for_change_smaller_than_the_smallest_of_coins(self):
+        with self.assertRaises(ValueError) as err:
+            find_fewest_coins([5, 10], 3)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "can't make target with given coins")
+
+    def test_error_if_no_combination_can_add_up_to_target(self):
+        with self.assertRaises(ValueError) as err:
+            find_fewest_coins([5, 10], 94)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "can't make target with given coins")
+
+    def test_cannot_find_negative_change_values(self):
+        with self.assertRaises(ValueError) as err:
+            find_fewest_coins([1, 2, 5], -5)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "target can't be negative")
+
+
+=== Target Test Code ===
+package change
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestChange(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := Change(tc.coins, tc.target)
+			if tc.valid {
+				if err != nil {
+					t.Fatalf("Change(%v, %d): expected %v, got error %v", tc.coins, tc.target, tc.expectedChange, err)
+				} else if !reflect.DeepEqual(actual, tc.expectedChange) {
+					t.Fatalf("Change(%v, %d): expected %#v, actual %#v", tc.coins, tc.target, tc.expectedChange, actual)
+				}
+			} else {
+				if err == nil {
+					t.Fatalf("Change(%v, %d): expected error, got %v", tc.coins, tc.target, actual)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkChange(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Change(tc.coins, tc.target)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/change/.meta/example.go
+package change
+
+import "errors"
+
+// Change finds the fewest coins to make the target amount.
+func Change(coins []int, target int) ([]int, error) {
+    if target < 0 {
+        return nil, errors.New("target can't be negative")
+    }
+    minCoinsRequired := make([]int, target+1)
+    lastCoin := make([]int, target+1)
+    for i := range minCoinsRequired {
+        minCoinsRequired[i] = 1e9
+    }
+    minCoinsRequired[0] = 0
+    lastCoin[0] = -1
+    for change := 1; change <= target; change++ {
+        finalResult := minCoinsRequired[change]
+        for _, coin := range coins {
+            if coin <= change {
+                result := minCoinsRequired[change-coin] + 1
+                if result < finalResult {
+                    finalResult = result
+                    lastCoin[change] = change - coin
+                }
+            }
+        }
+        minCoinsRequired[change] = finalResult
+    }
+    if minCoinsRequired[target] == 1e9 {
+        return nil, errors.New("can't make target with given coins")
+    }
+    lastCoinValue := target
+    var array []int
+    for lastCoin[lastCoinValue] != -1 {
+        array = append(array, lastCoinValue-lastCoin[lastCoinValue])
+        lastCoinValue = lastCoin[lastCoinValue]
+    }
+    return array, nil
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/change [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/change [exercism/change.test]
+./change_test.go:9:21: undefined: testCases
+./change_test.go:32:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/change/.meta/example.go
+package change
+
+import "errors"
+
+// Change finds the fewest coins to make the target amount.
+func Change(coins []int, target int) ([]int, error) {
+    if target < 0 {
+        return nil, errors.New("target can't be negative")
+    }
+    minCoinsRequired := make([]int, target+1)
+    lastCoin := make([]int, target+1)
+    for i := range minCoinsRequired {
+        minCoinsRequired[i] = 1e9
+    }
+    minCoinsRequired[0] = 0
+    lastCoin[0] = -1
+    for change := 1; change <= target; change++ {
+        finalResult := minCoinsRequired[change]
+        for _, coin := range coins {
+            if coin <= change {
+                result := minCoinsRequired[change-coin] + 1
+                if result < finalResult {
+                    finalResult = result
+                    lastCoin[change] = change - coin
+                }
+            }
+        }
+        minCoinsRequired[change] = finalResult
+    }
+    if minCoinsRequired[target] == 1e9 {
+        return nil, errors.New("can't make target with given coins")
+    }
+    lastCoinValue := target
+    var array []int
+    for lastCoin[lastCoinValue] != -1 {
+        array = append(array, lastCoinValue-lastCoin[lastCoinValue])
+        lastCoinValue = lastCoin[lastCoinValue]
+    }
+    return array, nil
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/change [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/change [exercism/change.test]
+./change_test.go:9:21: undefined: testCases
+./change_test.go:32:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/change/.meta/example.go
+package change
+
+import "errors"
+
+// Change finds the fewest coins to make the target amount.
+func Change(coins []int, target int) ([]int, error) {
+    if target < 0 {
+        return nil, errors.New("target can't be negative")
+    }
+    minCoinsRequired := make([]int, target+1)
+    lastCoin := make([]int, target+1)
+    for i := range minCoinsRequired {
+        minCoinsRequired[i] = 1e9
+    }
+    minCoinsRequired[0] = 0
+    lastCoin[0] = -1
+    for change := 1; change <= target; change++ {
+        finalResult := minCoinsRequired[change]
+        for _, coin := range coins {
+            if coin <= change {
+                result := minCoinsRequired[change-coin] + 1
+                if result < finalResult {
+                    finalResult = result
+                    lastCoin[change] = change - coin
+                }
+            }
+        }
+        minCoinsRequired[change] = finalResult
+    }
+    if minCoinsRequired[target] == 1e9 {
+        return nil, errors.New("can't make target with given coins")
+    }
+    lastCoinValue := target
+    var array []int
+    for lastCoin[lastCoinValue] != -1 {
+        array = append(array, lastCoinValue-lastCoin[lastCoinValue])
+        lastCoinValue = lastCoin[lastCoinValue]
+    }
+    return array, nil
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/change [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/change [exercism/change.test]
+./change_test.go:9:21: undefined: testCases
+./change_test.go:32:22: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/change/.meta/example.go
+package change
+
+import "errors"
+
+// Change finds the fewest coins to make the target amount.
+func Change(coins []int, target int) ([]int, error) {
+    if target < 0 {
+        return nil, errors.New("target can't be negative")
+    }
+    minCoinsRequired := make([]int, target+1)
+    lastCoin := make([]int, target+1)
+    for i := range minCoinsRequired {
+        minCoinsRequired[i] = 1e9
+    }
+    minCoinsRequired[0] = 0
+    lastCoin[0] = -1
+    for change := 1; change <= target; change++ {
+        finalResult := minCoinsRequired[change]
+        for _, coin := range coins {
+            if coin <= change {
+                result := minCoinsRequired[change-coin] + 1
+                if result < finalResult {
+                    finalResult = result
+                    lastCoin[change] = change - coin
+                }
+            }
+        }
+        minCoinsRequired[change] = finalResult
+    }
+    if minCoinsRequired[target] == 1e9 {
+        return nil, errors.New("can't make target with given coins")
+    }
+    lastCoinValue := target
+    var array []int
+    for lastCoin[lastCoinValue] != -1 {
+        array = append(array, lastCoinValue-lastCoin[lastCoinValue])
+        lastCoinValue = lastCoin[lastCoinValue]}
+    return array, nil
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/change [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/change [exercism/change.test]
+./change_test.go:9:21: undefined: testCases
+./change_test.go:32:22: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/change/.meta/example.go
+package change
+
+import "errors"
+
+// Change finds the fewest coins to make the target amount.
+func Change(coins []int, target int) ([]int, error) {
+    if target < 0 {
+        return nil, errors.New("target can't be negative")
+    }
+    minCoinsRequired := make([]int, target+1)
+    lastCoin := make([]int, target+1)
+    for i := range minCoinsRequired {
+        minCoinsRequired[i] = 1e9
+    }
+    minCoinsRequired[0] = 0
+    lastCoin[0] = -1
+    for change := 1; change <= target; change++ {
+        finalResult := minCoinsRequired[change]
+        for _, coin := range coins {
+            if coin <= change {
+                result := minCoinsRequired[change-coin] + 1
+                if result < finalResult {
+                    finalResult = result
+                    lastCoin[change] = change - coin
+                }
+            }
+        }
+        minCoinsRequired[change] = finalResult
+    }
+    if minCoinsRequired[target] == 1e9 {
+        return nil, errors.New("can't make target with given coins")
+    }
+    lastCoinValue := target
+    var array []int
+    for lastCoin[lastCoinValue] != -1 {
+        array = append(array, lastCoinValue-lastCoin[lastCoinValue])
+        lastCoinValue = lastCoin[lastCoinValue]
+    }
+    return array, nil
+}
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/change [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/change [exercism/change.test]
+./change_test.go:9:21: undefined: testCases
+./change_test.go:32:22: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercism/go/change/change.go
+package change
+
+import "errors"
+
+// Change finds the fewest coins to make the target amount.
+// It uses a dynamic programming approach to solve the problem.
+func Change(coins []int, target int) ([]int, error) {
+    if target < 0 {
+        return nil, errors.New("target can't be negative")
+    }
+
+    // Initialize arrays for minimum coins and last coin used
+    minCoinsRequired := make([]int, target+1)
+    lastCoin := make([]int, target+1)
+
+    // Set initial values
+    for i := range minCoinsRequired {
+        minCoinsRequired[i] = 1e9 // Represents infinity
+    }
+    minCoinsRequired[0] = 0
+    lastCoin[0] = -1
+
+    // Compute the minimum number of coins for each amount up to the target
+    for change := 1; change <= target; change++ {
+        finalResult := minCoinsRequired[change]
+        for _, coin := range coins {
+            if coin <= change {
+                result := minCoinsRequired[change-coin] + 1
+                if result < finalResult {
+                    finalResult = result
+                    lastCoin[change] = change - coin
+                }
+            }
+        }
+        minCoinsRequired[change] = finalResult
+    }
+
+    // Check if the target can be achieved with the given coins
+    if minCoinsRequired[target] == 1e9 {
+        return nil, errors.New("can't make target with given coins")
+    }
+
+    // Reconstruct the solution
+    lastCoinValue := target
+    var result []int
+    for lastCoin[lastCoinValue] != -1 {
+        result = append(result, lastCoinValue-lastCoin[lastCoinValue])
+        lastCoinValue = lastCoin[lastCoinValue]
+    }
+
+    return result, nil
+}
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/change [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/change [exercism/change.test]
+./change_test.go:9:21: undefined: testCases
+./change_test.go:32:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercism/go/change/change.go
+package change
+
+import "errors"
+
+// Change finds the fewest coins to make the target amount.
+// It uses a dynamic programming approach to solve the problem.
+func Change(coins []int, target int) ([]int, error) {
+    if target < 0 {
+        return nil, errors.New("target can't be negative")
+    }
+
+    // Initialize arrays for minimum coins and last coin used
+    minCoinsRequired := make([]int, target+1)
+    lastCoin := make([]int, target+1)
+
+    // Set initial values
+    for i := range minCoinsRequired {
+        minCoinsRequired[i] = 1e9 // Represents infinity
+    }
+    minCoinsRequired[0] = 0
+    lastCoin[0] = -1
+
+    // Compute the minimum number of coins for each amount up to the target
+    for change := 1; change <= target; change++ {
+        finalResult := minCoinsRequired[change]
+        for _, coin := range coins {
+            if coin <= change {
+                result := minCoinsRequired[change-coin] + 1
+                if result < finalResult {
+                    finalResult = result
+                    lastCoin[change] = change - coin
+                }
+            }
+        }
+        minCoinsRequired[change] = finalResult
+    }
+
+    // Check if the target can be achieved with the given coins
+    if minCoinsRequired[target] == 1e9 {
+        return nil, errors.New("can't make target with given coins")
+    }
+
+    // Reconstruct the solution
+    lastCoinValue := target
+    var result []int
+    for lastCoin[lastCoinValue] != -1 {
+        result = append(result, lastCoinValue-lastCoin[lastCoinValue])
+        lastCoinValue = lastCoin[lastCoinValue]
+    }
+
+    return result, nil
+}
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/change [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/change [exercism/change.test]
+./change_test.go:9:21: undefined: testCases
+./change_test.go:32:22: undefined: testCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/change/.meta/example.go
+package change
+
+import "errors"
+
+// Change finds the fewest coins to make the target amount.
+func Change(coins []int, target int) ([]int, error) {
+    if target < 0 {
+        return nil, errors.New("target can't be negative")
+    }
+
+    minCoinsRequired := make([]int, target+1)
+    lastCoin := make([]int, target+1)
+
+    for i := range minCoinsRequired {
+        minCoinsRequired[i] = 1e9 // Represents infinity
+    }
+    minCoinsRequired[0] = 0
+    lastCoin[0] = -1
+
+    for change := 1; change <= target; change++ {
+        finalResult := minCoinsRequired[change]
+        for _, coin := range coins {
+            if coin <= change {
+                result := minCoinsRequired[change-coin] + 1
+                if result < finalResult {
+                    finalResult = result
+                    lastCoin[change] = change - coin
+                }
+            }
+        }
+        minCoinsRequired[change] = finalResult
+    }
+
+    if minCoinsRequired[target] == 1e9 {
+        return nil, errors.New("can't make target with given coins")
+    }
+
+    lastCoinValue := target
+    var result []int
+    for lastCoin[lastCoinValue] != -1 {
+        result = append(result, lastCoinValue-lastCoin[lastCoinValue])
+        lastCoinValue = lastCoin[lastCoinValue]
+    }
+
+    return result, nil
+}
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/change [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/change [exercism/change.test]
+./change_test.go:9:21: undefined: testCases
+./change_test.go:32:22: undefined: testCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/change/.meta/example.go
+package change
+
+import "errors"
+
+// Change finds the fewest coins to make the target amount.
+func Change(coins []int, target int) ([]int, error) {
+    if target < 0 {
+        return nil, errors.New("target can't be negative")
+    }
+
+    minCoinsRequired := make([]int, target+1)
+    lastCoin := make([]int, target+1)
+
+    for i := range minCoinsRequired {
+        minCoinsRequired[i] = 1e9 // Represents infinity
+    }
+    minCoinsRequired[0] = 0
+    lastCoin[0] = -1
+
+    for change := 1; change <= target; change++ {
+        finalResult := minCoinsRequired[change]
+        for _, coin := range coins {
+            if coin <= change {
+                result := minCoinsRequired[change-coin] + 1
+                if result < finalResult {
+                    finalResult = result
+                    lastCoin[change] = change - coin
+                }
+            }
+        }
+        minCoinsRequired[change] = finalResult
+    }
+
+    if minCoinsRequired[target] == 1e9 {
+        return nil, errors.New("can't make target with given coins")
+    }
+
+    lastCoinValue := target
+    var result []int
+    for lastCoin[lastCoinValue] != -1 {
+        result = append(result, lastCoinValue-lastCoin[lastCoinValue])
+        lastCoinValue = lastCoin[lastCoinValue]
+    }
+
+    return result, nil
+}
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/change [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/change [exercism/change.test]
+./change_test.go:9:21: undefined: testCases
+./change_test.go:32:22: undefined: testCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): 
+
+=== FINAL STATUS: ERROR ===

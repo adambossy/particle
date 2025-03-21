@@ -1,0 +1,207 @@
+=== Initial Source Code ===
+Source file: exercises/practice/rotational-cipher/.meta/example.py
+from string import ascii_lowercase, ascii_uppercase
+
+
+ALPHA_LEN = len(ascii_lowercase)
+
+
+def rotate(message, key):
+    coded_message = ''
+    for char in message:
+        if char in ascii_lowercase:
+            char = ascii_lowercase[(ascii_lowercase.index(char) + key) % ALPHA_LEN]
+        elif char in ascii_uppercase:
+            char = ascii_uppercase[(ascii_uppercase.index(char) + key) % ALPHA_LEN]
+        coded_message += char
+    return coded_message
+
+
+=== Source Interface ===
+def rotate(text, key):
+    pass
+
+
+=== Target Interface ===
+package rotationalcipher
+
+func RotationalCipher(plain string, shiftKey int) string {
+	panic("Please implement the RotationalCipher function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/rotational-cipher/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from rotational_cipher import (
+    rotate,
+)
+
+
+class RotationalCipherTest(unittest.TestCase):
+    def test_rotate_a_by_0_same_output_as_input(self):
+        self.assertEqual(rotate("a", 0), "a")
+
+    def test_rotate_a_by_1(self):
+        self.assertEqual(rotate("a", 1), "b")
+
+    def test_rotate_a_by_26_same_output_as_input(self):
+        self.assertEqual(rotate("a", 26), "a")
+
+    def test_rotate_m_by_13(self):
+        self.assertEqual(rotate("m", 13), "z")
+
+    def test_rotate_n_by_13_with_wrap_around_alphabet(self):
+        self.assertEqual(rotate("n", 13), "a")
+
+    def test_rotate_capital_letters(self):
+        self.assertEqual(rotate("OMG", 5), "TRL")
+
+    def test_rotate_spaces(self):
+        self.assertEqual(rotate("O M G", 5), "T R L")
+
+    def test_rotate_numbers(self):
+        self.assertEqual(rotate("Testing 1 2 3 testing", 4), "Xiwxmrk 1 2 3 xiwxmrk")
+
+    def test_rotate_punctuation(self):
+        self.assertEqual(rotate("Let's eat, Grandma!", 21), "Gzo'n zvo, Bmviyhv!")
+
+    def test_rotate_all_letters(self):
+        self.assertEqual(
+            rotate("The quick brown fox jumps over the lazy dog.", 13),
+            "Gur dhvpx oebja sbk whzcf bire gur ynml qbt.",
+        )
+
+
+=== Target Test Code ===
+package rotationalcipher
+
+import (
+	"testing"
+)
+
+var testCases = []struct {
+	description   string
+	inputPlain    string
+	inputShiftKey int
+	expected      string
+}{
+	{
+		description:   "rotate a by 0, same output as input",
+		inputPlain:    "a",
+		inputShiftKey: 0,
+		expected:      "a",
+	},
+	{
+		description:   "rotate a by 1",
+		inputPlain:    "a",
+		inputShiftKey: 1,
+		expected:      "b",
+	},
+	{
+		description:   "rotate a by 26, same output as input",
+		inputPlain:    "a",
+		inputShiftKey: 26,
+		expected:      "a",
+	},
+	{
+		description:   "rotate n by 13 with wrap around alphabet",
+		inputPlain:    "n",
+		inputShiftKey: 13,
+		expected:      "a",
+	},
+	{
+		description:   "rotate capital letters",
+		inputPlain:    "OMG",
+		inputShiftKey: 5,
+		expected:      "TRL",
+	},
+	{
+		description:   "rotate spaces",
+		inputPlain:    "O M G",
+		inputShiftKey: 5,
+		expected:      "T R L",
+	},
+	{
+		description:   "rotate numbers",
+		inputPlain:    "Testing 1 2 3 testing",
+		inputShiftKey: 4,
+		expected:      "Xiwxmrk 1 2 3 xiwxmrk",
+	},
+	{
+		description:   "rotate punctuation",
+		inputPlain:    "Let's eat, Grandma!",
+		inputShiftKey: 21,
+		expected:      "Gzo'n zvo, Bmviyhv!",
+	},
+	{
+		description:   "rotate all letters",
+		inputPlain:    "The quick brown fox jumps over the lazy dog.",
+		inputShiftKey: 13,
+		expected:      "Gur dhvpx oebja sbk whzcf bire gur ynml qbt.",
+	},
+}
+
+func TestRotationalCipher(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got := RotationalCipher(tc.inputPlain, tc.inputShiftKey)
+			if got != tc.expected {
+				t.Fatalf("RotationalCipher(%q, %d)\n got: %q\nwant: %q", tc.inputPlain, tc.inputShiftKey, got, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkRotationalCipher(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, testCase := range testCases {
+			RotationalCipher(testCase.inputPlain, testCase.inputShiftKey)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/rotational-cipher/.meta/example.go
+package rotationalcipher
+
+import "unicode"
+
+// RotationalCipher encrypts a plain text message by rotating each letter
+// by the specified shift key.
+func RotationalCipher(plain string, shiftKey int) string {
+	const alphabetSize = 26
+	result := []rune{}
+
+	for _, char := range plain {
+		if unicode.IsLower(char) {
+			// Rotate lowercase letter
+			char = 'a' + (char-'a'+rune(shiftKey))%alphabetSize
+		} else if unicode.IsUpper(char) {
+			// Rotate uppercase letter
+			char = 'A' + (char-'A'+rune(shiftKey))%alphabetSize
+		}
+		result = append(result, char)
+	}
+
+	return string(result)
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/rotational-cipher	0.328s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,220 @@
+=== Initial Source Code ===
+Source file: exercises/practice/octal/.meta/example.py
+def parse_octal(digits):
+    digits = _validate_octal(digits)
+    return sum(int(digit) * 8 ** idx
+               for (idx, digit) in enumerate(reversed(digits)))
+
+
+def _validate_octal(digits):
+    for digit in digits:
+        if not '0' <= digit < '8':
+            raise ValueError("Invalid octal digit: " + digit)
+    return digits
+
+
+=== Source Interface ===
+def parse_octal(digits):
+    pass
+
+
+=== Target Interface ===
+package octal
+
+func ParseOctal(input string, expectedNum int64, expectErr bool) {
+	panic("Please implement the ParseOctal function")
+}
+
+
+=== Source Test Code ===
+"""Tests for the octal exercise
+
+Implementation note:
+If the string supplied to parse_octal cannot be parsed as an octal number
+your program should raise a ValueError with a meaningful error message.
+"""
+import unittest
+
+from octal import parse_octal
+
+
+class OctalTest(unittest.TestCase):
+    def test_octal_1_is_decimal_1(self):
+        self.assertEqual(parse_octal("1"), 1)
+
+    def test_octal_10_is_decimal_8(self):
+        self.assertEqual(parse_octal("10"), 8)
+
+    def test_octal_17_is_decimal_15(self):
+        self.assertEqual(parse_octal("17"), 15)
+
+    def test_octal_130_is_decimal_88(self):
+        self.assertEqual(parse_octal("130"), 88)
+
+    def test_octal_2047_is_decimal_1063(self):
+        self.assertEqual(parse_octal("2047"), 1063)
+
+    def test_octal_1234567_is_decimal_342391(self):
+        self.assertEqual(parse_octal("1234567"), 342391)
+
+    def test_8_is_seen_as_invalid(self):
+        with self.assertRaisesWithMessage(ValueError):
+            parse_octal("8")
+
+    def test_invalid_octal_is_recognized(self):
+        with self.assertRaisesWithMessage(ValueError):
+            parse_octal("carrot")
+
+    def test_6789_is_seen_as_invalid(self):
+        with self.assertRaisesWithMessage(ValueError):
+            parse_octal("6789")
+
+    def test_valid_octal_formatted_string_011_is_decimal_9(self):
+        self.assertEqual(parse_octal("011"), 9)
+
+    # Utility functions
+    def assertRaisesWithMessage(self, exception):
+        return self.assertRaisesRegex(exception, r".+")
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+=== Target Test Code ===
+package octal
+
+import (
+	"testing"
+)
+
+var testCases = []struct {
+	input       string
+	expectedNum int64
+	expectErr   bool
+}{
+	{"1", 1, false},
+	{"10", 8, false},
+	{"1234567", 342391, false},
+	{"carrot", 0, true},
+	{"35682", 0, true},
+}
+
+func TestParseOctal(t *testing.T) {
+	for _, test := range testCases {
+		actualNum, actualErr := ParseOctal(test.input)
+		// check actualNum only if no error expected
+		if !test.expectErr && actualNum != test.expectedNum {
+			t.Fatalf("ParseOctal(%s): expected[%d], actual [%d]",
+				test.input, test.expectedNum, actualNum)
+		}
+		// if we expect an error and there isn't one
+		if test.expectErr && actualErr == nil {
+			t.Errorf("ParseOctal(%s): expected an error, but error is nil", test.input)
+		}
+		// if we don't expect an error and there is one
+		if !test.expectErr && actualErr != nil {
+			var _ error = actualErr
+			t.Errorf("ParseOctal(%s): expected no error, but error is: %s", test.input, actualErr)
+		}
+	}
+}
+
+func BenchmarkParseOctal(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+
+	for i := 0; i < b.N; i++ {
+
+		for _, test := range testCases {
+			ParseOctal(test.input)
+		}
+
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/octal/.meta/example.go
+package octal
+
+import (
+	"errors"
+	"math"
+)
+
+// ParseOctal converts an octal string to its decimal integer value
+func ParseOctal(digits string) (int64, error) {
+	result, err := validateOctal(digits)
+	if err != nil {
+		return 0, err
+	}
+	
+	var sum int64
+	for idx, digit := range digits {
+		position := len(digits) - 1 - idx
+		digitValue := int64(digit - '0')
+		sum += digitValue * int64(math.Pow(8, float64(position)))
+	}
+	
+	return sum, nil
+}
+
+func validateOctal(digits string) (string, error) {
+	for _, digit := range digits {
+		if digit < '0' || digit >= '8' {
+			return "", errors.New("Invalid octal digit: " + string(digit))
+		}
+	}
+	return digits, nil
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/octal [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/octal [exercism/octal.test]
+./octal.go:11:2: result declared but not used
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/octal/.meta/example.go
+package octal
+
+import (
+	"errors"
+	"math"
+)
+
+// ParseOctal converts an octal string to its decimal integer value
+func ParseOctal(digits string) (int64, error) {
+	// Validate the octal digits
+	for _, digit := range digits {
+		if digit < '0' || digit >= '8' {
+			return 0, errors.New("Invalid octal digit: " + string(digit))
+		}
+	}
+	
+	var sum int64
+	for idx, digit := range digits {
+		position := len(digits) - 1 - idx
+		digitValue := int64(digit - '0')
+		sum += digitValue * int64(math.Pow(8, float64(position)))
+	}
+	
+	return sum, nil
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/octal	0.270s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

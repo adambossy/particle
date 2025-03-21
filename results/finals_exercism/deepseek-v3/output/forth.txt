@@ -1,0 +1,875 @@
+=== Initial Source Code ===
+Source file: exercises/practice/forth/.meta/example.py
+class StackUnderflowError(Exception):
+    """Exception raised when Stack is not full.
+       message: explanation of the error.
+    """
+    def __init__(self, message):
+        self.message = message
+
+
+def is_integer(string):
+    try:
+        int(string)
+        return True
+    except ValueError:
+        return False
+
+
+def evaluate(input_data):
+    if not input_data:
+        return []
+    defines = {}
+    while input_data[0][:1] == ':':
+        values = input_data.pop(0).split()
+        values.pop()
+        values.pop(0)
+        key = values.pop(0).lower()
+        if is_integer(key):
+            raise ValueError('illegal operation')
+        defines[key] = [
+                idx
+                for vivaldi in values
+                for idx in defines.get(vivaldi, [vivaldi])
+        ]
+    stack = []
+    input_data = input_data[-1].split()
+    while any(input_data):
+        word = input_data.pop(0).lower()
+        try:
+            if is_integer(word):
+                stack.append(int(word))
+            elif word in defines:
+                input_data = defines[word] + input_data
+            elif word == '+':
+                stack.append(stack.pop() + stack.pop())
+            elif word == '-':
+                stack.append(-stack.pop() + stack.pop())
+            elif word == '*':
+                stack.append(stack.pop() * stack.pop())
+            elif word == '/':
+                divisor = stack.pop()
+                if divisor == 0:
+                    raise ZeroDivisionError('divide by zero')
+                stack.append(int(stack.pop() / divisor))
+            elif word == 'dup':
+                stack.append(stack[-1])
+            elif word == 'drop':
+                stack.pop()
+            elif word == 'swap':
+                stack.append(stack[-2])
+                del stack[-3]
+            elif word == 'over':
+                stack.append(stack[-2])
+            else:
+                raise ValueError('undefined operation')
+        except IndexError as error:
+            raise StackUnderflowError('Insufficient number of items in stack') from error
+    return stack
+
+
+=== Source Interface ===
+class StackUnderflowError(Exception):
+    pass
+
+
+def evaluate(input_data):
+    pass
+
+
+=== Target Interface ===
+package forth
+
+func Forth(input []string) ([]int, error) {
+	panic("Please implement the Forth function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/forth/canonical-data.json
+# File last updated on 2024-11-04
+
+import unittest
+
+from forth import (
+    evaluate,
+    StackUnderflowError,
+)
+
+
+class ForthTest(unittest.TestCase):
+    def test_parsing_and_numbers_numbers_just_get_pushed_onto_the_stack(self):
+        self.assertEqual(evaluate(["1 2 3 4 5"]), [1, 2, 3, 4, 5])
+
+    def test_parsing_and_numbers_pushes_negative_numbers_onto_the_stack(self):
+        self.assertEqual(evaluate(["-1 -2 -3 -4 -5"]), [-1, -2, -3, -4, -5])
+
+    def test_addition_can_add_two_numbers(self):
+        self.assertEqual(evaluate(["1 2 +"]), [3])
+
+    def test_addition_errors_if_there_is_nothing_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["+"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_addition_errors_if_there_is_only_one_value_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["1 +"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_addition_more_than_two_values_on_the_stack(self):
+        self.assertEqual(evaluate(["1 2 3 +"]), [1, 5])
+
+    def test_subtraction_can_subtract_two_numbers(self):
+        self.assertEqual(evaluate(["3 4 -"]), [-1])
+
+    def test_subtraction_errors_if_there_is_nothing_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["-"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_subtraction_errors_if_there_is_only_one_value_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["1 -"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_subtraction_more_than_two_values_on_the_stack(self):
+        self.assertEqual(evaluate(["1 12 3 -"]), [1, 9])
+
+    def test_multiplication_can_multiply_two_numbers(self):
+        self.assertEqual(evaluate(["2 4 *"]), [8])
+
+    def test_multiplication_errors_if_there_is_nothing_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["*"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_multiplication_errors_if_there_is_only_one_value_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["1 *"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_multiplication_more_than_two_values_on_the_stack(self):
+        self.assertEqual(evaluate(["1 2 3 *"]), [1, 6])
+
+    def test_division_can_divide_two_numbers(self):
+        self.assertEqual(evaluate(["12 3 /"]), [4])
+
+    def test_division_performs_integer_division(self):
+        self.assertEqual(evaluate(["8 3 /"]), [2])
+
+    def test_division_errors_if_dividing_by_zero(self):
+        # divide by zero
+        with self.assertRaises(ZeroDivisionError) as err:
+            evaluate(["4 0 /"])
+        self.assertEqual(type(err.exception), ZeroDivisionError)
+        self.assertEqual(str(err.exception.args[0]), "divide by zero")
+
+    def test_division_errors_if_there_is_nothing_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["/"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_division_errors_if_there_is_only_one_value_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["1 /"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_division_more_than_two_values_on_the_stack(self):
+        self.assertEqual(evaluate(["1 12 3 /"]), [1, 4])
+
+    def test_combined_arithmetic_addition_and_subtraction(self):
+        self.assertEqual(evaluate(["1 2 + 4 -"]), [-1])
+
+    def test_combined_arithmetic_multiplication_and_division(self):
+        self.assertEqual(evaluate(["2 4 * 3 /"]), [2])
+
+    def test_combined_arithmetic_multiplication_and_addition(self):
+        self.assertEqual(evaluate(["1 3 4 * +"]), [13])
+
+    def test_combined_arithmetic_addition_and_multiplication(self):
+        self.assertEqual(evaluate(["1 3 4 + *"]), [7])
+
+    def test_dup_copies_a_value_on_the_stack(self):
+        self.assertEqual(evaluate(["1 dup"]), [1, 1])
+
+    def test_dup_copies_the_top_value_on_the_stack(self):
+        self.assertEqual(evaluate(["1 2 dup"]), [1, 2, 2])
+
+    def test_dup_errors_if_there_is_nothing_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["dup"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_drop_removes_the_top_value_on_the_stack_if_it_is_the_only_one(self):
+        self.assertEqual(evaluate(["1 drop"]), [])
+
+    def test_drop_removes_the_top_value_on_the_stack_if_it_is_not_the_only_one(self):
+        self.assertEqual(evaluate(["1 2 drop"]), [1])
+
+    def test_drop_errors_if_there_is_nothing_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["drop"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_swap_swaps_the_top_two_values_on_the_stack_if_they_are_the_only_ones(self):
+        self.assertEqual(evaluate(["1 2 swap"]), [2, 1])
+
+    def test_swap_swaps_the_top_two_values_on_the_stack_if_they_are_not_the_only_ones(
+        self,
+    ):
+        self.assertEqual(evaluate(["1 2 3 swap"]), [1, 3, 2])
+
+    def test_swap_errors_if_there_is_nothing_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["swap"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_swap_errors_if_there_is_only_one_value_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["1 swap"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_over_copies_the_second_element_if_there_are_only_two(self):
+        self.assertEqual(evaluate(["1 2 over"]), [1, 2, 1])
+
+    def test_over_copies_the_second_element_if_there_are_more_than_two(self):
+        self.assertEqual(evaluate(["1 2 3 over"]), [1, 2, 3, 2])
+
+    def test_over_errors_if_there_is_nothing_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["over"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_over_errors_if_there_is_only_one_value_on_the_stack(self):
+        with self.assertRaises(StackUnderflowError) as err:
+            evaluate(["1 over"])
+        self.assertEqual(type(err.exception), StackUnderflowError)
+        self.assertEqual(
+            str(err.exception.args[0]), "Insufficient number of items in stack"
+        )
+
+    def test_user_defined_words_can_consist_of_built_in_words(self):
+        self.assertEqual(evaluate([": dup-twice dup dup ;", "1 dup-twice"]), [1, 1, 1])
+
+    def test_user_defined_words_execute_in_the_right_order(self):
+        self.assertEqual(evaluate([": countup 1 2 3 ;", "countup"]), [1, 2, 3])
+
+    def test_user_defined_words_can_override_other_user_defined_words(self):
+        self.assertEqual(
+            evaluate([": foo dup ;", ": foo dup dup ;", "1 foo"]), [1, 1, 1]
+        )
+
+    def test_user_defined_words_can_override_built_in_words(self):
+        self.assertEqual(evaluate([": swap dup ;", "1 swap"]), [1, 1])
+
+    def test_user_defined_words_can_override_built_in_operators(self):
+        self.assertEqual(evaluate([": + * ;", "3 4 +"]), [12])
+
+    def test_user_defined_words_can_use_different_words_with_the_same_name(self):
+        self.assertEqual(
+            evaluate([": foo 5 ;", ": bar foo ;", ": foo 6 ;", "bar foo"]), [5, 6]
+        )
+
+    def test_user_defined_words_can_define_word_that_uses_word_with_the_same_name(self):
+        self.assertEqual(evaluate([": foo 10 ;", ": foo foo 1 + ;", "foo"]), [11])
+
+    def test_user_defined_words_cannot_redefine_non_negative_numbers(self):
+        with self.assertRaises(ValueError) as err:
+            evaluate([": 1 2 ;"])
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(str(err.exception.args[0]), "illegal operation")
+
+    def test_user_defined_words_cannot_redefine_negative_numbers(self):
+        with self.assertRaises(ValueError) as err:
+            evaluate([": -1 2 ;"])
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(str(err.exception.args[0]), "illegal operation")
+
+    def test_user_defined_words_errors_if_executing_a_non_existent_word(self):
+        with self.assertRaises(ValueError) as err:
+            evaluate(["foo"])
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(str(err.exception.args[0]), "undefined operation")
+
+    def test_case_insensitivity_dup_is_case_insensitive(self):
+        self.assertEqual(evaluate(["1 DUP Dup dup"]), [1, 1, 1, 1])
+
+    def test_case_insensitivity_drop_is_case_insensitive(self):
+        self.assertEqual(evaluate(["1 2 3 4 DROP Drop drop"]), [1])
+
+    def test_case_insensitivity_swap_is_case_insensitive(self):
+        self.assertEqual(evaluate(["1 2 SWAP 3 Swap 4 swap"]), [2, 3, 4, 1])
+
+    def test_case_insensitivity_over_is_case_insensitive(self):
+        self.assertEqual(evaluate(["1 2 OVER Over over"]), [1, 2, 1, 2, 1])
+
+    def test_case_insensitivity_user_defined_words_are_case_insensitive(self):
+        self.assertEqual(evaluate([": foo dup ;", "1 FOO Foo foo"]), [1, 1, 1, 1])
+
+    def test_case_insensitivity_definitions_are_case_insensitive(self):
+        self.assertEqual(evaluate([": SWAP DUP Dup dup ;", "1 swap"]), [1, 1, 1, 1])
+
+
+=== Target Test Code ===
+package forth
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestForth(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			v, err := Forth(tc.input)
+			if err == nil {
+				if tc.expected == nil {
+					t.Fatalf("Forth(%#v) expected an error, got %v", tc.input, v)
+				} else if !reflect.DeepEqual(v, tc.expected) {
+					t.Fatalf("Forth(%#v) expected %v, got %v", tc.input, tc.expected, v)
+				}
+			} else if tc.expected != nil {
+				t.Fatalf("Forth(%#v) expected %v, got an error: %q", tc.input, tc.expected, err)
+			}
+		})
+	}
+}
+
+func BenchmarkForth(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Forth(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/forth/.meta/example.go
+package forth
+
+import (
+	"errors"
+	"strconv"
+	"strings"
+)
+
+type StackUnderflowError struct {
+	message string
+}
+
+func (e *StackUnderflowError) Error() string {
+	return e.message
+}
+
+func isInteger(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
+}
+
+func Forth(input []string) ([]int, error) {
+	if len(input) == 0 {
+		return []int{}, nil
+	}
+	defines := make(map[string][]string)
+	for len(input) > 0 && strings.HasPrefix(input[0], ":") {
+		values := strings.Fields(input[0])
+		input = input[1:]
+		values = values[1 : len(values)-1]
+		key := strings.ToLower(values[0])
+		if isInteger(key) {
+			return nil, errors.New("illegal operation")
+		}
+		var definition []string
+		for _, v := range values[1:] {
+			if def, ok := defines[v]; ok {
+				definition = append(definition, def...)
+			} else {
+				definition = append(definition, v)
+			}
+		}
+		defines[key] = definition
+	}
+	stack := []int{}
+	words := strings.Fields(input[len(input)-1])
+	for len(words) > 0 {
+		word := strings.ToLower(words[0])
+		words = words[1:]
+		if isInteger(word) {
+			num, _ := strconv.Atoi(word)
+			stack = append(stack, num)
+		} else if def, ok := defines[word]; ok {
+			words = append(def, words...)
+		} else if word == "+" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]+stack[len(stack)-1])
+		} else if word == "-" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]-stack[len(stack)-1])
+		} else if word == "*" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]*stack[len(stack)-1])
+		} else if word == "/" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			divisor := stack[len(stack)-1]
+			if divisor == 0 {
+				return nil, errors.New("divide by zero")
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]/divisor)
+		} else if word == "dup" {
+			if len(stack) < 1 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack, stack[len(stack)-1])
+		} else if word == "drop" {
+			if len(stack) < 1 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = stack[:len(stack)-1]
+		} else if word == "swap" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack[len(stack)-2], stack[len(stack)-1] = stack[len(stack)-1], stack[len(stack)-2]
+		} else if word == "over" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack, stack[len(stack)-2])
+		} else {
+			return nil, errors.New("undefined operation")
+		}
+	}
+	return stack, nil
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/forth [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/forth [exercism/forth.test]
+./forth_test.go:9:21: undefined: testCases
+./forth_test.go:30:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/forth/.meta/example.go
+package forth
+
+import (
+	"errors"
+	"strconv"
+	"strings"
+)
+
+type StackUnderflowError struct {
+	message string
+}
+
+func (e *StackUnderflowError) Error() string {
+	return e.message
+}
+
+func isInteger(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
+}
+
+func Forth(input []string) ([]int, error) {
+	if len(input) == 0 {
+		return []int{}, nil
+	}
+	defines := make(map[string][]string)
+	for len(input) > 0 && strings.HasPrefix(input[0], ":") {
+		values := strings.Fields(input[0])
+		input = input[1:]
+		values = values[1 : len(values)-1]
+		key := strings.ToLower(values[0])
+		if isInteger(key) {
+			return nil, errors.New("illegal operation")
+		}
+		var definition []string
+		for _, v := range values[1:] {
+			if def, ok := defines[v]; ok {
+				definition = append(definition, def...)
+			} else {
+				definition = append(definition, v)
+			}
+		}
+		defines[key] = definition
+	}
+	stack := []int{}
+	words := strings.Fields(input[len(input)-1])
+	for len(words) > 0 {
+		word := strings.ToLower(words[0])
+		words = words[1:]
+		if isInteger(word) {
+			num, _ := strconv.Atoi(word)
+			stack = append(stack, num)
+		} else if def, ok := defines[word]; ok {
+			words = append(def, words...)
+		} else if word == "+" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]+stack[len(stack)-1])
+		} else if word == "-" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]-stack[len(stack)-1])
+		} else if word == "*" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]*stack[len(stack)-1])
+		} else if word == "/" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			divisor := stack[len(stack)-1]
+			if divisor == 0 {
+				return nil, errors.New("divide by zero")
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]/divisor)
+		} else if word == "dup" {
+			if len(stack) < 1 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack, stack[len(stack)-1])
+		} else if word == "drop" {
+			if len(stack) < 1 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = stack[:len(stack)-1]
+		} else if word == "swap" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack[len(stack)-2], stack[len(stack)-1] = stack[len(stack)-1], stack[len(stack)-2]
+		} else if word == "over" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack, stack[len(stack)-2])
+		} else {
+			return nil, errors.New("undefined operation")
+		}
+	}
+	return stack, nil
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/forth [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/forth [exercism/forth.test]
+./forth_test.go:9:21: undefined: testCases
+./forth_test.go:30:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/forth/.meta/example.go
+package forth
+
+import (
+	"errors"
+	"strconv"
+	"strings"
+)
+
+type StackUnderflowError struct {
+	message string
+}
+
+func (e *StackUnderflowError) Error() string {
+	return e.message
+}
+
+func isInteger(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
+}
+
+func Forth(input []string) ([]int, error) {
+	if len(input) == 0 {
+		return []int{}, nil
+	}
+	defines := make(map[string][]string)
+	for len(input) > 0 && strings.HasPrefix(input[0], ":") {
+		values := strings.Fields(input[0])
+		input = input[1:]
+		values = values[1 : len(values)-1]
+		key := strings.ToLower(values[0])
+		if isInteger(key) {
+			return nil, errors.New("illegal operation")
+		}
+		var definition []string
+		for _, v := range values[1:] {
+			if def, ok := defines[v]; ok {
+				definition = append(definition, def...)
+			} else {
+				definition = append(definition, v)
+			}
+		}
+		defines[key] = definition
+	}
+	stack := []int{}
+	words := strings.Fields(input[len(input)-1])
+	for len(words) > 0 {
+		word := strings.ToLower(words[0])
+		words = words[1:]
+		if isInteger(word) {
+			num, _ := strconv.Atoi(word)
+			stack = append(stack, num)
+		} else if def, ok := defines[word]; ok {
+			words = append(def, words...)
+		} else if word == "+" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]+stack[len(stack)-1])
+		} else if word == "-" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]-stack[len(stack)-1])
+		} else if word == "*" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]*stack[len(stack)-1])
+		} else if word == "/" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			divisor := stack[len(stack)-1]
+			if divisor == 0 {
+				return nil, errors.New("divide by zero")
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]/divisor)
+		} else if word == "dup" {
+			if len(stack) < 1 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack, stack[len(stack)-1])
+		} else if word == "drop" {
+			if len(stack) < 1 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = stack[:len(stack)-1]
+		} else if word == "swap" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack[len(stack)-2], stack[len(stack)-1] = stack[len(stack)-1], stack[len(stack)-2]
+		} else if word == "over" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack, stack[len(stack)-2])
+		} else {
+			return nil, errors.New("undefined operation")
+		}
+	}
+	return stack, nil
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/forth [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/forth [exercism/forth.test]
+./forth_test.go:9:21: undefined: testCases
+./forth_test.go:30:22: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/forth/.meta/example.go
+package forth
+
+import (
+	"errors"
+	"strconv"
+	"strings"
+)
+
+type StackUnderflowError struct {
+	message string
+}
+
+func (e *StackUnderflowError) Error() string {
+	return e.message
+}
+
+func isInteger(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
+}
+
+func Forth(input []string) ([]int, error) {
+	if len(input) == 0 {
+		return []int{}, nil
+	}
+	defines := make(map[string][]string)
+	for len(input) > 0 && strings.HasPrefix(input[0], ":") {
+		values := strings.Fields(input[0])
+		input = input[1:]
+		values = values[1 : len(values)-1]
+		key := strings.ToLower(values[0])
+		if isInteger(key) {
+			return nil, errors.New("illegal operation")
+		}
+		var definition []string
+		for _, v := range values[1:] {
+			if def, ok := defines[v]; ok {
+				definition = append(definition, def...)
+			} else {
+				definition = append(definition, v)
+			}
+		}
+		defines[key] = definition
+	}
+	stack := []int{}
+	words := strings.Fields(input[len(input)-1])
+	for len(words) > 0 {
+		word := strings.ToLower(words[0])
+		words = words[1:]
+		if isInteger(word) {
+			num, _ := strconv.Atoi(word)
+			stack = append(stack, num)
+		} else if def, ok := defines[word]; ok {
+			words = append(def, words...)
+		} else if word == "+" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]+stack[len(stack)-1])
+		} else if word == "-" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]-stack[len(stack)-1])
+		} else if word == "*" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]*stack[len(stack)-1])
+		} else if word == "/" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{task.task.task.task.message: "Insufficient number of items in stack"}
+			}
+			divisor := stack[len(stack)-1]
+			if divisor == 0 {
+				return nil, errors.New("divide by zero")
+			}
+			stack = append(stack[:len(stack)-2], stack[len(stack)-2]/divisor)
+		} else if word == "dup" {
+			if len(stack) < 1 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack, stack[len(stack)-1])
+		} else if word == "drop" {
+			if len(stack) < 1 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = stack[:len(stack)-1]
+		} else if word == "swap" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack[len(stack)-2], stack[len(stack)-1] = stack[len(stack)-1], stack[len(stack)-2]
+		} else if word == "over" {
+			if len(stack) < 2 {
+				return nil, &StackUnderflowError{message: "Insufficient number of items in stack"}
+			}
+			stack = append(stack, stack[len(stack)-2])
+		} else {
+			return nil, errors.New("undefined operation")
+		}
+	}
+	return stack, nil
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/forth [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/forth [exercism/forth.test]
+./forth.go:73:65: invalid field name task.task.task.task.message in struct literal
+./forth_test.go:9:21: undefined: testCases
+./forth_test.go:30:22: undefined: testCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): 
+
+=== FINAL STATUS: ERROR ===

@@ -1,0 +1,669 @@
+=== Initial Source Code ===
+Source file: exercises/practice/custom-set/.meta/example.py
+class CustomSet:
+    def __init__(self, elements=None):
+        self.elements = list(elements) if elements is not None else list([])
+
+    def isempty(self):
+        return not self.elements
+
+    def __iter__(self):
+        return iter(self.elements)
+
+    def __contains__(self, element):
+        return element in self.elements
+
+    def issubset(self, other):
+        return all(idx in other for idx in self)
+
+    def isdisjoint(self, other):
+        return all(idx not in other for idx in self)
+
+    def __eq__(self, other):
+        return self.issubset(other) and other.issubset(self)
+
+    def add(self, element):
+        if element not in self:
+            self.elements.append(element)
+
+    def intersection(self, other):
+        result = CustomSet()
+        for idx in self:
+            if idx in other:
+                result.add(idx)
+        return result
+
+    def __sub__(self, other):
+        result = CustomSet()
+        for idx in self:
+            if idx not in other:
+                result.add(idx)
+        return result
+
+    def __add__(self, other):
+        result = CustomSet(self.elements)
+        for idx in other:
+            result.add(idx)
+        return result
+
+
+=== Source Interface ===
+class CustomSet:
+    def __init__(self, elements=[]):
+        pass
+
+    def isempty(self):
+        pass
+
+    def __contains__(self, element):
+        pass
+
+    def issubset(self, other):
+        pass
+
+    def isdisjoint(self, other):
+        pass
+
+    def __eq__(self, other):
+        pass
+
+    def add(self, element):
+        pass
+
+    def intersection(self, other):
+        pass
+
+    def __sub__(self, other):
+        pass
+
+    def __add__(self, other):
+        pass
+
+
+=== Target Interface ===
+package stringset
+
+// Implement Set as a collection of unique string values.
+//
+// For Set.String, use '{' and '}', output elements as double-quoted strings
+// safely escaped with Go syntax, and use a comma and a single space between
+// elements. For example, a set with 2 elements, "a" and "b", should be formatted as {"a", "b"}.
+// Format the empty set as {}.
+
+// Define the Set type here.
+
+func New() Set {
+	panic("Please implement the New function")
+}
+
+func NewFromSlice(l []string) Set {
+	panic("Please implement the NewFromSlice function")
+}
+
+func (s Set) String() string {
+	panic("Please implement the String function")
+}
+
+func (s Set) IsEmpty() bool {
+	panic("Please implement the IsEmpty function")
+}
+
+func (s Set) Has(elem string) bool {
+	panic("Please implement the Has function")
+}
+
+func (s Set) Add(elem string) {
+	panic("Please implement the Add function")
+}
+
+func Subset(s1, s2 Set) bool {
+	panic("Please implement the Subset function")
+}
+
+func Disjoint(s1, s2 Set) bool {
+	panic("Please implement the Disjoint function")
+}
+
+func Equal(s1, s2 Set) bool {
+	panic("Please implement the Equal function")
+}
+
+func Intersection(s1, s2 Set) Set {
+	panic("Please implement the Intersection function")
+}
+
+func Difference(s1, s2 Set) Set {
+	panic("Please implement the Difference function")
+}
+
+func Union(s1, s2 Set) Set {
+	panic("Please implement the Union function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/custom-set/canonical-data.json
+# File last updated on 2024-07-08
+
+import unittest
+
+from custom_set import (
+    CustomSet,
+)
+
+
+class CustomSetTest(unittest.TestCase):
+    def test_sets_with_no_elements_are_empty(self):
+        sut = CustomSet()
+        self.assertIs(sut.isempty(), True)
+
+    def test_sets_with_elements_are_not_empty(self):
+        sut = CustomSet([1])
+        self.assertIs(sut.isempty(), False)
+
+    def test_nothing_is_contained_in_an_empty_set(self):
+        sut = CustomSet()
+        self.assertNotIn(1, sut)
+
+    def test_when_the_element_is_in_the_set(self):
+        sut = CustomSet([1, 2, 3])
+        self.assertIn(1, sut)
+
+    def test_when_the_element_is_not_in_the_set(self):
+        sut = CustomSet([1, 2, 3])
+        self.assertNotIn(4, sut)
+
+    def test_empty_set_is_a_subset_of_another_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        self.assertIs(set1.issubset(set2), True)
+
+    def test_empty_set_is_a_subset_of_non_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([1])
+        self.assertIs(set1.issubset(set2), True)
+
+    def test_non_empty_set_is_not_a_subset_of_empty_set(self):
+        set1 = CustomSet([1])
+        set2 = CustomSet()
+        self.assertIs(set1.issubset(set2), False)
+
+    def test_set_is_a_subset_of_set_with_exact_same_elements(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([1, 2, 3])
+        self.assertIs(set1.issubset(set2), True)
+
+    def test_set_is_a_subset_of_larger_set_with_same_elements(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([4, 1, 2, 3])
+        self.assertIs(set1.issubset(set2), True)
+
+    def test_set_is_not_a_subset_of_set_that_does_not_contain_its_elements(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([4, 1, 3])
+        self.assertIs(set1.issubset(set2), False)
+
+    def test_the_empty_set_is_disjoint_with_itself(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        self.assertIs(set1.isdisjoint(set2), True)
+
+    def test_empty_set_is_disjoint_with_non_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([1])
+        self.assertIs(set1.isdisjoint(set2), True)
+
+    def test_non_empty_set_is_disjoint_with_empty_set(self):
+        set1 = CustomSet([1])
+        set2 = CustomSet()
+        self.assertIs(set1.isdisjoint(set2), True)
+
+    def test_sets_are_not_disjoint_if_they_share_an_element(self):
+        set1 = CustomSet([1, 2])
+        set2 = CustomSet([2, 3])
+        self.assertIs(set1.isdisjoint(set2), False)
+
+    def test_sets_are_disjoint_if_they_share_no_elements(self):
+        set1 = CustomSet([1, 2])
+        set2 = CustomSet([3, 4])
+        self.assertIs(set1.isdisjoint(set2), True)
+
+    def test_empty_sets_are_equal(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        self.assertEqual(set1, set2)
+
+    def test_empty_set_is_not_equal_to_non_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([1, 2, 3])
+        self.assertNotEqual(set1, set2)
+
+    def test_non_empty_set_is_not_equal_to_empty_set(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet()
+        self.assertNotEqual(set1, set2)
+
+    def test_sets_with_the_same_elements_are_equal(self):
+        set1 = CustomSet([1, 2])
+        set2 = CustomSet([2, 1])
+        self.assertEqual(set1, set2)
+
+    def test_sets_with_different_elements_are_not_equal(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([1, 2, 4])
+        self.assertNotEqual(set1, set2)
+
+    def test_set_is_not_equal_to_larger_set_with_same_elements(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([1, 2, 3, 4])
+        self.assertNotEqual(set1, set2)
+
+    def test_set_is_equal_to_a_set_constructed_from_an_array_with_duplicates(self):
+        set1 = CustomSet([1])
+        set2 = CustomSet([1, 1])
+        self.assertEqual(set1, set2)
+
+    def test_add_to_empty_set(self):
+        sut = CustomSet()
+        expected = CustomSet([3])
+        sut.add(3)
+        self.assertEqual(sut, expected)
+
+    def test_add_to_non_empty_set(self):
+        sut = CustomSet([1, 2, 4])
+        expected = CustomSet([1, 2, 3, 4])
+        sut.add(3)
+        self.assertEqual(sut, expected)
+
+    def test_adding_an_existing_element_does_not_change_the_set(self):
+        sut = CustomSet([1, 2, 3])
+        expected = CustomSet([1, 2, 3])
+        sut.add(3)
+        self.assertEqual(sut, expected)
+
+    def test_intersection_of_two_empty_sets_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        expected = CustomSet()
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_intersection_of_an_empty_set_and_non_empty_set_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([3, 2, 5])
+        expected = CustomSet()
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_intersection_of_a_non_empty_set_and_an_empty_set_is_an_empty_set(self):
+        set1 = CustomSet([1, 2, 3, 4])
+        set2 = CustomSet()
+        expected = CustomSet()
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_intersection_of_two_sets_with_no_shared_elements_is_an_empty_set(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([4, 5, 6])
+        expected = CustomSet()
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_intersection_of_two_sets_with_shared_elements_is_a_set_of_the_shared_elements(
+        self,
+    ):
+        set1 = CustomSet([1, 2, 3, 4])
+        set2 = CustomSet([3, 2, 5])
+        expected = CustomSet([2, 3])
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_difference_of_two_empty_sets_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        expected = CustomSet()
+        self.assertEqual(set1 - set2, expected)
+
+    def test_difference_of_empty_set_and_non_empty_set_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([3, 2, 5])
+        expected = CustomSet()
+        self.assertEqual(set1 - set2, expected)
+
+    def test_difference_of_a_non_empty_set_and_an_empty_set_is_the_non_empty_set(self):
+        set1 = CustomSet([1, 2, 3, 4])
+        set2 = CustomSet()
+        expected = CustomSet([1, 2, 3, 4])
+        self.assertEqual(set1 - set2, expected)
+
+    def test_difference_of_two_non_empty_sets_is_a_set_of_elements_that_are_only_in_the_first_set(
+        self,
+    ):
+        set1 = CustomSet([3, 2, 1])
+        set2 = CustomSet([2, 4])
+        expected = CustomSet([1, 3])
+        self.assertEqual(set1 - set2, expected)
+
+    def test_difference_removes_all_duplicates_in_the_first_set(self):
+        set1 = CustomSet([1, 1])
+        set2 = CustomSet([1])
+        expected = CustomSet()
+        self.assertEqual(set1 - set2, expected)
+
+    def test_union_of_empty_sets_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        expected = CustomSet()
+        self.assertEqual(set1 + set2, expected)
+
+    def test_union_of_an_empty_set_and_non_empty_set_is_the_non_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([2])
+        expected = CustomSet([2])
+        self.assertEqual(set1 + set2, expected)
+
+    def test_union_of_a_non_empty_set_and_empty_set_is_the_non_empty_set(self):
+        set1 = CustomSet([1, 3])
+        set2 = CustomSet()
+        expected = CustomSet([1, 3])
+        self.assertEqual(set1 + set2, expected)
+
+    def test_union_of_non_empty_sets_contains_all_unique_elements(self):
+        set1 = CustomSet([1, 3])
+        set2 = CustomSet([2, 3])
+        expected = CustomSet([3, 2, 1])
+        self.assertEqual(set1 + set2, expected)
+
+
+=== Target Test Code ===
+//nolint:gosec // In the context of this exercise, it is fine to use math.Rand instead of crypto.Rand.
+package stringset
+
+import (
+	"math/rand"
+	"strconv"
+	"testing"
+)
+
+// A first set of tests uses Set.String() to judge correctness.
+
+func TestNew(t *testing.T) {
+	// New must return an empty set.
+	want := "{}"
+	if got := New().String(); got != want {
+		t.Fatalf(`New().String() = %s, want %s.`, got, want)
+	}
+}
+
+func TestNewFromSlice(t *testing.T) {
+	// nil slice should give empty set
+	want := "{}"
+	if got := NewFromSlice(nil).String(); got != want {
+		t.Fatalf(`NewFromSlice(nil) = %s, want %s.`, got, want)
+	}
+
+	// slice with one element:
+	want = `{"a"}`
+	if got := NewFromSlice([]string{"a"}).String(); got != want {
+		t.Fatalf(`NewFromSlice([]string{"a"}) = %s, want %s.`, got, want)
+	}
+
+	// slice with repeated element:
+	if got := NewFromSlice([]string{"a", "a"}).String(); got != want {
+		t.Fatalf(`NewFromSlice([]string{"a", "a"}) = %s, want %s.`, got, want)
+	}
+
+	// slice with two elements:
+	got := NewFromSlice([]string{"a", "b"}).String()
+	want1 := `{"a", "b"}`
+	want2 := `{"b", "a"}`
+	if got != want1 && got != want2 { // order undefined
+		t.Fatalf(`NewFromSlice([]string{"a", "b"}) = %s, want %s or (%s).`, got, want1, want2)
+	}
+}
+
+func TestIsEmpty(t *testing.T) {
+	for _, tc := range emptyCases {
+		t.Run(tc.description, func(t *testing.T) {
+			s := NewFromSlice(tc.set)
+			got := s.IsEmpty()
+			if got != tc.want {
+				t.Errorf("%v IsEmpty = %t, want %t", s, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHas(t *testing.T) {
+	for _, tc := range containsCases {
+		t.Run(tc.description, func(t *testing.T) {
+			s := NewFromSlice(tc.set)
+			got := s.Has(tc.element)
+			if got != tc.want {
+				t.Fatalf("%v Has %q = %t, want %t", s, tc.element, got, tc.want)
+			}
+		})
+	}
+}
+
+// helper for testing Subset, Disjoint, Equal
+func testBinBool(name string, f func(Set, Set) bool, cases []binBoolCase, t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			s1 := NewFromSlice(tc.set1)
+			s2 := NewFromSlice(tc.set2)
+			got := f(s1, s2)
+			if got != tc.want {
+				t.Errorf("%s(%v, %v) = %t, want %t", name, s1, s2, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSubset(t *testing.T) {
+	testBinBool("Subset", Subset, subsetCases, t)
+}
+
+func TestDisjoint(t *testing.T) {
+	testBinBool("Disjoint", Disjoint, disjointCases, t)
+}
+
+func TestEqual(t *testing.T) {
+	testBinBool("Equal", Equal, equalCases, t)
+}
+
+func TestAdd(t *testing.T) {
+	for _, tc := range addCases {
+		t.Run(tc.description, func(t *testing.T) {
+			s := NewFromSlice(tc.set)
+			s.Add(tc.element)
+			want := NewFromSlice(tc.want)
+			if !Equal(s, want) {
+				t.Fatalf("%v Add %q = %v, want %v", NewFromSlice(tc.set), tc.element, s, want)
+			}
+		})
+	}
+}
+
+// helper for testing Intersection, Difference, Union
+func testBinOp(name string, f func(Set, Set) Set, cases []binOpCase, t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			s1 := NewFromSlice(tc.set1)
+			s2 := NewFromSlice(tc.set2)
+			want := NewFromSlice(tc.want)
+			got := f(s1, s2)
+			if !Equal(got, want) {
+				t.Fatalf("%s(%v, %v) = %v, want %v", name, s1, s2, got, want)
+			}
+		})
+	}
+}
+
+func TestIntersection(t *testing.T) {
+	testBinOp("Intersection", Intersection, intersectionCases, t)
+}
+
+func TestDifference(t *testing.T) {
+	testBinOp("Difference", Difference, differenceCases, t)
+}
+
+func TestUnion(t *testing.T) {
+	testBinOp("Union", Union, unionCases, t)
+}
+
+func BenchmarkNewFromSlice1e1(b *testing.B) { bench(1e1, b) }
+func BenchmarkNewFromSlice1e2(b *testing.B) { bench(1e2, b) }
+func BenchmarkNewFromSlice1e3(b *testing.B) { bench(1e3, b) }
+func BenchmarkNewFromSlice1e4(b *testing.B) { bench(1e4, b) }
+
+func bench(nAdd int, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	s := make([]string, nAdd)
+	for i := range s {
+		s[i] = strconv.Itoa(rand.Intn(len(s)))
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		NewFromSlice(s)
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/custom-set/.meta/example.go
+package stringset
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+type Set map[string]bool
+
+// New creates a new empty Set.
+func New() Set {
+	return make(Set)
+}
+
+// NewFromSlice creates a new Set from a slice of strings.
+func NewFromSlice(elements []string) Set {
+	s := New()
+	for _, element := range elements {
+		s.Add(element)
+	}
+	return s
+}
+
+// String returns a string representation of the Set.
+func (s Set) String() string {
+	if s.IsEmpty() {
+		return "{}"
+	}
+
+	// Get all elements from the set
+	elements := make([]string, 0, len(s))
+	for element := range s {
+		elements = append(elements, element)
+	}
+
+	// Sort elements for consistent output
+	sort.Strings(elements)
+
+	// Format each element with proper quotes and escaping
+	quotedElements := make([]string, len(elements))
+	for i, element := range elements {
+		quotedElements[i] = fmt.Sprintf("%q", element)
+	}
+
+	return "{" + strings.Join(quotedElements, ", ") + "}"
+}
+
+// IsEmpty checks if the Set is empty.
+func (s Set) IsEmpty() bool {
+	return len(s) == 0
+}
+
+// Has checks if an element is in the Set.
+func (s Set) Has(element string) bool {
+	_, exists := s[element]
+	return exists
+}
+
+// Add adds an element to the Set.
+func (s Set) Add(element string) {
+	s[element] = true
+}
+
+// Subset checks if s1 is a subset of s2.
+func Subset(s1, s2 Set) bool {
+	if s1.IsEmpty() {
+		return true
+	}
+	
+	for element := range s1 {
+		if !s2.Has(element) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint checks if s1 and s2 have no common elements.
+func Disjoint(s1, s2 Set) bool {
+	for element := range s1 {
+		if s2.Has(element) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal checks if s1 and s2 contain the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a new Set with elements common to s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for element := range s1 {
+		if s2.Has(element) {
+			result.Add(element)
+		}
+	}
+	return result
+}
+
+// Difference returns a new Set with elements in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for element := range s1 {
+		if !s2.Has(element) {
+			result.Add(element)
+		}
+	}
+	return result
+}
+
+// Union returns a new Set with elements from both s1 and s2.
+func Union(s1, s2 Set) Set {
+	result := New()
+	for element := range s1 {
+		result.Add(element)
+	}
+	for element := range s2 {
+		result.Add(element)
+	}
+	return result
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/custom-set	0.273s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

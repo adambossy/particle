@@ -1,0 +1,583 @@
+=== Initial Source Code ===
+Source file: exercises/practice/minesweeper/.meta/example.py
+def annotate(minefield):
+    if not minefield:
+        return []
+    verify_board(minefield)
+    row_len = len(minefield[0])
+    col_len = len(minefield)
+    board = [list(row) for row in minefield]
+
+    for index1 in range(col_len):
+        for index2 in range(row_len):
+            if board[index1][index2] != ' ':
+                continue
+
+            low = max(index2 - 1, 0)
+            high = min(index2 + 2, row_len + 2)
+            counts = minefield[index1][low:high].count('*')
+
+            if index1 > 0:
+                counts += minefield[index1 - 1][low:high].count('*')
+            if index1 < col_len - 1:
+                counts += minefield[index1 + 1][low:high].count('*')
+            if counts == 0:
+                continue
+
+            board[index1][index2] = str(counts)
+    return [''.join(row) for row in board]
+
+
+def verify_board(minefield):
+    # Rows with different lengths
+    row_len = len(minefield[0])
+    if not all(len(row) == row_len for row in minefield):
+        raise ValueError('The board is invalid with current input.')
+
+    # Unknown character in board
+    character_set = set()
+    for row in minefield:
+        character_set.update(row)
+    if character_set - set(' *'):
+        raise ValueError('The board is invalid with current input.')
+
+
+=== Source Interface ===
+def annotate(minefield):
+    # Function body starts here
+    pass
+
+
+=== Target Interface ===
+package minesweeper
+
+// Annotate returns an annotated board
+func Annotate(board []string) []string {
+	panic("Please implement the Annotate function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/minesweeper/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from minesweeper import (
+    annotate,
+)
+
+
+class MinesweeperTest(unittest.TestCase):
+    def test_no_rows(self):
+        self.assertEqual(annotate([]), [])
+
+    def test_no_columns(self):
+        self.assertEqual(annotate([""]), [""])
+
+    def test_no_mines(self):
+        self.assertEqual(annotate(["   ", "   ", "   "]), ["   ", "   ", "   "])
+
+    def test_minefield_with_only_mines(self):
+        self.assertEqual(annotate(["***", "***", "***"]), ["***", "***", "***"])
+
+    def test_mine_surrounded_by_spaces(self):
+        self.assertEqual(annotate(["   ", " * ", "   "]), ["111", "1*1", "111"])
+
+    def test_space_surrounded_by_mines(self):
+        self.assertEqual(annotate(["***", "* *", "***"]), ["***", "*8*", "***"])
+
+    def test_horizontal_line(self):
+        self.assertEqual(annotate([" * * "]), ["1*2*1"])
+
+    def test_horizontal_line_mines_at_edges(self):
+        self.assertEqual(annotate(["*   *"]), ["*1 1*"])
+
+    def test_vertical_line(self):
+        self.assertEqual(annotate([" ", "*", " ", "*", " "]), ["1", "*", "2", "*", "1"])
+
+    def test_vertical_line_mines_at_edges(self):
+        self.assertEqual(annotate(["*", " ", " ", " ", "*"]), ["*", "1", " ", "1", "*"])
+
+    def test_cross(self):
+        self.assertEqual(
+            annotate(["  *  ", "  *  ", "*****", "  *  ", "  *  "]),
+            [" 2*2 ", "25*52", "*****", "25*52", " 2*2 "],
+        )
+
+    def test_large_minefield(self):
+        self.assertEqual(
+            annotate([" *  * ", "  *   ", "    * ", "   * *", " *  * ", "      "]),
+            ["1*22*1", "12*322", " 123*2", "112*4*", "1*22*2", "111111"],
+        )
+
+    # Additional tests for this track
+    def test_annotate_9(self):
+        self.assertEqual(
+            annotate(["     ", "   * ", "     ", "     ", " *   "]),
+            ["  111", "  1*1", "  111", "111  ", "1*1  "],
+        )
+
+    def test_different_len(self):
+        with self.assertRaises(ValueError) as err:
+            annotate([" ", "*  ", "  "])
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "The board is invalid with current input."
+        )
+
+    def test_invalid_char(self):
+        with self.assertRaises(ValueError) as err:
+            annotate(["X  * "])
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "The board is invalid with current input."
+        )
+
+
+=== Target Test Code ===
+package minesweeper
+
+import (
+	"testing"
+)
+
+type minesweeperTestCase struct {
+	description string
+	minefield   []string
+	expected    []string
+}
+
+var minesweeperTestCases = []minesweeperTestCase{
+	{
+		description: "no rows",
+		minefield:   []string{},
+		expected:    []string{},
+	},
+	{
+		description: "no columns",
+		minefield:   []string{""},
+		expected:    []string{""},
+	},
+	{
+		description: "no mines",
+		minefield: []string{
+			"   ",
+			"   ",
+			"   ",
+		},
+		expected: []string{
+			"   ",
+			"   ",
+			"   ",
+		},
+	},
+	{
+		description: "minefield with only mines",
+		minefield: []string{
+			"***",
+			"***",
+			"***",
+		},
+		expected: []string{
+			"***",
+			"***",
+			"***",
+		},
+	},
+	{
+		description: "mine surrounded by spaces",
+		minefield: []string{
+			"   ",
+			" * ",
+			"   ",
+		},
+		expected: []string{
+			"111",
+			"1*1",
+			"111",
+		},
+	},
+	{
+		description: "space surrounded by mines",
+		minefield: []string{
+			"***",
+			"* *",
+			"***",
+		},
+		expected: []string{
+			"***",
+			"*8*",
+			"***",
+		},
+	},
+	{
+		description: "horizontal line",
+		minefield:   []string{" * * "},
+		expected:    []string{"1*2*1"},
+	},
+	{
+		description: "horizontal line, mines at edges",
+		minefield:   []string{"*   *"},
+		expected:    []string{"*1 1*"},
+	},
+	{
+		description: "vertical line",
+		minefield: []string{
+			" ",
+			"*",
+			" ",
+			"*",
+			" ",
+		},
+		expected: []string{
+			"1",
+			"*",
+			"2",
+			"*",
+			"1",
+		},
+	},
+	{
+		description: "vertical line, mines at edges",
+		minefield: []string{
+			"*",
+			" ",
+			" ",
+			" ",
+			"*",
+		},
+		expected: []string{
+			"*",
+			"1",
+			" ",
+			"1",
+			"*",
+		},
+	},
+	{
+		description: "cross",
+		minefield: []string{
+			"  *  ",
+			"  *  ",
+			"*****",
+			"  *  ",
+			"  *  ",
+		},
+		expected: []string{
+			" 2*2 ",
+			"25*52",
+			"*****",
+			"25*52",
+			" 2*2 ",
+		},
+	},
+	{
+		description: "large minefield",
+		minefield: []string{
+			" *  * ",
+			"  *   ",
+			"    * ",
+			"   * *",
+			" *  * ",
+			"      ",
+		},
+		expected: []string{
+			"1*22*1",
+			"12*322",
+			" 123*2",
+			"112*4*",
+			"1*22*2",
+			"111111",
+		},
+	},
+}
+
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	if len(a) == 0 {
+		return true
+	}
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestAnnotate(t *testing.T) {
+	for _, tc := range minesweeperTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			got := Annotate(tc.minefield)
+			want := tc.expected
+			if !slicesEqual(want, got) {
+				t.Fatalf("expected: %v, got: %v", want, got)
+			}
+		})
+	}
+}
+
+var benchmarkResult []string
+
+func BenchmarkAnnotate(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	var result []string
+	board := []string{
+		"1*22*1",
+		"12*322",
+		" 123*2",
+		"112*4*",
+		"1*22*2",
+		"111111",
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result = Annotate(board)
+	}
+	benchmarkResult = result
+}
+
+
+=== Initial Translation ===
+// exercises/practice/minesweeper/.meta/example.go
+package minesweeper
+
+import (
+	"fmt"
+	"strings"
+)
+
+// Annotate returns an annotated board
+func Annotate(minefield []string) []string {
+	if len(minefield) == 0 {
+		return []string{}
+	}
+
+	verifyBoard(minefield)
+
+	rowLen := len(minefield[0])
+	colLen := len(minefield)
+
+	// Create a mutable copy of the board as a slice of rune slices
+	board := make([][]rune, colLen)
+	for i, row := range minefield {
+		board[i] = []rune(row)
+	}
+
+	// Helper function to safely count mines in a substring of a row
+	countStarsInRange := func(row string, low, high int) int {
+		// adjust high to not exceed the length
+		if high > len(row) {
+			high = len(row)
+		}
+		count := 0
+		for _, ch := range row[low:high] {
+			if ch == '*' {
+				count++
+			}
+		}
+		return count
+	}
+
+	for i := 0; i < colLen; i++ {
+		for j := 0; j < rowLen; j++ {
+			// Only process empty space
+			if board[i][j] != ' ' {
+				continue
+			}
+
+			low := j - 1
+			if low < 0 {
+				low = 0
+			}
+			high := j + 2
+			if high > rowLen {
+				high = rowLen
+			}
+
+			counts := countStarsInRange(minefield[i], low, high)
+
+			if i > 0 {
+				counts += countStarsInRange(minefield[i-1], low, high)
+			}
+			if i < colLen-1 {
+				counts += countStarsInRange(minefield[i+1], low, high)
+			}
+
+			if counts == 0 {
+				continue
+			}
+
+			// Replace the blank with the count
+			board[i][j] = rune('0' + counts) // Assumes counts < 10
+		}
+	}
+
+	// Convert board back to slice of strings
+	annotated := make([]string, colLen)
+	for i, row := range board {
+		annotated[i] = string(row)
+	}
+
+	return annotated
+}
+
+// verifyBoard checks if the given minefield board is valid.
+// It panics with an error message if the board is invalid.
+func verifyBoard(minefield []string) {
+	rowLen := len(minefield[0])
+
+	// Check that all rows have the same length
+	for _, row := range minefield {
+		if len(row) != rowLen {
+			panic(fmt.Errorf("The board is invalid with current input."))
+		}
+	}
+
+	// Allowed characters: space and '*'
+	allowed := map[rune]bool{' ': true, '*': true}
+
+	for _, row := range minefield {
+		for _, ch := range row {
+			if !allowed[ch] {
+				panic(fmt.Errorf("The board is invalid with current input."))
+			}
+		}
+	}
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/minesweeper [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/minesweeper [exercism/minesweeper.test]
+./minesweeper.go:6:2: imported and not used: "strings"
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/minesweeper/.meta/example.go
+package minesweeper
+
+import (
+	"fmt"
+)
+
+// Annotate returns an annotated board
+func Annotate(minefield []string) []string {
+	if len(minefield) == 0 {
+		return []string{}
+	}
+
+	verifyBoard(minefield)
+
+	rowLen := len(minefield[0])
+	colLen := len(minefield)
+
+	// Create a mutable copy of the board as a slice of rune slices
+	board := make([][]rune, colLen)
+	for i, row := range minefield {
+		board[i] = []rune(row)
+	}
+
+	// Helper function to safely count mines in a substring of a row
+	countStarsInRange := func(row string, low, high int) int {
+		if low < 0 {
+			low = 0
+		}
+		if high > len(row) {
+			high = len(row)
+		}
+		count := 0
+		for _, ch := range row[low:high] {
+			if ch == '*' {
+				count++
+			}
+		}
+		return count
+	}
+
+	for i := 0; i < colLen; i++ {
+		for j := 0; j < rowLen; j++ {
+			if board[i][j] != ' ' {
+				continue
+			}
+
+			low := j - 1
+		if low < 0 {
+			low = 0
+		}
+		high := j + 2
+		if high > rowLen {
+			high = rowLen
+		}
+
+		counts := countStarsInRange(minefield[i], low, high)
+		if i > 0 {
+			counts += countStarsInRange(minefield[i-1], low, high)
+		}
+		if i < colLen-1 {
+			counts += countStarsInRange(minefield[i+1], low, high)
+		}
+
+		if counts == 0 {
+			continue
+		}
+
+		// Replace the blank with the count (assumes counts < 10)
+		board[i][j] = rune('0' + counts)
+		}
+	}
+
+	// Convert board back to slice of strings
+	annotated := make([]string, colLen)
+	for i, row := range board {
+		annotated[i] = string(row)
+	}
+
+	return annotated
+}
+
+// verifyBoard checks if the given minefield board is valid.
+// It panics with an error message if the board is invalid.
+func verifyBoard(minefield []string) {
+	rowLen := len(minefield[0])
+
+	// Ensure all rows have the same length
+	for _, row := range minefield {
+		if len(row) != rowLen {
+			panic(fmt.Errorf("The board is invalid with current input."))
+		}
+	}
+
+	// Allowed characters: space and '*'
+	allowed := map[rune]bool{' ': true, '*': true}
+
+	for _, row := range minefield {
+		for _, ch := range row {
+			if !allowed[ch] {
+				panic(fmt.Errorf("The board is invalid with current input."))
+			}
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/minesweeper	0.286s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

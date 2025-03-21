@@ -1,0 +1,343 @@
+=== Initial Source Code ===
+Source file: exercises/practice/bottle-song/.meta/example.py
+NUMBERS = {10: "ten", 9: "nine", 8: "eight", 7: "seven", 6: "six", 5: "five", 4: "four", 3: "three", 2: "two", 1: "one", 0: "no"}
+
+def recite(start, take=1):
+    results = []
+    for idx in range(start, start - take, -1):
+        results.extend(verse(idx))
+        if idx > start - take + 1:
+            results.append('')
+    return results
+
+
+def verse(number):
+    return [
+        *main_verse(number),
+        "And if one green bottle should accidentally fall,",
+        last_verse(number)
+        ]
+
+def main_verse(number):
+    if number == 1:
+        return [
+            f'One green bottle hanging on the wall,',
+            f'One green bottle hanging on the wall,',
+        ]
+    else:
+        return [
+        f'{NUMBERS[number].capitalize()} green bottles hanging on the wall,',
+        f'{NUMBERS[number].capitalize()} green bottles hanging on the wall,',]
+
+def last_verse(number):
+    if number -1 == 1:
+        return f"There'll be one green bottle hanging on the wall."
+    else:
+        return f"There'll be {NUMBERS[number-1]} green bottles hanging on the wall."
+
+
+=== Source Interface ===
+def recite(start, take=1):
+    pass
+
+
+=== Target Interface ===
+package bottlesong
+
+func Recite(startBottles, takeDown int) []string {
+	panic("Please implement the Recite function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/bottle-song/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from bottle_song import (
+    recite,
+)
+
+
+class BottleSongTest(unittest.TestCase):
+    def test_first_generic_verse(self):
+        expected = [
+            "Ten green bottles hanging on the wall,",
+            "Ten green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be nine green bottles hanging on the wall.",
+        ]
+        self.assertEqual(recite(start=10), expected)
+
+    def test_last_generic_verse(self):
+        expected = [
+            "Three green bottles hanging on the wall,",
+            "Three green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be two green bottles hanging on the wall.",
+        ]
+        self.assertEqual(recite(start=3), expected)
+
+    def test_verse_with_2_bottles(self):
+        expected = [
+            "Two green bottles hanging on the wall,",
+            "Two green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be one green bottle hanging on the wall.",
+        ]
+        self.assertEqual(recite(start=2), expected)
+
+    def test_verse_with_1_bottle(self):
+        expected = [
+            "One green bottle hanging on the wall,",
+            "One green bottle hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be no green bottles hanging on the wall.",
+        ]
+        self.assertEqual(recite(start=1), expected)
+
+    def test_first_two_verses(self):
+        expected = [
+            "Ten green bottles hanging on the wall,",
+            "Ten green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be nine green bottles hanging on the wall.",
+            "",
+            "Nine green bottles hanging on the wall,",
+            "Nine green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be eight green bottles hanging on the wall.",
+        ]
+        self.assertEqual(recite(start=10, take=2), expected)
+
+    def test_last_three_verses(self):
+        expected = [
+            "Three green bottles hanging on the wall,",
+            "Three green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be two green bottles hanging on the wall.",
+            "",
+            "Two green bottles hanging on the wall,",
+            "Two green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be one green bottle hanging on the wall.",
+            "",
+            "One green bottle hanging on the wall,",
+            "One green bottle hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be no green bottles hanging on the wall.",
+        ]
+        self.assertEqual(recite(start=3, take=3), expected)
+
+    def test_all_verses(self):
+        expected = [
+            "Ten green bottles hanging on the wall,",
+            "Ten green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be nine green bottles hanging on the wall.",
+            "",
+            "Nine green bottles hanging on the wall,",
+            "Nine green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be eight green bottles hanging on the wall.",
+            "",
+            "Eight green bottles hanging on the wall,",
+            "Eight green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be seven green bottles hanging on the wall.",
+            "",
+            "Seven green bottles hanging on the wall,",
+            "Seven green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be six green bottles hanging on the wall.",
+            "",
+            "Six green bottles hanging on the wall,",
+            "Six green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be five green bottles hanging on the wall.",
+            "",
+            "Five green bottles hanging on the wall,",
+            "Five green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be four green bottles hanging on the wall.",
+            "",
+            "Four green bottles hanging on the wall,",
+            "Four green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be three green bottles hanging on the wall.",
+            "",
+            "Three green bottles hanging on the wall,",
+            "Three green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be two green bottles hanging on the wall.",
+            "",
+            "Two green bottles hanging on the wall,",
+            "Two green bottles hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be one green bottle hanging on the wall.",
+            "",
+            "One green bottle hanging on the wall,",
+            "One green bottle hanging on the wall,",
+            "And if one green bottle should accidentally fall,",
+            "There'll be no green bottles hanging on the wall.",
+        ]
+        self.assertEqual(recite(start=10, take=10), expected)
+
+
+=== Target Test Code ===
+package bottlesong
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"unicode"
+)
+
+func TestRecite(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Recite(tc.input.startBottles, tc.input.takeDown)
+			if !equal(actual, tc.expected) {
+				t.Errorf("Recite(%d, %d) = %q, want: %q", tc.input.startBottles, tc.input.takeDown, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func equal(a, b []string) bool {
+	if len(b) != len(a) {
+		return false
+	}
+
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+
+	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+}
+
+// Title is a copy of strings.Title function of the stdlib.
+// The copy is here because strings.Title is deprecated but we still
+// want to use this function as the alternative would require us to support
+// external dependencies which we don't yet (tracking issue https://github.com/exercism/go/issues/2379).
+// Students should still be able to use strings.Title if they want.
+// Since this exercise is currently deprecated, this shouldn't matter too much.
+func Title(s string) string {
+	// Use a closure here to remember state.
+	// Hackish but effective. Depends on Map scanning in order and calling
+	// the closure once per rune.
+	prev := ' '
+	return strings.Map(
+		func(r rune) rune {
+			if isSeparator(prev) {
+				prev = r
+				return unicode.ToTitle(r)
+			}
+			prev = r
+			return r
+		},
+		s)
+}
+
+// Copy of strings.isSeparator function of the stdlib.
+func isSeparator(r rune) bool {
+	// ASCII alphanumerics and underscore are not separators
+	if r <= 0x7F {
+		switch {
+		case '0' <= r && r <= '9':
+			return false
+		case 'a' <= r && r <= 'z':
+			return false
+		case 'A' <= r && r <= 'Z':
+			return false
+		case r == '_':
+			return false
+		}
+		return true
+	}
+	// Letters and digits are not separators
+	if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		return false
+	}
+	// Otherwise, all we can do for now is treat spaces as separators.
+	return unicode.IsSpace(r)
+}
+
+
+=== Initial Translation ===
+// exercises/practice/bottle-song/.meta/example.go
+package bottlesong
+
+import (
+	"fmt"
+	"strings"
+)
+
+var numbers = map[int]string{
+	10: "ten",
+	9:  "nine",
+	8:  "eight",
+	7:  "seven",
+	6:  "six",
+	5:  "five",
+	4:  "four",
+	3:  "three",
+	2:  "two",
+	1:  "one",
+	0:  "no",
+}
+
+// Recite returns the lyrics for the requested number of bottle verses
+func Recite(startBottles, takeDown int) []string {
+	results := []string{}
+	for idx := startBottles; idx > startBottles-takeDown; idx-- {
+		results = append(results, verse(idx)...)
+		if idx > startBottles-takeDown+1 {
+			results = append(results, "")
+		}
+	}
+	return results
+}
+
+func verse(number int) []string {
+	mainVerseLines := mainVerse(number)
+	return append(mainVerseLines,
+		"And if one green bottle should accidentally fall,",
+		lastVerse(number))
+}
+
+func mainVerse(number int) []string {
+	if number == 1 {
+		return []string{
+			"One green bottle hanging on the wall,",
+			"One green bottle hanging on the wall,",
+		}
+	} else {
+		bottleWord := strings.Title(numbers[number])
+		return []string{
+			fmt.Sprintf("%s green bottles hanging on the wall,", bottleWord),
+			fmt.Sprintf("%s green bottles hanging on the wall,", bottleWord),
+		}
+	}
+}
+
+func lastVerse(number int) string {
+	if number-1 == 1 {
+		return "There'll be one green bottle hanging on the wall."
+	} else {
+		return fmt.Sprintf("There'll be %s green bottles hanging on the wall.", numbers[number-1])
+	}
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/bottle-song	0.271s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,454 @@
+=== Initial Source Code ===
+Source file: exercises/practice/clock/.meta/example.py
+class Clock:
+    """Clock that displays 24 hour clock that rollsover properly"""
+
+    def __init__(self, hour, minute):
+        self.hour = hour
+        self.minute = minute
+        self.cleanup()
+
+    def __repr__(self):
+        return f'Clock({self.hour}, {self.minute})'
+
+    def __str__(self):
+        return '{:02d}:{:02d}'.format(self.hour, self.minute)
+
+    def __eq__(self, other):
+        return repr(self) == repr(other)
+
+    def __add__(self, minutes):
+        self.minute += minutes
+        return self.cleanup()
+
+    def __sub__(self, minutes):
+        self.minute -= minutes
+        return self.cleanup()
+
+    def cleanup(self):
+        self.hour += self.minute // 60
+        self.hour %= 24
+        self.minute %= 60
+        return self
+
+
+=== Source Interface ===
+class Clock:
+    def __init__(self, hour, minute):
+        pass
+
+    def __repr__(self):
+        pass
+
+    def __str__(self):
+        pass
+
+    def __eq__(self, other):
+        pass
+
+    def __add__(self, minutes):
+        pass
+
+    def __sub__(self, minutes):
+        pass
+
+
+=== Target Interface ===
+package clock
+
+// Define the Clock type here.
+
+func New(h, m int) Clock {
+	panic("Please implement the New function")
+}
+
+func (c Clock) Add(m int) Clock {
+	panic("Please implement the Add function")
+}
+
+func (c Clock) Subtract(m int) Clock {
+	panic("Please implement the Subtract function")
+}
+
+func (c Clock) String() string {
+	panic("Please implement the String function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/clock/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from clock import (
+    Clock,
+)
+
+
+class ClockTest(unittest.TestCase):
+    # Create A String Representation
+    def test_lunch_time(self):
+        self.assertEqual(repr(Clock(12, 0)), "Clock(12, 0)")
+
+    def test_breakfast_time(self):
+        self.assertEqual(repr(Clock(6, 45)), "Clock(6, 45)")
+
+    def test_dinner_time(self):
+        self.assertEqual(repr(Clock(18, 30)), "Clock(18, 30)")
+
+    # Create A New Clock With An Initial Time
+    def test_on_the_hour(self):
+        self.assertEqual(str(Clock(8, 0)), "08:00")
+
+    def test_past_the_hour(self):
+        self.assertEqual(str(Clock(11, 9)), "11:09")
+
+    def test_midnight_is_zero_hours(self):
+        self.assertEqual(str(Clock(24, 0)), "00:00")
+
+    def test_hour_rolls_over(self):
+        self.assertEqual(str(Clock(25, 0)), "01:00")
+
+    def test_hour_rolls_over_continuously(self):
+        self.assertEqual(str(Clock(100, 0)), "04:00")
+
+    def test_sixty_minutes_is_next_hour(self):
+        self.assertEqual(str(Clock(1, 60)), "02:00")
+
+    def test_minutes_roll_over(self):
+        self.assertEqual(str(Clock(0, 160)), "02:40")
+
+    def test_minutes_roll_over_continuously(self):
+        self.assertEqual(str(Clock(0, 1723)), "04:43")
+
+    def test_hour_and_minutes_roll_over(self):
+        self.assertEqual(str(Clock(25, 160)), "03:40")
+
+    def test_hour_and_minutes_roll_over_continuously(self):
+        self.assertEqual(str(Clock(201, 3001)), "11:01")
+
+    def test_hour_and_minutes_roll_over_to_exactly_midnight(self):
+        self.assertEqual(str(Clock(72, 8640)), "00:00")
+
+    def test_negative_hour(self):
+        self.assertEqual(str(Clock(-1, 15)), "23:15")
+
+    def test_negative_hour_rolls_over(self):
+        self.assertEqual(str(Clock(-25, 0)), "23:00")
+
+    def test_negative_hour_rolls_over_continuously(self):
+        self.assertEqual(str(Clock(-91, 0)), "05:00")
+
+    def test_negative_minutes(self):
+        self.assertEqual(str(Clock(1, -40)), "00:20")
+
+    def test_negative_minutes_roll_over(self):
+        self.assertEqual(str(Clock(1, -160)), "22:20")
+
+    def test_negative_minutes_roll_over_continuously(self):
+        self.assertEqual(str(Clock(1, -4820)), "16:40")
+
+    def test_negative_sixty_minutes_is_previous_hour(self):
+        self.assertEqual(str(Clock(2, -60)), "01:00")
+
+    def test_negative_hour_and_minutes_both_roll_over(self):
+        self.assertEqual(str(Clock(-25, -160)), "20:20")
+
+    def test_negative_hour_and_minutes_both_roll_over_continuously(self):
+        self.assertEqual(str(Clock(-121, -5810)), "22:10")
+
+    # Add Minutes
+    def test_add_minutes(self):
+        self.assertEqual(str(Clock(10, 0) + 3), "10:03")
+
+    def test_add_no_minutes(self):
+        self.assertEqual(str(Clock(6, 41) + 0), "06:41")
+
+    def test_add_to_next_hour(self):
+        self.assertEqual(str(Clock(0, 45) + 40), "01:25")
+
+    def test_add_more_than_one_hour(self):
+        self.assertEqual(str(Clock(10, 0) + 61), "11:01")
+
+    def test_add_more_than_two_hours_with_carry(self):
+        self.assertEqual(str(Clock(0, 45) + 160), "03:25")
+
+    def test_add_across_midnight(self):
+        self.assertEqual(str(Clock(23, 59) + 2), "00:01")
+
+    def test_add_more_than_one_day_1500_min_25_hrs(self):
+        self.assertEqual(str(Clock(5, 32) + 1500), "06:32")
+
+    def test_add_more_than_two_days(self):
+        self.assertEqual(str(Clock(1, 1) + 3500), "11:21")
+
+    # Subtract Minutes
+    def test_subtract_minutes(self):
+        self.assertEqual(str(Clock(10, 3) - 3), "10:00")
+
+    def test_subtract_to_previous_hour(self):
+        self.assertEqual(str(Clock(10, 3) - 30), "09:33")
+
+    def test_subtract_more_than_an_hour(self):
+        self.assertEqual(str(Clock(10, 3) - 70), "08:53")
+
+    def test_subtract_across_midnight(self):
+        self.assertEqual(str(Clock(0, 3) - 4), "23:59")
+
+    def test_subtract_more_than_two_hours(self):
+        self.assertEqual(str(Clock(0, 0) - 160), "21:20")
+
+    def test_subtract_more_than_two_hours_with_borrow(self):
+        self.assertEqual(str(Clock(6, 15) - 160), "03:35")
+
+    def test_subtract_more_than_one_day_1500_min_25_hrs(self):
+        self.assertEqual(str(Clock(5, 32) - 1500), "04:32")
+
+    def test_subtract_more_than_two_days(self):
+        self.assertEqual(str(Clock(2, 20) - 3000), "00:20")
+
+    # Compare Two Clocks For Equality
+    def test_clocks_with_same_time(self):
+        self.assertEqual(Clock(15, 37), Clock(15, 37))
+
+    def test_clocks_a_minute_apart(self):
+        self.assertNotEqual(Clock(15, 36), Clock(15, 37))
+
+    def test_clocks_an_hour_apart(self):
+        self.assertNotEqual(Clock(14, 37), Clock(15, 37))
+
+    def test_clocks_with_hour_overflow(self):
+        self.assertEqual(Clock(10, 37), Clock(34, 37))
+
+    def test_clocks_with_hour_overflow_by_several_days(self):
+        self.assertEqual(Clock(3, 11), Clock(99, 11))
+
+    def test_clocks_with_negative_hour(self):
+        self.assertEqual(Clock(22, 40), Clock(-2, 40))
+
+    def test_clocks_with_negative_hour_that_wraps(self):
+        self.assertEqual(Clock(17, 3), Clock(-31, 3))
+
+    def test_clocks_with_negative_hour_that_wraps_multiple_times(self):
+        self.assertEqual(Clock(13, 49), Clock(-83, 49))
+
+    def test_clocks_with_minute_overflow(self):
+        self.assertEqual(Clock(0, 1), Clock(0, 1441))
+
+    def test_clocks_with_minute_overflow_by_several_days(self):
+        self.assertEqual(Clock(2, 2), Clock(2, 4322))
+
+    def test_clocks_with_negative_minute(self):
+        self.assertEqual(Clock(2, 40), Clock(3, -20))
+
+    def test_clocks_with_negative_minute_that_wraps(self):
+        self.assertEqual(Clock(4, 10), Clock(5, -1490))
+
+    def test_clocks_with_negative_minute_that_wraps_multiple_times(self):
+        self.assertEqual(Clock(6, 15), Clock(6, -4305))
+
+    def test_clocks_with_negative_hours_and_minutes(self):
+        self.assertEqual(Clock(7, 32), Clock(-12, -268))
+
+    def test_clocks_with_negative_hours_and_minutes_that_wrap(self):
+        self.assertEqual(Clock(18, 7), Clock(-54, -11513))
+
+    def test_full_clock_and_zeroed_clock(self):
+        self.assertEqual(Clock(24, 0), Clock(0, 0))
+
+
+=== Target Test Code ===
+package clock
+
+import (
+	"reflect"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+func TestCreateClock(t *testing.T) {
+	for _, tc := range timeTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := New(tc.h, tc.m); tc.expected != actual.String() {
+				t.Errorf("New(%d, %d) = %q, want %q", tc.h, tc.m, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestAddMinutes(t *testing.T) {
+	for _, tc := range addTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := New(tc.h, tc.m).Add(tc.addedValue); tc.expected != actual.String() {
+				t.Errorf("New(%d, %d).Add(%d) = %q, want %q", tc.h, tc.m, tc.addedValue, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestSubtractMinutes(t *testing.T) {
+	for _, tc := range subtractTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := New(tc.h, tc.m).Subtract(tc.subtractedValue); tc.expected != actual.String() {
+				t.Errorf("New(%d, %d).Subtract(%d) = %q, want %q", tc.h, tc.m, tc.subtractedValue, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestAddMinutesStringless(t *testing.T) {
+	for _, tc := range addTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			split := strings.SplitN(tc.expected, ":", 2)
+			if len(split) != 2 {
+				t.Fatalf("error in test setup: expected time in format hh:mm, got: %s", tc.expected)
+			}
+			wantHour, _ := strconv.Atoi(split[0])
+			wantMin, _ := strconv.Atoi(split[1])
+
+			expected := New(wantHour, wantMin)
+			if actual := New(tc.h, tc.m).Add(tc.addedValue); !reflect.DeepEqual(actual, expected) {
+				t.Errorf("New(%d, %d).Add(%d)\n\t Got: %q (%#v)\n\tWant: %q (%#v)",
+					tc.h, tc.m, tc.addedValue, actual, actual, expected, expected)
+			}
+		})
+	}
+}
+
+func TestSubtractMinutesStringless(t *testing.T) {
+	for _, tc := range subtractTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			split := strings.SplitN(tc.expected, ":", 2)
+			if len(split) != 2 {
+				t.Fatalf("error in test setup: expected time in format hh:mm, got: %s", tc.expected)
+			}
+			wantHour, _ := strconv.Atoi(split[0])
+			wantMin, _ := strconv.Atoi(split[1])
+
+			expected := New(wantHour, wantMin)
+			if actual := New(tc.h, tc.m).Subtract(tc.subtractedValue); !reflect.DeepEqual(actual, expected) {
+				t.Errorf("New(%d, %d).Subtract(%d)\n\t Got: %q (%#v)\n\tWant: %q (%#v)",
+					tc.h, tc.m, tc.subtractedValue, actual, actual, expected, expected)
+			}
+		})
+	}
+}
+
+func TestCompareClocks(t *testing.T) {
+	for _, tc := range equalTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			clock1 := New(tc.c1.h, tc.c1.m)
+			clock2 := New(tc.c2.h, tc.c2.m)
+			actual := clock1 == clock2
+			if actual != tc.expected {
+				t.Errorf("Clock1 == Clock2 is %t, want %t\n\tClock1: %q (%#v)\n\tClock2: %q (%#v)",
+					actual, tc.expected, clock1, clock1, clock2, clock2)
+				if reflect.DeepEqual(clock1, clock2) {
+					t.Log("(Hint: see comments in clock_test.go.)")
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkAddMinutes(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	c := New(12, 0)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, a := range addTestCases {
+			c.Add(a.addedValue)
+		}
+	}
+}
+
+func BenchmarkSubtractMinutes(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	c := New(12, 0)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, a := range subtractTestCases {
+			c.Subtract(a.subtractedValue)
+		}
+	}
+}
+
+func BenchmarkCreateClocks(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, n := range timeTestCases {
+			New(n.h, n.m)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/clock/.meta/example.go
+package clock
+
+import "fmt"
+
+// Clock represents a clock that displays 24 hour clock that rolls over properly
+type Clock struct {
+	hour, minute int
+}
+
+// New creates a new Clock with the given hour and minute
+func New(hour, minute int) Clock {
+	c := Clock{hour, minute}
+	return c.normalize()
+}
+
+// Add adds minutes to a clock
+func (c Clock) Add(minutes int) Clock {
+	c.minute += minutes
+	return c.normalize()
+}
+
+// Subtract subtracts minutes from a clock
+func (c Clock) Subtract(minutes int) Clock {
+	c.minute -= minutes
+	return c.normalize()
+}
+
+// String returns a string representation of the clock in 24 hour format HH:MM
+func (c Clock) String() string {
+	return fmt.Sprintf("%02d:%02d", c.hour, c.minute)
+}
+
+// normalize ensures the clock's hour and minute are within acceptable ranges
+func (c Clock) normalize() Clock {
+	// Calculate total minutes and handle rollover
+	totalMinutes := c.hour*60 + c.minute
+	
+	// Handle negative values by adding full days until positive
+	for totalMinutes < 0 {
+		totalMinutes += 24 * 60
+	}
+	
+	// Compute normalized hour and minute
+	c.hour = (totalMinutes / 60) % 24
+	c.minute = totalMinutes % 60
+	
+	return c
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/clock	0.275s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

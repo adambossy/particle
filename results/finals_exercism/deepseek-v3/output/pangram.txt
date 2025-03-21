@@ -1,0 +1,315 @@
+=== Initial Source Code ===
+Source file: exercises/practice/pangram/.meta/example.py
+from string import ascii_lowercase
+
+
+def is_pangram(sentence):
+    return all(char in sentence.lower() for char in ascii_lowercase)
+
+
+=== Source Interface ===
+def is_pangram(sentence):
+    pass
+
+
+=== Target Interface ===
+package pangram
+
+func IsPangram(input string) bool {
+	panic("Please implement the IsPangram function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/pangram/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from pangram import (
+    is_pangram,
+)
+
+
+class PangramTest(unittest.TestCase):
+    def test_empty_sentence(self):
+        self.assertIs(is_pangram(""), False)
+
+    def test_perfect_lower_case(self):
+        self.assertIs(is_pangram("abcdefghijklmnopqrstuvwxyz"), True)
+
+    def test_only_lower_case(self):
+        self.assertIs(is_pangram("the quick brown fox jumps over the lazy dog"), True)
+
+    def test_missing_the_letter_x(self):
+        self.assertIs(
+            is_pangram("a quick movement of the enemy will jeopardize five gunboats"),
+            False,
+        )
+
+    def test_missing_the_letter_h(self):
+        self.assertIs(is_pangram("five boxing wizards jump quickly at it"), False)
+
+    def test_with_underscores(self):
+        self.assertIs(is_pangram("the_quick_brown_fox_jumps_over_the_lazy_dog"), True)
+
+    def test_with_numbers(self):
+        self.assertIs(
+            is_pangram("the 1 quick brown fox jumps over the 2 lazy dogs"), True
+        )
+
+    def test_missing_letters_replaced_by_numbers(self):
+        self.assertIs(is_pangram("7h3 qu1ck brown fox jumps ov3r 7h3 lazy dog"), False)
+
+    def test_mixed_case_and_punctuation(self):
+        self.assertIs(is_pangram('"Five quacking Zephyrs jolt my wax bed."'), True)
+
+    def test_a_m_and_a_m_are_26_different_characters_but_not_a_pangram(self):
+        self.assertIs(is_pangram("abcdefghijklm ABCDEFGHIJKLM"), False)
+
+    # Additional tests for this track
+
+    def test_sentence_without_lower_bound(self):
+        self.assertIs(is_pangram("bcdefghijklmnopqrstuvwxyz"), False)
+
+    def test_sentence_without_upper_bound(self):
+        self.assertIs(is_pangram("abcdefghijklmnopqrstuvwxy"), False)
+
+
+=== Target Test Code ===
+package pangram
+
+import (
+	"testing"
+)
+
+func TestPangram(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := IsPangram(tc.input); actual != tc.expected {
+				t.Fatalf("IsPangram(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkPangram(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			IsPangram(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/pangram/.meta/example.go
+package pangram
+
+import "strings"
+
+// IsPangram checks if the sentence is a pangram.
+func IsPangram(input string) bool {
+	sentence := strings.ToLower(input)
+	for char := 'a'; char <= 'z'; char++ {
+		if !strings.ContainsRune(sentence, char) {
+			return false
+		}
+	}
+	return true
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pangram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pangram [exercism/pangram.test]
+./pangram_test.go:8:21: undefined: testCases
+./pangram_test.go:22:24: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/pangram/.meta/example.go
+package pangram
+
+import "strings"
+
+// IsPangram checks if the sentence is a pangram.
+func IsPangram(input string) bool {
+	sentence := strings.ToLower(input)
+	for char := 'a'; char <= 'z'; char++ {
+		if !strings.ContainsRune(sentence, char) {
+			return false
+		}
+	}
+	return true
+}
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pangram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pangram [exercism/pangram.test]
+./pangram_test.go:8:21: undefined: testCases
+./pangram_test.go:22:24: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/pangram/.meta/example.go
+package pangram
+
+import "strings"
+
+// IsPangram checks if the sentence is a pangram.
+func IsPangram(input string) bool {
+	sentence := strings.ToLower(input)
+	for char := 'a'; char <= 'z'; char++ {
+		if !strings.ContainsRune(sentence, char) {
+			return false
+		}
+	}
+	return true
+}
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pangram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pangram [exercism/pangram.test]
+./pangram_test.go:8:21: undefined: testCases
+./pangram_test.go:22:24: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/pangram/.meta/example.go
+package pangram
+
+import "strings"
+
+// IsPangram checks if the sentence is a pangram.
+func IsPangram(input string) bool {
+	sentence := strings.ToLower(input)
+	for char := 'a'; char <= 'z'; char++ {
+		if !strings.ContainsRune(sentence, char) {
+			return false
+		}
+	}
+	return true
+}
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pangram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pangram [exercism/pangram.test]
+./pangram_test.go:8:21: undefined: testCases
+./pangram_test.go:22:24: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/pangram/.meta/example.go
+package pangram
+
+import "strings"
+
+// IsPangram checks if the sentence is a pangram.
+func IsPangram(input string) bool {
+	sentence := strings.ToLower(input)
+	for char := 'a'; char <= 'z'; char++ {
+		if !strings.ContainsRune(sentence, char) {
+			return false
+		}
+	}
+	return true
+}
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pangram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pangram [exercism/pangram.test]
+./pangram_test.go:8:21: undefined: testCases
+./pangram_test.go:22:24: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/pangram/.meta/example.go
+package pangram
+
+import "strings"
+
+// IsPangram checks if the sentence is a pangram.
+func IsPangram(input string) bool {
+	sentence := strings.ToLower(input)
+	for char := 'a'; char <= 'z'; char++ {
+		if !strings.ContainsRune(sentence, char) {
+			return false
+		}
+	}
+	return true
+}
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pangram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pangram [exercism/pangram.test]
+./pangram_test.go:8:21: undefined: testCases
+./pangram_test.go:22:24: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/pangram/.meta/example.go
+package pangram
+
+import "strings"
+
+// IsPangram checks if the sentence is a pangram.
+func IsPangram(input string) bool {
+	sentence := strings.ToLower(input)
+	for char := 'a'; char <= 'z'; char++ {
+		if !strings.ContainsRune(sentence, char) {
+			return false
+		}
+	}
+	return true
+}
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/pangram [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/pangram [exercism/pangram.test]
+./pangram_test.go:8:21: undefined: testCases
+./pangram_test.go:22:24: undefined: testCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Request didn't generate first token before the given deadline"}}
+
+=== FINAL STATUS: ERROR ===

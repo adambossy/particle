@@ -1,0 +1,254 @@
+=== Initial Source Code ===
+Source file: exercises/practice/all-your-base/.meta/example.py
+def from_digits(digits, base):
+    return sum(number * base ** idx for idx, number in enumerate(reversed(digits)))
+
+
+def to_digits(number, base_to):
+    result = []
+    while number > 0:
+        result.append(number % base_to)
+        number //= base_to
+    if result:
+        return result[::-1]  # list(reversed(result))
+    return [0]
+
+
+def rebase(from_base, digits, to_base):
+    if from_base < 2:
+        raise ValueError("input base must be >= 2")
+
+    if to_base < 2:
+        raise ValueError("output base must be >= 2")
+
+    if any(True for idx in digits if idx < 0 or idx >= from_base):
+        raise ValueError("all digits must satisfy 0 <= d < input base")
+
+    return to_digits(from_digits(digits, from_base), to_base)
+
+
+=== Source Interface ===
+def rebase(input_base, digits, output_base):
+    pass
+
+
+=== Target Interface ===
+package allyourbase
+
+func ConvertToBase(inputBase int, inputDigits []int, outputBase int) ([]int, error) {
+	panic("Please implement the ConvertToBase function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/all-your-base/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from all_your_base import (
+    rebase,
+)
+
+
+class AllYourBaseTest(unittest.TestCase):
+    def test_single_bit_one_to_decimal(self):
+        self.assertEqual(rebase(2, [1], 10), [1])
+
+    def test_binary_to_single_decimal(self):
+        self.assertEqual(rebase(2, [1, 0, 1], 10), [5])
+
+    def test_single_decimal_to_binary(self):
+        self.assertEqual(rebase(10, [5], 2), [1, 0, 1])
+
+    def test_binary_to_multiple_decimal(self):
+        self.assertEqual(rebase(2, [1, 0, 1, 0, 1, 0], 10), [4, 2])
+
+    def test_decimal_to_binary(self):
+        self.assertEqual(rebase(10, [4, 2], 2), [1, 0, 1, 0, 1, 0])
+
+    def test_trinary_to_hexadecimal(self):
+        self.assertEqual(rebase(3, [1, 1, 2, 0], 16), [2, 10])
+
+    def test_hexadecimal_to_trinary(self):
+        self.assertEqual(rebase(16, [2, 10], 3), [1, 1, 2, 0])
+
+    def test_15_bit_integer(self):
+        self.assertEqual(rebase(97, [3, 46, 60], 73), [6, 10, 45])
+
+    def test_empty_list(self):
+        self.assertEqual(rebase(2, [], 10), [0])
+
+    def test_single_zero(self):
+        self.assertEqual(rebase(10, [0], 2), [0])
+
+    def test_multiple_zeros(self):
+        self.assertEqual(rebase(10, [0, 0, 0], 2), [0])
+
+    def test_leading_zeros(self):
+        self.assertEqual(rebase(7, [0, 6, 0], 10), [4, 2])
+
+    def test_input_base_is_one(self):
+        with self.assertRaises(ValueError) as err:
+            rebase(1, [0], 10)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "input base must be >= 2")
+
+    def test_input_base_is_zero(self):
+        with self.assertRaises(ValueError) as err:
+            rebase(0, [], 10)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "input base must be >= 2")
+
+    def test_input_base_is_negative(self):
+        with self.assertRaises(ValueError) as err:
+            rebase(-2, [1], 10)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "input base must be >= 2")
+
+    def test_negative_digit(self):
+        with self.assertRaises(ValueError) as err:
+            rebase(2, [1, -1, 1, 0, 1, 0], 10)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "all digits must satisfy 0 <= d < input base"
+        )
+
+    def test_invalid_positive_digit(self):
+        with self.assertRaises(ValueError) as err:
+            rebase(2, [1, 2, 1, 0, 1, 0], 10)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "all digits must satisfy 0 <= d < input base"
+        )
+
+    def test_output_base_is_one(self):
+        with self.assertRaises(ValueError) as err:
+            rebase(2, [1, 0, 1, 0, 1, 0], 1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "output base must be >= 2")
+
+    def test_output_base_is_zero(self):
+        with self.assertRaises(ValueError) as err:
+            rebase(10, [7], 0)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "output base must be >= 2")
+
+    def test_output_base_is_negative(self):
+        with self.assertRaises(ValueError) as err:
+            rebase(2, [1], -7)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "output base must be >= 2")
+
+    def test_both_bases_are_negative(self):
+        with self.assertRaises(ValueError) as err:
+            rebase(-2, [1], -7)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "input base must be >= 2")
+
+
+=== Target Test Code ===
+package allyourbase
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestConvertToBase(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := ConvertToBase(tc.inputBase, tc.inputDigits, tc.outputBase)
+			if tc.expectedError != "" {
+				if err == nil {
+					t.Errorf("ConvertToBase(%d, %#v, %d) expected error: %q", tc.inputBase, tc.inputDigits, tc.outputBase, tc.expectedError)
+				} else if tc.expectedError != err.Error() {
+					t.Errorf("ConvertToBase(%d, %#v, %d)\nexpected error: %q\ngot: %q", tc.inputBase, tc.inputDigits, tc.outputBase, tc.expectedError, err.Error())
+				}
+			} else if !reflect.DeepEqual(tc.expected, actual) {
+				t.Errorf("ConvertToBase(%d, %#v, %d) = %#v, want:%#v", tc.inputBase, tc.inputDigits, tc.outputBase, actual, tc.expected)
+			}
+		})
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/all-your-base/.meta/example.go
+package allyourbase
+
+import (
+	"errors"
+)
+
+func fromDigits(digits []int, base int) int {
+	number := 0
+	for idx, digit := range digits {
+		number += digit * pow(base, len(digits)-idx-1)
+	}
+	return number
+}
+
+func toDigits(number int, baseTo int) []int {
+	result := []int{}
+	for number > 0 {
+		result = append(result, number%baseTo)
+		number /= baseTo
+	}
+	if len(result) == 0 {
+		return []int{0}
+	}
+	return reverse(result)
+}
+
+func pow(base int, exponent int) int {
+	result := 1
+	for i := 0; i < exponent; i++ {
+		result *= base
+	}
+	return result
+}
+
+func reverse(slice []int) []int {
+	result := make([]int, len(slice))
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = slice[j], slice[i]
+	}
+	return result
+}
+
+func ConvertToBase(inputBase int, inputDigits []int, outputBase int) ([]int, error) {
+	if inputBase < 2 {
+		return nil, errors.New("input base must be >= 2")
+	}
+
+	if outputBase < 2 {
+		return nil, errors.New("output base must be >= 2")
+	}
+
+	for _, digit := range inputDigits {
+		if digit < 0 || digit >= inputBase {
+			return nil, errors.New("all digits must satisfy 0 <= d < input base")
+		}
+	}
+
+	number := fromDigits(inputDigits, inputBase)
+	return toDigits(number, outputBase), nil
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/all-your-base [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/all-your-base [exercism/all-your-base.test]
+./all_your_base_test.go:9:21: undefined: testCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Missing end token '<｜tool▁calls▁end｜>' in function calls: <｜tool▁calls▁begin｜><｜tool▁call▁begin｜>function<｜t..."}}
+
+=== FINAL STATUS: ERROR ===

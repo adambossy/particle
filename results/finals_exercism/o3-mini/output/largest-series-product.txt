@@ -1,0 +1,1019 @@
+=== Initial Source Code ===
+Source file: exercises/practice/largest-series-product/.meta/example.py
+from functools import reduce
+from operator import mul
+
+
+def slices(series, size):
+
+    if not size <= len(series):
+        raise ValueError('span must be smaller than string length')
+    elif not 0 < size:
+        raise ValueError('span must not be negative')
+    elif not all(item.isdigit() for item in series):
+        raise ValueError('digits input must only contain digits')
+
+    numbers = [int(digit) for digit in series]
+
+    return [numbers[idx:idx + size]
+            for idx in range(len(numbers) - size + 1)]
+
+
+def largest_product(series, size):
+    if size == 0:
+        return 1
+    return max(reduce(mul, slice) for slice in slices(series, size))
+
+
+=== Source Interface ===
+def largest_product(series, size):
+    pass
+
+
+=== Target Interface ===
+package lsproduct
+
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	panic("Please implement the LargestSeriesProduct function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/largest-series-product/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from largest_series_product import (
+    largest_product,
+)
+
+
+class LargestSeriesProductTest(unittest.TestCase):
+    def test_finds_the_largest_product_if_span_equals_length(self):
+        self.assertEqual(largest_product("29", 2), 18)
+
+    def test_can_find_the_largest_product_of_2_with_numbers_in_order(self):
+        self.assertEqual(largest_product("0123456789", 2), 72)
+
+    def test_can_find_the_largest_product_of_2(self):
+        self.assertEqual(largest_product("576802143", 2), 48)
+
+    def test_can_find_the_largest_product_of_3_with_numbers_in_order(self):
+        self.assertEqual(largest_product("0123456789", 3), 504)
+
+    def test_can_find_the_largest_product_of_3(self):
+        self.assertEqual(largest_product("1027839564", 3), 270)
+
+    def test_can_find_the_largest_product_of_5_with_numbers_in_order(self):
+        self.assertEqual(largest_product("0123456789", 5), 15120)
+
+    def test_can_get_the_largest_product_of_a_big_number(self):
+        self.assertEqual(
+            largest_product("73167176531330624919225119674426574742355349194934", 6),
+            23520,
+        )
+
+    def test_reports_zero_if_the_only_digits_are_zero(self):
+        self.assertEqual(largest_product("0000", 2), 0)
+
+    def test_reports_zero_if_all_spans_include_zero(self):
+        self.assertEqual(largest_product("99099", 3), 0)
+
+    def test_rejects_span_longer_than_string_length(self):
+        with self.assertRaises(ValueError) as err:
+            largest_product("123", 4)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "span must be smaller than string length"
+        )
+
+    def test_rejects_empty_string_and_nonzero_span(self):
+        with self.assertRaises(ValueError) as err:
+            largest_product("", 1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "span must be smaller than string length"
+        )
+
+    def test_rejects_invalid_character_in_digits(self):
+        with self.assertRaises(ValueError) as err:
+            largest_product("1234a5", 2)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "digits input must only contain digits")
+
+    def test_rejects_negative_span(self):
+        with self.assertRaises(ValueError) as err:
+            largest_product("12345", -1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "span must not be negative")
+
+    # Additional tests for this track
+    def test_euler_big_number(self):
+        self.assertEqual(
+            largest_product(
+                "7316717653133062491922511967442657474235534919493496983520312774506326239578318016984801869478851843858615607891129494954595017379583319528532088055111254069874715852386305071569329096329522744304355766896648950445244523161731856403098711121722383113622298934233803081353362766142828064444866452387493035890729629049156044077239071381051585930796086670172427121883998797908792274921901699720888093776657273330010533678812202354218097512545405947522435258490771167055601360483958644670632441572215539753697817977846174064955149290862569321978468622482839722413756570560574902614079729686524145351004748216637048440319989000889524345065854122758866688116427171479924442928230863465674813919123162824586178664583591245665294765456828489128831426076900422421902267105562632111110937054421750694165896040807198403850962455444362981230987879927244284909188845801561660979191338754992005240636899125607176060588611646710940507754100225698315520005593572972571636269561882670428252483600823257530420752963450",
+                13,
+            ),
+            23514624000,
+        )
+
+
+=== Target Test Code ===
+package lsproduct
+
+import "testing"
+
+func TestLargestSeriesProduct(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := LargestSeriesProduct(tc.digits, tc.span)
+			if tc.error == "" {
+				// we do not expect error
+				if err != nil {
+					t.Fatalf("LargestSeriesProduct(%q, %d) returned error: %v\nwant: %d", tc.digits, tc.span, err, tc.expected)
+				}
+
+				if actual != tc.expected {
+					t.Fatalf("LargestSeriesProduct(%q, %d) = %d, want: %d", tc.digits, tc.span, actual, tc.expected)
+				}
+			} else if err == nil {
+				// expect error but got nil
+				t.Fatalf("LargestSeriesProduct(%q, %d) = %d, want error: %q", tc.digits, tc.span, actual, tc.error)
+			}
+		})
+	}
+}
+
+func BenchmarkLargestSeriesProduct(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			LargestSeriesProduct(test.digits, test.span)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative, 
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		var prod int64 = 1
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative, 
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		var prod int64 = 1
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative,
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		var prod int64 = 1
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative,
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		var prod int64 = 1
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative,
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		prod := int64(1)
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative,
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		prod := int64(1)
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative,
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		prod := int64(1)
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative,
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		prod := int64(1)
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative,
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		prod := int64(1)
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative,
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		prod := int64(1)
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/largest-series-product/.meta/example.go
+package lsproduct
+
+import "fmt"
+
+// slices splits the string of digits into all possible slices of length span.
+// It returns an error if span is greater than the length of the string, if span is negative,
+// or if the input contains non-digit characters.
+func slices(digits string, span int) ([][]int64, error) {
+	if span > len(digits) {
+		return nil, fmt.Errorf("span must be smaller than string length")
+	}
+	if span < 0 {
+		return nil, fmt.Errorf("span must not be negative")
+	}
+
+	numbers := make([]int64, len(digits))
+	for i, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return nil, fmt.Errorf("digits input must only contain digits")
+		}
+		numbers[i] = int64(ch - '0')
+	}
+
+	// Generate slices of length span
+	total := len(numbers) - span + 1
+	result := make([][]int64, 0, total)
+	for i := 0; i < total; i++ {
+		sliceCopy := make([]int64, span)
+		copy(sliceCopy, numbers[i:i+span])
+		result = append(result, sliceCopy)
+	}
+	return result, nil
+}
+
+// LargestSeriesProduct calculates the largest product for a series of digits given a span.
+// If span is 0, it returns 1. It returns an error according to the following conditions:
+// - If span is greater than the length of the input string.
+// - If span is negative.
+// - If the input string contains non-digit characters.
+func LargestSeriesProduct(digits string, span int) (int64, error) {
+	if span == 0 {
+		return 1, nil
+	}
+
+	slicesList, err := slices(digits, span)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxProduct int64 = 0
+	for _, slice := range slicesList {
+		prod := int64(1)
+		for _, v := range slice {
+			prod *= v
+		}
+		if prod > maxProduct {
+			maxProduct = prod
+		}
+	}
+
+	return maxProduct, nil
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/largest-series-product [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/largest-series-product [exercism/largest-series-product.test]
+./largest_series_product_test.go:6:21: undefined: testCases
+./largest_series_product_test.go:31:24: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

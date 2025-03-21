@@ -1,0 +1,1 @@
+resistor-color-duo,10,2

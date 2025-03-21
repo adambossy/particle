@@ -1,0 +1,179 @@
+=== Initial Source Code ===
+Source file: exercises/practice/matching-brackets/.meta/example.py
+def is_paired(input_string):
+    counterparts = {')': '(', '}': '{', ']': '['}
+
+    stack = []
+    for char in input_string:
+        if char in counterparts.values():
+            stack.append(char)
+        elif char in counterparts:
+            if not stack:
+                return False
+            if stack.pop() != counterparts[char]:
+                return False
+    return not stack
+
+
+=== Source Interface ===
+def is_paired(input_string):
+    pass
+
+
+=== Target Interface ===
+package brackets
+
+func Bracket(input string) bool {
+	panic("Please implement the Bracket function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/matching-brackets/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from matching_brackets import (
+    is_paired,
+)
+
+
+class MatchingBracketsTest(unittest.TestCase):
+    def test_paired_square_brackets(self):
+        self.assertEqual(is_paired("[]"), True)
+
+    def test_empty_string(self):
+        self.assertEqual(is_paired(""), True)
+
+    def test_unpaired_brackets(self):
+        self.assertEqual(is_paired("[["), False)
+
+    def test_wrong_ordered_brackets(self):
+        self.assertEqual(is_paired("}{"), False)
+
+    def test_wrong_closing_bracket(self):
+        self.assertEqual(is_paired("{]"), False)
+
+    def test_paired_with_whitespace(self):
+        self.assertEqual(is_paired("{ }"), True)
+
+    def test_partially_paired_brackets(self):
+        self.assertEqual(is_paired("{[])"), False)
+
+    def test_simple_nested_brackets(self):
+        self.assertEqual(is_paired("{[]}"), True)
+
+    def test_several_paired_brackets(self):
+        self.assertEqual(is_paired("{}[]"), True)
+
+    def test_paired_and_nested_brackets(self):
+        self.assertEqual(is_paired("([{}({}[])])"), True)
+
+    def test_unopened_closing_brackets(self):
+        self.assertEqual(is_paired("{[)][]}"), False)
+
+    def test_unpaired_and_nested_brackets(self):
+        self.assertEqual(is_paired("([{])"), False)
+
+    def test_paired_and_wrong_nested_brackets(self):
+        self.assertEqual(is_paired("[({]})"), False)
+
+    def test_paired_and_wrong_nested_brackets_but_innermost_are_correct(self):
+        self.assertEqual(is_paired("[({}])"), False)
+
+    def test_paired_and_incomplete_brackets(self):
+        self.assertEqual(is_paired("{}["), False)
+
+    def test_too_many_closing_brackets(self):
+        self.assertEqual(is_paired("[]]"), False)
+
+    def test_early_unexpected_brackets(self):
+        self.assertEqual(is_paired(")()"), False)
+
+    def test_early_mismatched_brackets(self):
+        self.assertEqual(is_paired("{)()"), False)
+
+    def test_math_expression(self):
+        self.assertEqual(is_paired("(((185 + 223.85) * 15) - 543)/2"), True)
+
+    def test_complex_latex_expression(self):
+        self.assertEqual(
+            is_paired(
+                "\\left(\\begin{array}{cc} \\frac{1}{3} & x\\\\ \\mathrm{e}^{x} &... x^2 \\end{array}\\right)"
+            ),
+            True,
+        )
+
+
+=== Target Test Code ===
+package brackets
+
+import (
+	"testing"
+)
+
+func TestBracket(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Bracket(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Bracket(%q) = %t, want: %t", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkBracket(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tt := range testCases {
+			Bracket(tt.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+package brackets
+
+// Bracket checks if the brackets in the input string are balanced.
+func Bracket(input string) bool {
+    counterparts := map[rune]rune{')': '(', '}': '{', ']': '['}
+
+    stack := []rune{}
+    for _, char := range input {
+        if char == '(' || char == '{' || char == '[' {
+            stack = append(stack, char)
+        } else if char == ')' || char == '}' || char == ']' {
+            if len(stack) == 0 {
+                return false
+            }
+            if stack[len(stack)-1] != counterparts[char] {
+                return false
+            }
+            stack = stack[:len(stack)-1]
+        }
+    }
+    return len(stack) == 0
+}
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/matching-brackets [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/matching-brackets [exercism/matching-brackets.test]
+./matching_brackets_test.go:8:21: undefined: testCases
+./matching_brackets_test.go:23:22: undefined: testCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Missing end token '<｜tool▁calls▁end｜>' in function calls: <｜tool▁calls▁begin｜><｜tool▁call▁begin｜>function<｜t..."}}
+
+=== FINAL STATUS: ERROR ===

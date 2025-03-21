@@ -1,0 +1,663 @@
+=== Initial Source Code ===
+Source file: exercises/practice/darts/.meta/example.py
+from math import sqrt
+
+# X, and Y variable names against [pylint]: C0104, but is the same as the stub, advise not to change this.
+def score(x, y):
+    dart_location = sqrt(x * x + y * y)
+
+    if dart_location <= 1.0:
+        return 10
+    elif dart_location <= 5.0:
+        return 5
+    elif dart_location <= 10.0:
+        return 1
+    else:
+        return 0
+
+
+=== Source Interface ===
+def score(x, y):
+    pass
+
+
+=== Target Interface ===
+package darts
+
+func Score(x, y float64) int {
+	panic("Please implement the Score function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/darts/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from darts import (
+    score,
+)
+
+
+class DartsTest(unittest.TestCase):
+    def test_missed_target(self):
+        self.assertEqual(score(-9, 9), 0)
+
+    def test_on_the_outer_circle(self):
+        self.assertEqual(score(0, 10), 1)
+
+    def test_on_the_middle_circle(self):
+        self.assertEqual(score(-5, 0), 5)
+
+    def test_on_the_inner_circle(self):
+        self.assertEqual(score(0, -1), 10)
+
+    def test_exactly_on_center(self):
+        self.assertEqual(score(0, 0), 10)
+
+    def test_near_the_center(self):
+        self.assertEqual(score(-0.1, -0.1), 10)
+
+    def test_just_within_the_inner_circle(self):
+        self.assertEqual(score(0.7, 0.7), 10)
+
+    def test_just_outside_the_inner_circle(self):
+        self.assertEqual(score(0.8, -0.8), 5)
+
+    def test_just_within_the_middle_circle(self):
+        self.assertEqual(score(-3.5, 3.5), 5)
+
+    def test_just_outside_the_middle_circle(self):
+        self.assertEqual(score(-3.6, -3.6), 1)
+
+    def test_just_within_the_outer_circle(self):
+        self.assertEqual(score(-7.0, 7.0), 1)
+
+    def test_just_outside_the_outer_circle(self):
+        self.assertEqual(score(7.1, -7.1), 0)
+
+    def test_asymmetric_position_between_the_inner_and_middle_circles(self):
+        self.assertEqual(score(0.5, -4), 5)
+
+
+=== Target Test Code ===
+package darts
+
+import (
+	"testing"
+)
+
+func TestScore(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Score(tc.x, tc.y)
+			if actual != tc.expected {
+				t.Errorf("Score(%#v, %#v) = %#v, want: %#v", tc.x, tc.y, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Score(tc.x, tc.y)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within 5.0, 1 if within 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts_test.go:8:21: undefined: testCases
+./darts_test.go:23:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within 5.0, 1 if within 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts_test.go:8:21: undefined: testCases
+./darts_test.go:23:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within a radius of 5.0, 1 if within a radius of 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts_test.go:8:21: undefined: testCases
+./darts_test.go:23:22: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within a radius of 5.0, 1 if within a radius of 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+// exercises/practice/darts/darts_test.go
+
+// NOTE: The following code is the test file for the darts package.
+// It provides test cases and benchmarks to ensure the Score function behaves as expected.
+
+// To run tests: go test
+
+package darts
+
+import (
+	"testing"
+)
+
+type testCase struct {
+	description string
+	x           float64
+	y           float64
+	expected    int
+}
+
+var testCases = []testCase{
+	{"missed target", 11.0, 0.0, 0},
+	{"on the outer ring", 10.0, 0.0, 1},
+	{"on the middle ring", 5.0, 0.0, 5},
+	{"on the inner circle", 1.0, 0.0, 10},
+	{"on the ring boundary: inner", 0.0, -1.0, 10},
+	{"on the ring boundary: middle", 0.0, 5.0, 5},
+	{"on the ring boundary: outer", 0.0, 10.0, 1},
+}
+
+func TestScore(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if got := Score(tc.x, tc.y); got != tc.expected {
+				t.Errorf("Score(%v, %v) = %v, want %v", tc.x, tc.y, got, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Score(tc.x, tc.y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts.go:30:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within a radius of 5.0, 1 if within a radius of 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts_test.go:8:21: undefined: testCases
+./darts_test.go:23:22: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within a radius of 5.0, 1 if within a radius of 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts_test.go:8:21: undefined: testCases
+./darts_test.go:23:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within a radius of 5.0, 1 if within a radius of 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+// exercises/practice/darts/darts_test.go
+package darts
+
+import (
+	"testing"
+)
+
+type testCase struct {
+	description string
+	x           float64
+	y           float64
+	expected    int
+}
+
+var testCases = []testCase{
+	// Missed the target (outside the outer circle of radius 10)
+	{"missed the target", 11.0, 0.0, 0},
+	// On the outer ring (radius exactly 10 should score 1)
+	{"on the outer ring", 10.0, 0.0, 1},
+	// On the middle ring (radius exactly 5 should score 5)
+	{"on the middle ring", 5.0, 0.0, 5},
+	// On the inner circle (radius exactly 1 should score 10)
+	{"on the inner circle", 1.0, 0.0, 10},
+	// Additional test cases
+	{"diagonal inner circle", 0.5, 0.5, 10},
+	{"diagonal middle ring", 3.0, 4.0, 5},
+	{"diagonal outer ring", 6.0, 8.0, 1},
+}
+
+func TestScore(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Score(tc.x, tc.y)
+			if actual != tc.expected {
+				t.Errorf("Score(%v, %v) = %v, want: %v", tc.x, tc.y, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Score(tc.x, tc.y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within a radius of 5.0, 1 if within a radius of 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts_test.go:8:21: undefined: testCases
+./darts_test.go:23:22: undefined: testCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within a radius of 5.0, 1 if within a radius of 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+// exercises/practice/darts/darts_test.go
+package darts
+
+import "testing"
+
+// testCase represents a single test scenario for the Score function.
+// It includes the description, the x and y coordinates, and the expected score.
+type testCase struct {
+	description string
+	x           float64
+	y           float64
+	expected    int
+}
+
+// testCases holds various scenarios to test the Score function thoroughly.
+var testCases = []testCase{
+	// Missed target: dart lands outside the outer circle (radius > 10)
+	{"missed the target", 11.0, 0.0, 0},
+	// On the outer ring: exactly on the outer boundary (radius <= 10)
+	{"on the outer ring", 10.0, 0.0, 1},
+	// On the middle ring: exactly on the middle boundary (radius <= 5)
+	{"on the middle ring", 5.0, 0.0, 5},
+	// On the inner circle: exactly on the inner boundary (radius <= 1)
+	{"on the inner circle", 1.0, 0.0, 10},
+	// Additional diagonal cases
+	{"diagonal inner circle", 0.5, 0.5, 10},
+	{"diagonal middle ring", 3.0, 4.0, 5},
+	{"diagonal outer ring", 6.0, 8.0, 1},
+}
+
+// TestScore runs tests to verify the Score function satisfies expected outcomes.
+func TestScore(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			if got := Score(tc.x, tc.y); got != tc.expected {
+				t.Errorf("Score(%v, %v) = %v, want %v", tc.x, tc.y, got, tc.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkScore benchmarks the performance of the Score function.
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Score(tc.x, tc.y)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts.go:24:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within a radius of 5.0, 1 if within a radius of 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts_test.go:8:21: undefined: testCases
+./darts_test.go:23:22: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/darts/.meta/example.go
+package darts
+
+import "math"
+
+// Score calculates the dart score based on the position (x, y) of the dart.
+// It returns 10 if the dart is within a radius of 1.0,
+// 5 if within a radius of 5.0, 1 if within a radius of 10.0, and 0 otherwise.
+func Score(x, y float64) int {
+	dartLocation := math.Sqrt(x*x + y*y)
+
+	if dartLocation <= 1.0 {
+		return 10
+	} else if dartLocation <= 5.0 {
+		return 5
+	} else if dartLocation <= 10.0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/darts [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/darts [exercism/darts.test]
+./darts_test.go:8:21: undefined: testCases
+./darts_test.go:23:22: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

@@ -1,0 +1,206 @@
+=== Initial Source Code ===
+Source file: exercises/practice/proverb/.meta/example.py
+def proverb(*rhyme_items, qualifier):
+    print(rhyme_items)
+    if not rhyme_items:
+        return []
+    phrases = [f'For want of a {element_1} the {element_2} was lost.'
+               for element_1, element_2 in zip(rhyme_items, rhyme_items[1:])]
+    if qualifier:
+        phrases.append(f'And all for the want of a {qualifier} {rhyme_items[0]}.')
+    else:
+        phrases.append(f'And all for the want of a {rhyme_items[0]}.')
+    return phrases
+
+
+=== Source Interface ===
+def proverb():
+    pass
+
+
+=== Target Interface ===
+// This is a "stub" file.  It's a little start on your solution.
+// It's not a complete solution though; you have to write some code.
+
+// Package proverb should have a package comment that summarizes what it's about.
+// https://golang.org/doc/effective_go.html#commentary
+package proverb
+
+// Proverb should have a comment documenting it.
+func Proverb(rhyme []string) []string {
+	// Write some code here to pass the test suite.
+	// Then remove all the stock comments.
+	// They're here to help you get started but they only clutter a finished solution.
+	// If you leave them in, reviewers may protest!
+	panic("Please implement the Proverb function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/proverb/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from proverb import (
+    proverb,
+)
+
+# PLEASE TAKE NOTE: Expected result lists for these test cases use **implicit line joining.**
+# A new line in a result list below **does not** always equal a new list element.
+# Check comma placement carefully!
+
+
+class ProverbTest(unittest.TestCase):
+    def test_zero_pieces(self):
+        input_data = []
+        self.assertEqual(proverb(*input_data, qualifier=None), [])
+
+    def test_one_piece(self):
+        input_data = ["nail"]
+        self.assertEqual(
+            proverb(*input_data, qualifier=None), ["And all for the want of a nail."]
+        )
+
+    def test_two_pieces(self):
+        input_data = ["nail", "shoe"]
+        self.assertEqual(
+            proverb(*input_data, qualifier=None),
+            [
+                "For want of a nail the shoe was lost.",
+                "And all for the want of a nail.",
+            ],
+        )
+
+    def test_three_pieces(self):
+        input_data = ["nail", "shoe", "horse"]
+        self.assertEqual(
+            proverb(*input_data, qualifier=None),
+            [
+                "For want of a nail the shoe was lost.",
+                "For want of a shoe the horse was lost.",
+                "And all for the want of a nail.",
+            ],
+        )
+
+    def test_full_proverb(self):
+        input_data = ["nail", "shoe", "horse", "rider", "message", "battle", "kingdom"]
+        self.assertEqual(
+            proverb(*input_data, qualifier=None),
+            [
+                "For want of a nail the shoe was lost.",
+                "For want of a shoe the horse was lost.",
+                "For want of a horse the rider was lost.",
+                "For want of a rider the message was lost.",
+                "For want of a message the battle was lost.",
+                "For want of a battle the kingdom was lost.",
+                "And all for the want of a nail.",
+            ],
+        )
+
+    def test_four_pieces_modernized(self):
+        input_data = ["pin", "gun", "soldier", "battle"]
+        self.assertEqual(
+            proverb(*input_data, qualifier=None),
+            [
+                "For want of a pin the gun was lost.",
+                "For want of a gun the soldier was lost.",
+                "For want of a soldier the battle was lost.",
+                "And all for the want of a pin.",
+            ],
+        )
+
+    # Track-specific tests
+
+    def test_an_optional_qualifier_can_be_added(self):
+        input_data = ["nail"]
+        self.assertEqual(
+            proverb(*input_data, qualifier="horseshoe"),
+            ["And all for the want of a horseshoe nail."],
+        )
+
+    def test_an_optional_qualifier_in_the_final_consequences(self):
+        input_data = ["nail", "shoe", "horse", "rider", "message", "battle", "kingdom"]
+        self.assertEqual(
+            proverb(*input_data, qualifier="horseshoe"),
+            [
+                "For want of a nail the shoe was lost.",
+                "For want of a shoe the horse was lost.",
+                "For want of a horse the rider was lost.",
+                "For want of a rider the message was lost.",
+                "For want of a message the battle was lost.",
+                "For want of a battle the kingdom was lost.",
+                "And all for the want of a horseshoe nail.",
+            ],
+        )
+
+
+=== Target Test Code ===
+package proverb
+
+import (
+	"fmt"
+	"testing"
+)
+
+func TestProverb(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Proverb(tc.input)
+			if fmt.Sprintf("%q", actual) != fmt.Sprintf("%q", tc.expected) {
+				t.Fatalf("Proverb(%#v)\n got:%#v\nwant:%#v", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkProverb(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Proverb(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/proverb/.meta/example.go
+package proverb
+
+import "fmt"
+
+// Proverb generates a proverb based on a list of rhyme items
+func Proverb(rhyme []string) []string {
+	if len(rhyme) == 0 {
+		return []string{}
+	}
+
+	phrases := make([]string, 0, len(rhyme))
+	
+	// Create phrases for each pair of consecutive items
+	for i := 0; i < len(rhyme)-1; i++ {
+		element1 := rhyme[i]
+		element2 := rhyme[i+1]
+		phrase := fmt.Sprintf("For want of a %s the %s was lost.", element1, element2)
+		phrases = append(phrases, phrase)
+	}
+
+	// Add the final line
+	phrases = append(phrases, fmt.Sprintf("And all for the want of a %s.", rhyme[0]))
+	
+	return phrases
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/proverb	0.272s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

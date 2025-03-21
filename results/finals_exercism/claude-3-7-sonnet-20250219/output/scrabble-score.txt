@@ -1,0 +1,141 @@
+=== Initial Source Code ===
+Source file: exercises/practice/scrabble-score/.meta/example.py
+POINTS = {
+    'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+    'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+    'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+    'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+    'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+    'z': 10
+}
+
+
+def score(word):
+    if not word.isalpha():
+        return 0
+    return sum(POINTS[letter] for letter in word.lower())
+
+
+=== Source Interface ===
+def score(word):
+    pass
+
+
+=== Target Interface ===
+package scrabble
+
+func Score(word string) int {
+	panic("Please implement the Score function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/scrabble-score/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from scrabble_score import (
+    score,
+)
+
+
+class ScrabbleScoreTest(unittest.TestCase):
+    def test_lowercase_letter(self):
+        self.assertEqual(score("a"), 1)
+
+    def test_uppercase_letter(self):
+        self.assertEqual(score("A"), 1)
+
+    def test_valuable_letter(self):
+        self.assertEqual(score("f"), 4)
+
+    def test_short_word(self):
+        self.assertEqual(score("at"), 2)
+
+    def test_short_valuable_word(self):
+        self.assertEqual(score("zoo"), 12)
+
+    def test_medium_word(self):
+        self.assertEqual(score("street"), 6)
+
+    def test_medium_valuable_word(self):
+        self.assertEqual(score("quirky"), 22)
+
+    def test_long_mixed_case_word(self):
+        self.assertEqual(score("OxyphenButazone"), 41)
+
+    def test_english_like_word(self):
+        self.assertEqual(score("pinata"), 8)
+
+    def test_empty_input(self):
+        self.assertEqual(score(""), 0)
+
+    def test_entire_alphabet_available(self):
+        self.assertEqual(score("abcdefghijklmnopqrstuvwxyz"), 87)
+
+
+=== Target Test Code ===
+package scrabble
+
+import "testing"
+
+func TestScore(t *testing.T) {
+	for _, tc := range scrabbleScoreTests {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := Score(tc.input); actual != tc.expected {
+				t.Errorf("Score(%q) = %d, want:%d", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkScore(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range scrabbleScoreTests {
+			Score(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/scrabble-score/.meta/example.go
+package scrabble
+
+import "unicode"
+
+// Score calculates the Scrabble score for a word
+func Score(word string) int {
+	points := map[rune]int{
+		'a': 1, 'b': 3, 'c': 3, 'd': 2, 'e': 1,
+		'f': 4, 'g': 2, 'h': 4, 'i': 1, 'j': 8,
+		'k': 5, 'l': 1, 'm': 3, 'n': 1, 'o': 1,
+		'p': 3, 'q': 10, 'r': 1, 's': 1, 't': 1,
+		'u': 1, 'v': 4, 'w': 4, 'x': 8, 'y': 4,
+		'z': 10,
+	}
+
+	total := 0
+	for _, letter := range word {
+		letter = unicode.ToLower(letter)
+		if unicode.IsLetter(letter) {
+			total += points[letter]
+		}
+	}
+	return total
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/scrabble-score	0.263s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

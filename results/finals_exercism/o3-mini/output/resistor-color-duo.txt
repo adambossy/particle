@@ -1,0 +1,627 @@
+=== Initial Source Code ===
+Source file: exercises/practice/resistor-color-duo/.meta/example.py
+COLORS = [
+    'black',
+    'brown',
+    'red',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'violet',
+    'grey',
+    'white'
+]
+
+
+def value(colors):
+    return 10 * COLORS.index(colors[0]) + COLORS.index(colors[1])
+
+
+=== Source Interface ===
+def value(colors):
+    pass
+
+
+=== Target Interface ===
+package resistorcolorduo
+
+// Value should return the resistance value of a resistor with a given colors.
+func Value(colors []string) int {
+	panic("Implement the Value function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/resistor-color-duo/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from resistor_color_duo import (
+    value,
+)
+
+
+class ResistorColorDuoTest(unittest.TestCase):
+    def test_brown_and_black(self):
+        self.assertEqual(value(["brown", "black"]), 10)
+
+    def test_blue_and_grey(self):
+        self.assertEqual(value(["blue", "grey"]), 68)
+
+    def test_yellow_and_violet(self):
+        self.assertEqual(value(["yellow", "violet"]), 47)
+
+    def test_white_and_red(self):
+        self.assertEqual(value(["white", "red"]), 92)
+
+    def test_orange_and_orange(self):
+        self.assertEqual(value(["orange", "orange"]), 33)
+
+    def test_ignore_additional_colors(self):
+        self.assertEqual(value(["green", "brown", "orange"]), 51)
+
+    def test_black_and_brown_one_digit(self):
+        self.assertEqual(value(["black", "brown"]), 1)
+
+
+=== Target Test Code ===
+package resistorcolorduo
+
+import "testing"
+
+func TestValue(t *testing.T) {
+	for _, tc := range valueTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Value(tc.input)
+
+			if actual != tc.expected {
+				t.Fatalf("Value(%+q): expected %d, actual %d", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// valueBench is intended to be used in BenchmarkValue to avoid compiler optimizations.
+var valueBench int
+
+func BenchmarkValue(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range valueTestCases {
+			valueBench = Value(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10 * index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (though tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10 * index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10 * index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10 * index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10*index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10*index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10*index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10*index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10*index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10*index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/resistor-color-duo/.meta/example.go
+package resistorcolorduo
+
+// COLORS is the list of color names corresponding to digit values.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// Value returns the resistance value of a resistor with the given colors.
+// It calculates the value as 10 * (digit value of the first color) + (digit value of the second color).
+func Value(colors []string) int {
+	return 10*index(colors[0]) + index(colors[1])
+}
+
+// index returns the index of the given color in the COLORS slice.
+// If the color is not found, it returns -1 (tests assume valid input).
+func index(color string) int {
+	for i, c := range COLORS {
+		if c == color {
+			return i
+		}
+	}
+	return -1
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-duo [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-duo [exercism/resistor-color-duo.test]
+./resistor_color_duo_test.go:6:21: undefined: valueTestCases
+./resistor_color_duo_test.go:22:22: undefined: valueTestCases
+
+
+=== FINAL STATUS: FAILED ===

@@ -1,0 +1,2122 @@
+=== Initial Source Code ===
+Source file: exercises/practice/custom-set/.meta/example.py
+class CustomSet:
+    def __init__(self, elements=None):
+        self.elements = list(elements) if elements is not None else list([])
+
+    def isempty(self):
+        return not self.elements
+
+    def __iter__(self):
+        return iter(self.elements)
+
+    def __contains__(self, element):
+        return element in self.elements
+
+    def issubset(self, other):
+        return all(idx in other for idx in self)
+
+    def isdisjoint(self, other):
+        return all(idx not in other for idx in self)
+
+    def __eq__(self, other):
+        return self.issubset(other) and other.issubset(self)
+
+    def add(self, element):
+        if element not in self:
+            self.elements.append(element)
+
+    def intersection(self, other):
+        result = CustomSet()
+        for idx in self:
+            if idx in other:
+                result.add(idx)
+        return result
+
+    def __sub__(self, other):
+        result = CustomSet()
+        for idx in self:
+            if idx not in other:
+                result.add(idx)
+        return result
+
+    def __add__(self, other):
+        result = CustomSet(self.elements)
+        for idx in other:
+            result.add(idx)
+        return result
+
+
+=== Source Interface ===
+class CustomSet:
+    def __init__(self, elements=[]):
+        pass
+
+    def isempty(self):
+        pass
+
+    def __contains__(self, element):
+        pass
+
+    def issubset(self, other):
+        pass
+
+    def isdisjoint(self, other):
+        pass
+
+    def __eq__(self, other):
+        pass
+
+    def add(self, element):
+        pass
+
+    def intersection(self, other):
+        pass
+
+    def __sub__(self, other):
+        pass
+
+    def __add__(self, other):
+        pass
+
+
+=== Target Interface ===
+package stringset
+
+// Implement Set as a collection of unique string values.
+//
+// For Set.String, use '{' and '}', output elements as double-quoted strings
+// safely escaped with Go syntax, and use a comma and a single space between
+// elements. For example, a set with 2 elements, "a" and "b", should be formatted as {"a", "b"}.
+// Format the empty set as {}.
+
+// Define the Set type here.
+
+func New() Set {
+	panic("Please implement the New function")
+}
+
+func NewFromSlice(l []string) Set {
+	panic("Please implement the NewFromSlice function")
+}
+
+func (s Set) String() string {
+	panic("Please implement the String function")
+}
+
+func (s Set) IsEmpty() bool {
+	panic("Please implement the IsEmpty function")
+}
+
+func (s Set) Has(elem string) bool {
+	panic("Please implement the Has function")
+}
+
+func (s Set) Add(elem string) {
+	panic("Please implement the Add function")
+}
+
+func Subset(s1, s2 Set) bool {
+	panic("Please implement the Subset function")
+}
+
+func Disjoint(s1, s2 Set) bool {
+	panic("Please implement the Disjoint function")
+}
+
+func Equal(s1, s2 Set) bool {
+	panic("Please implement the Equal function")
+}
+
+func Intersection(s1, s2 Set) Set {
+	panic("Please implement the Intersection function")
+}
+
+func Difference(s1, s2 Set) Set {
+	panic("Please implement the Difference function")
+}
+
+func Union(s1, s2 Set) Set {
+	panic("Please implement the Union function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/custom-set/canonical-data.json
+# File last updated on 2024-07-08
+
+import unittest
+
+from custom_set import (
+    CustomSet,
+)
+
+
+class CustomSetTest(unittest.TestCase):
+    def test_sets_with_no_elements_are_empty(self):
+        sut = CustomSet()
+        self.assertIs(sut.isempty(), True)
+
+    def test_sets_with_elements_are_not_empty(self):
+        sut = CustomSet([1])
+        self.assertIs(sut.isempty(), False)
+
+    def test_nothing_is_contained_in_an_empty_set(self):
+        sut = CustomSet()
+        self.assertNotIn(1, sut)
+
+    def test_when_the_element_is_in_the_set(self):
+        sut = CustomSet([1, 2, 3])
+        self.assertIn(1, sut)
+
+    def test_when_the_element_is_not_in_the_set(self):
+        sut = CustomSet([1, 2, 3])
+        self.assertNotIn(4, sut)
+
+    def test_empty_set_is_a_subset_of_another_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        self.assertIs(set1.issubset(set2), True)
+
+    def test_empty_set_is_a_subset_of_non_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([1])
+        self.assertIs(set1.issubset(set2), True)
+
+    def test_non_empty_set_is_not_a_subset_of_empty_set(self):
+        set1 = CustomSet([1])
+        set2 = CustomSet()
+        self.assertIs(set1.issubset(set2), False)
+
+    def test_set_is_a_subset_of_set_with_exact_same_elements(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([1, 2, 3])
+        self.assertIs(set1.issubset(set2), True)
+
+    def test_set_is_a_subset_of_larger_set_with_same_elements(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([4, 1, 2, 3])
+        self.assertIs(set1.issubset(set2), True)
+
+    def test_set_is_not_a_subset_of_set_that_does_not_contain_its_elements(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([4, 1, 3])
+        self.assertIs(set1.issubset(set2), False)
+
+    def test_the_empty_set_is_disjoint_with_itself(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        self.assertIs(set1.isdisjoint(set2), True)
+
+    def test_empty_set_is_disjoint_with_non_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([1])
+        self.assertIs(set1.isdisjoint(set2), True)
+
+    def test_non_empty_set_is_disjoint_with_empty_set(self):
+        set1 = CustomSet([1])
+        set2 = CustomSet()
+        self.assertIs(set1.isdisjoint(set2), True)
+
+    def test_sets_are_not_disjoint_if_they_share_an_element(self):
+        set1 = CustomSet([1, 2])
+        set2 = CustomSet([2, 3])
+        self.assertIs(set1.isdisjoint(set2), False)
+
+    def test_sets_are_disjoint_if_they_share_no_elements(self):
+        set1 = CustomSet([1, 2])
+        set2 = CustomSet([3, 4])
+        self.assertIs(set1.isdisjoint(set2), True)
+
+    def test_empty_sets_are_equal(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        self.assertEqual(set1, set2)
+
+    def test_empty_set_is_not_equal_to_non_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([1, 2, 3])
+        self.assertNotEqual(set1, set2)
+
+    def test_non_empty_set_is_not_equal_to_empty_set(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet()
+        self.assertNotEqual(set1, set2)
+
+    def test_sets_with_the_same_elements_are_equal(self):
+        set1 = CustomSet([1, 2])
+        set2 = CustomSet([2, 1])
+        self.assertEqual(set1, set2)
+
+    def test_sets_with_different_elements_are_not_equal(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([1, 2, 4])
+        self.assertNotEqual(set1, set2)
+
+    def test_set_is_not_equal_to_larger_set_with_same_elements(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([1, 2, 3, 4])
+        self.assertNotEqual(set1, set2)
+
+    def test_set_is_equal_to_a_set_constructed_from_an_array_with_duplicates(self):
+        set1 = CustomSet([1])
+        set2 = CustomSet([1, 1])
+        self.assertEqual(set1, set2)
+
+    def test_add_to_empty_set(self):
+        sut = CustomSet()
+        expected = CustomSet([3])
+        sut.add(3)
+        self.assertEqual(sut, expected)
+
+    def test_add_to_non_empty_set(self):
+        sut = CustomSet([1, 2, 4])
+        expected = CustomSet([1, 2, 3, 4])
+        sut.add(3)
+        self.assertEqual(sut, expected)
+
+    def test_adding_an_existing_element_does_not_change_the_set(self):
+        sut = CustomSet([1, 2, 3])
+        expected = CustomSet([1, 2, 3])
+        sut.add(3)
+        self.assertEqual(sut, expected)
+
+    def test_intersection_of_two_empty_sets_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        expected = CustomSet()
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_intersection_of_an_empty_set_and_non_empty_set_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([3, 2, 5])
+        expected = CustomSet()
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_intersection_of_a_non_empty_set_and_an_empty_set_is_an_empty_set(self):
+        set1 = CustomSet([1, 2, 3, 4])
+        set2 = CustomSet()
+        expected = CustomSet()
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_intersection_of_two_sets_with_no_shared_elements_is_an_empty_set(self):
+        set1 = CustomSet([1, 2, 3])
+        set2 = CustomSet([4, 5, 6])
+        expected = CustomSet()
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_intersection_of_two_sets_with_shared_elements_is_a_set_of_the_shared_elements(
+        self,
+    ):
+        set1 = CustomSet([1, 2, 3, 4])
+        set2 = CustomSet([3, 2, 5])
+        expected = CustomSet([2, 3])
+        self.assertEqual(set1.intersection(set2), expected)
+
+    def test_difference_of_two_empty_sets_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        expected = CustomSet()
+        self.assertEqual(set1 - set2, expected)
+
+    def test_difference_of_empty_set_and_non_empty_set_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([3, 2, 5])
+        expected = CustomSet()
+        self.assertEqual(set1 - set2, expected)
+
+    def test_difference_of_a_non_empty_set_and_an_empty_set_is_the_non_empty_set(self):
+        set1 = CustomSet([1, 2, 3, 4])
+        set2 = CustomSet()
+        expected = CustomSet([1, 2, 3, 4])
+        self.assertEqual(set1 - set2, expected)
+
+    def test_difference_of_two_non_empty_sets_is_a_set_of_elements_that_are_only_in_the_first_set(
+        self,
+    ):
+        set1 = CustomSet([3, 2, 1])
+        set2 = CustomSet([2, 4])
+        expected = CustomSet([1, 3])
+        self.assertEqual(set1 - set2, expected)
+
+    def test_difference_removes_all_duplicates_in_the_first_set(self):
+        set1 = CustomSet([1, 1])
+        set2 = CustomSet([1])
+        expected = CustomSet()
+        self.assertEqual(set1 - set2, expected)
+
+    def test_union_of_empty_sets_is_an_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet()
+        expected = CustomSet()
+        self.assertEqual(set1 + set2, expected)
+
+    def test_union_of_an_empty_set_and_non_empty_set_is_the_non_empty_set(self):
+        set1 = CustomSet()
+        set2 = CustomSet([2])
+        expected = CustomSet([2])
+        self.assertEqual(set1 + set2, expected)
+
+    def test_union_of_a_non_empty_set_and_empty_set_is_the_non_empty_set(self):
+        set1 = CustomSet([1, 3])
+        set2 = CustomSet()
+        expected = CustomSet([1, 3])
+        self.assertEqual(set1 + set2, expected)
+
+    def test_union_of_non_empty_sets_contains_all_unique_elements(self):
+        set1 = CustomSet([1, 3])
+        set2 = CustomSet([2, 3])
+        expected = CustomSet([3, 2, 1])
+        self.assertEqual(set1 + set2, expected)
+
+
+=== Target Test Code ===
+//nolint:gosec // In the context of this exercise, it is fine to use math.Rand instead of crypto.Rand.
+package stringset
+
+import (
+	"math/rand"
+	"strconv"
+	"testing"
+)
+
+// A first set of tests uses Set.String() to judge correctness.
+
+func TestNew(t *testing.T) {
+	// New must return an empty set.
+	want := "{}"
+	if got := New().String(); got != want {
+		t.Fatalf(`New().String() = %s, want %s.`, got, want)
+	}
+}
+
+func TestNewFromSlice(t *testing.T) {
+	// nil slice should give empty set
+	want := "{}"
+	if got := NewFromSlice(nil).String(); got != want {
+		t.Fatalf(`NewFromSlice(nil) = %s, want %s.`, got, want)
+	}
+
+	// slice with one element:
+	want = `{"a"}`
+	if got := NewFromSlice([]string{"a"}).String(); got != want {
+		t.Fatalf(`NewFromSlice([]string{"a"}) = %s, want %s.`, got, want)
+	}
+
+	// slice with repeated element:
+	if got := NewFromSlice([]string{"a", "a"}).String(); got != want {
+		t.Fatalf(`NewFromSlice([]string{"a", "a"}) = %s, want %s.`, got, want)
+	}
+
+	// slice with two elements:
+	got := NewFromSlice([]string{"a", "b"}).String()
+	want1 := `{"a", "b"}`
+	want2 := `{"b", "a"}`
+	if got != want1 && got != want2 { // order undefined
+		t.Fatalf(`NewFromSlice([]string{"a", "b"}) = %s, want %s or (%s).`, got, want1, want2)
+	}
+}
+
+func TestIsEmpty(t *testing.T) {
+	for _, tc := range emptyCases {
+		t.Run(tc.description, func(t *testing.T) {
+			s := NewFromSlice(tc.set)
+			got := s.IsEmpty()
+			if got != tc.want {
+				t.Errorf("%v IsEmpty = %t, want %t", s, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHas(t *testing.T) {
+	for _, tc := range containsCases {
+		t.Run(tc.description, func(t *testing.T) {
+			s := NewFromSlice(tc.set)
+			got := s.Has(tc.element)
+			if got != tc.want {
+				t.Fatalf("%v Has %q = %t, want %t", s, tc.element, got, tc.want)
+			}
+		})
+	}
+}
+
+// helper for testing Subset, Disjoint, Equal
+func testBinBool(name string, f func(Set, Set) bool, cases []binBoolCase, t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			s1 := NewFromSlice(tc.set1)
+			s2 := NewFromSlice(tc.set2)
+			got := f(s1, s2)
+			if got != tc.want {
+				t.Errorf("%s(%v, %v) = %t, want %t", name, s1, s2, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSubset(t *testing.T) {
+	testBinBool("Subset", Subset, subsetCases, t)
+}
+
+func TestDisjoint(t *testing.T) {
+	testBinBool("Disjoint", Disjoint, disjointCases, t)
+}
+
+func TestEqual(t *testing.T) {
+	testBinBool("Equal", Equal, equalCases, t)
+}
+
+func TestAdd(t *testing.T) {
+	for _, tc := range addCases {
+		t.Run(tc.description, func(t *testing.T) {
+			s := NewFromSlice(tc.set)
+			s.Add(tc.element)
+			want := NewFromSlice(tc.want)
+			if !Equal(s, want) {
+				t.Fatalf("%v Add %q = %v, want %v", NewFromSlice(tc.set), tc.element, s, want)
+			}
+		})
+	}
+}
+
+// helper for testing Intersection, Difference, Union
+func testBinOp(name string, f func(Set, Set) Set, cases []binOpCase, t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			s1 := NewFromSlice(tc.set1)
+			s2 := NewFromSlice(tc.set2)
+			want := NewFromSlice(tc.want)
+			got := f(s1, s2)
+			if !Equal(got, want) {
+				t.Fatalf("%s(%v, %v) = %v, want %v", name, s1, s2, got, want)
+			}
+		})
+	}
+}
+
+func TestIntersection(t *testing.T) {
+	testBinOp("Intersection", Intersection, intersectionCases, t)
+}
+
+func TestDifference(t *testing.T) {
+	testBinOp("Difference", Difference, differenceCases, t)
+}
+
+func TestUnion(t *testing.T) {
+	testBinOp("Union", Union, unionCases, t)
+}
+
+func BenchmarkNewFromSlice1e1(b *testing.B) { bench(1e1, b) }
+func BenchmarkNewFromSlice1e2(b *testing.B) { bench(1e2, b) }
+func BenchmarkNewFromSlice1e3(b *testing.B) { bench(1e3, b) }
+func BenchmarkNewFromSlice1e4(b *testing.B) { bench(1e4, b) }
+
+func bench(nAdd int, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	s := make([]string, nAdd)
+	for i := range s {
+		s[i] = strconv.Itoa(rand.Intn(len(s)))
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		NewFromSlice(s)
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/custom-set/.meta/example.go
+package meta
+
+// CustomSet is a collection of unique string values, emulating the behavior of the Python CustomSet.
+// It preserves insertion order by using an underlying slice.
+
+type CustomSet struct {
+	elements []string
+}
+
+// NewCustomSet creates a new CustomSet. If elements is nil, it initializes an empty set.
+func NewCustomSet(elements []string) *CustomSet {
+	if elements == nil {
+		elements = []string{}
+	} else {
+		// copy the slice to avoid external modifications
+		newElements := make([]string, len(elements))
+		copy(newElements, elements)
+		elements = newElements
+	}
+	return &CustomSet{elements: elements}
+}
+
+// IsEmpty returns true if the set has no elements.
+func (s *CustomSet) IsEmpty() bool {
+	return len(s.elements) == 0
+}
+
+// Contains checks if the element exists in the set.
+func (s *CustomSet) Contains(element string) bool {
+	for _, e := range s.elements {
+		if e == element {
+			return true
+		}
+	}
+	return false
+}
+
+// IsSubset returns true if every element in s is in other.
+func (s *CustomSet) IsSubset(other *CustomSet) bool {
+	for _, e := range s.elements {
+		if !other.Contains(e) {
+			return false
+		}
+	}
+	return true
+}
+
+// IsDisjoint returns true if s and other have no elements in common.
+func (s *CustomSet) IsDisjoint(other *CustomSet) bool {
+	for _, e := range s.elements {
+		if other.Contains(e) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s and other contain exactly the same elements.
+func (s *CustomSet) Equal(other *CustomSet) bool {
+	return s.IsSubset(other) && other.IsSubset(s)
+}
+
+// Add adds an element to the set if it is not already present.
+func (s *CustomSet) Add(element string) {
+	if !s.Contains(element) {
+		s.elements = append(s.elements, element)
+	}
+}
+
+// Intersection returns a new CustomSet with elements common to s and other.
+func (s *CustomSet) Intersection(other *CustomSet) *CustomSet {
+	result := NewCustomSet(nil)
+	for _, e := range s.elements {
+		if other.Contains(e) {
+			result.Add(e)
+		}
+	}
+	return result
+}
+
+// Difference returns a new CustomSet with elements in s that are not in other.
+func (s *CustomSet) Difference(other *CustomSet) *CustomSet {
+	result := NewCustomSet(nil)
+	for _, e := range s.elements {
+		if !other.Contains(e) {
+			result.Add(e)
+		}
+	}
+	return result
+}
+
+// Union returns a new CustomSet that is the union of s and other.
+func (s *CustomSet) Union(other *CustomSet) *CustomSet {
+	result := NewCustomSet(s.elements) // copy current elements
+	for _, e := range other.elements {
+		result.Add(e)
+	}
+	return result
+}
+
+// Below is an optional helper to get all elements (preserving order) if needed.
+func (s *CustomSet) Elements() []string {
+	return s.elements
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (custom_set.go) and stringset (custom_set_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/custom-set
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/custom-set/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described: elements in double quotes,
+// separated by a comma and a single space, surrounded by curly braces. The empty set
+// is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	// Since order is undefined, we join in the iteration order.
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (custom_set.go) and stringset (custom_set_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/custom-set
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/custom-set/.meta/example.go
+package meta
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described: elements in double quotes,
+// separated by a comma and a single space, surrounded by curly braces. The empty set
+// is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (custom_set.go) and stringset (custom_set_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/custom-set
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/custom-set/custom_set.go
+package stringset
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described: elements in double quotes,
+// separated by a comma and a single space, surrounded by curly braces. The empty set
+// is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/custom-set [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/custom-set [exercism/custom-set.test]
+./custom_set_test.go:48:21: undefined: emptyCases
+./custom_set_test.go:60:21: undefined: containsCases
+./custom_set_test.go:72:62: undefined: binBoolCase
+./custom_set_test.go:86:32: undefined: subsetCases
+./custom_set_test.go:90:36: undefined: disjointCases
+./custom_set_test.go:94:30: undefined: equalCases
+./custom_set_test.go:98:21: undefined: addCases
+./custom_set_test.go:111:59: undefined: binOpCase
+./custom_set_test.go:126:42: undefined: intersectionCases
+./custom_set_test.go:130:38: undefined: differenceCases
+./custom_set_test.go:130:38: too many errors
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/custom-set/.meta/example.go
+package stringset
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described: elements in double quotes,
+// separated by a comma and a single space, surrounded by curly braces. The empty set
+// is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/custom-set [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/custom-set [exercism/custom-set.test]
+./custom_set_test.go:48:21: undefined: emptyCases
+./custom_set_test.go:60:21: undefined: containsCases
+./custom_set_test.go:72:62: undefined: binBoolCase
+./custom_set_test.go:86:32: undefined: subsetCases
+./custom_set_test.go:90:36: undefined: disjointCases
+./custom_set_test.go:94:30: undefined: equalCases
+./custom_set_test.go:98:21: undefined: addCases
+./custom_set_test.go:111:59: undefined: binOpCase
+./custom_set_test.go:126:42: undefined: intersectionCases
+./custom_set_test.go:130:38: undefined: differenceCases
+./custom_set_test.go:130:38: too many errors
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/custom-set/custom_set.go
+package stringset
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described: elements in double quotes,
+// separated by a comma and a single space, surrounded by curly braces. The empty set
+// is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/custom-set [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/custom-set [exercism/custom-set.test]
+./custom_set_test.go:48:21: undefined: emptyCases
+./custom_set_test.go:60:21: undefined: containsCases
+./custom_set_test.go:72:62: undefined: binBoolCase
+./custom_set_test.go:86:32: undefined: subsetCases
+./custom_set_test.go:90:36: undefined: disjointCases
+./custom_set_test.go:94:30: undefined: equalCases
+./custom_set_test.go:98:21: undefined: addCases
+./custom_set_test.go:111:59: undefined: binOpCase
+./custom_set_test.go:126:42: undefined: intersectionCases
+./custom_set_test.go:130:38: undefined: differenceCases
+./custom_set_test.go:130:38: too many errors
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/custom-set/custom_set.go
+package stringset
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described: elements in double quotes,
+// separated by a comma and a single space, surrounded by curly braces. The empty set
+// is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/custom-set [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/custom-set [exercism/custom-set.test]
+./custom_set_test.go:48:21: undefined: emptyCases
+./custom_set_test.go:60:21: undefined: containsCases
+./custom_set_test.go:72:62: undefined: binBoolCase
+./custom_set_test.go:86:32: undefined: subsetCases
+./custom_set_test.go:90:36: undefined: disjointCases
+./custom_set_test.go:94:30: undefined: equalCases
+./custom_set_test.go:98:21: undefined: addCases
+./custom_set_test.go:111:59: undefined: binOpCase
+./custom_set_test.go:126:42: undefined: intersectionCases
+./custom_set_test.go:130:38: undefined: differenceCases
+./custom_set_test.go:130:38: too many errors
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/custom-set/custom_set.go
+package stringset
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described: elements in double quotes,
+// separated by a comma and a single space, surrounded by curly braces. The empty set
+// is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/custom-set [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/custom-set [exercism/custom-set.test]
+./custom_set_test.go:48:21: undefined: emptyCases
+./custom_set_test.go:60:21: undefined: containsCases
+./custom_set_test.go:72:62: undefined: binBoolCase
+./custom_set_test.go:86:32: undefined: subsetCases
+./custom_set_test.go:90:36: undefined: disjointCases
+./custom_set_test.go:94:30: undefined: equalCases
+./custom_set_test.go:98:21: undefined: addCases
+./custom_set_test.go:111:59: undefined: binOpCase
+./custom_set_test.go:126:42: undefined: intersectionCases
+./custom_set_test.go:130:38: undefined: differenceCases
+./custom_set_test.go:130:38: too many errors
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/custom-set/custom_set.go
+package stringset
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described: elements in double quotes,
+// separated by a comma and a single space, surrounded by curly braces. The empty set
+// is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/custom-set [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/custom-set [exercism/custom-set.test]
+./custom_set_test.go:48:21: undefined: emptyCases
+./custom_set_test.go:60:21: undefined: containsCases
+./custom_set_test.go:72:62: undefined: binBoolCase
+./custom_set_test.go:86:32: undefined: subsetCases
+./custom_set_test.go:90:36: undefined: disjointCases
+./custom_set_test.go:94:30: undefined: equalCases
+./custom_set_test.go:98:21: undefined: addCases
+./custom_set_test.go:111:59: undefined: binOpCase
+./custom_set_test.go:126:42: undefined: intersectionCases
+./custom_set_test.go:130:38: undefined: differenceCases
+./custom_set_test.go:130:38: too many errors
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/custom-set/custom_set.go
+package stringset
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described: elements in double quotes,
+// separated by a comma and a single space, surrounded by curly braces. The empty set
+// is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/custom-set [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/custom-set [exercism/custom-set.test]
+./custom_set_test.go:48:21: undefined: emptyCases
+./custom_set_test.go:60:21: undefined: containsCases
+./custom_set_test.go:72:62: undefined: binBoolCase
+./custom_set_test.go:86:32: undefined: subsetCases
+./custom_set_test.go:90:36: undefined: disjointCases
+./custom_set_test.go:94:30: undefined: equalCases
+./custom_set_test.go:98:21: undefined: addCases
+./custom_set_test.go:111:59: undefined: binOpCase
+./custom_set_test.go:126:42: undefined: intersectionCases
+./custom_set_test.go:130:38: undefined: differenceCases
+./custom_set_test.go:130:38: too many errors
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/custom-set/custom_set.go
+package stringset
+
+import (
+	"strconv"
+	"strings"
+)
+
+// Set represents a collection of unique string values.
+// Internally, it uses a map for efficient lookups.
+// The String method formats the set as described:
+// elements in double quotes, separated by a comma and a single space,
+// surrounded by curly braces. The empty set is formatted as {}.
+
+type Set struct {
+	m map[string]struct{}
+}
+
+// New creates and returns an empty Set.
+func New() Set {
+	return Set{m: make(map[string]struct{})}
+}
+
+// NewFromSlice creates a Set from a slice of strings, eliminating duplicates.
+func NewFromSlice(l []string) Set {
+	s := New()
+	if l != nil {
+		for _, elem := range l {
+			s.m[elem] = struct{}{}
+		}
+	}
+	return s
+}
+
+// String returns the string representation of the set in the required format.
+// If the set is empty, it returns {}.
+// Otherwise, it returns the elements as double-quoted strings, escaped using strconv.Quote,
+// separated by a comma and a single space, within curly braces.
+func (s Set) String() string {
+	if len(s.m) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(s.m))
+	for key := range s.m {
+		parts = append(parts, strconv.Quote(key))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// IsEmpty returns true if the set contains no elements.
+func (s Set) IsEmpty() bool {
+	return len(s.m) == 0
+}
+
+// Has checks if the element exists in the set.
+func (s Set) Has(elem string) bool {
+	_, exists := s.m[elem]
+	return exists
+}
+
+// Add adds an element to the set. If the element already exists, it does nothing.
+func (s *Set) Add(elem string) {
+	if s.m == nil {
+		s.m = make(map[string]struct{})
+	}
+	s.m[elem] = struct{}{}
+}
+
+// Subset returns true if every element in s1 is found in s2.
+func Subset(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Disjoint returns true if s1 and s2 have no elements in common.
+func Disjoint(s1, s2 Set) bool {
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			return false
+		}
+	}
+	return true
+}
+
+// Equal returns true if s1 and s2 contain exactly the same elements.
+func Equal(s1, s2 Set) bool {
+	return Subset(s1, s2) && Subset(s2, s1)
+}
+
+// Intersection returns a Set containing only the elements that are present in both s1 and s2.
+func Intersection(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Difference returns a Set containing elements that are in s1 but not in s2.
+func Difference(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		if !s2.Has(elem) {
+			result.m[elem] = struct{}{}
+		}
+	}
+	return result
+}
+
+// Union returns a Set containing all elements that are in s1 or s2 (or both).
+func Union(s1, s2 Set) Set {
+	result := New()
+	for elem := range s1.m {
+		result.m[elem] = struct{}{}
+	}
+	for elem := range s2.m {
+		result.m[elem] = struct{}{}
+	}
+	return result
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/custom-set [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/custom-set [exercism/custom-set.test]
+./custom_set_test.go:48:21: undefined: emptyCases
+./custom_set_test.go:60:21: undefined: containsCases
+./custom_set_test.go:72:62: undefined: binBoolCase
+./custom_set_test.go:86:32: undefined: subsetCases
+./custom_set_test.go:90:36: undefined: disjointCases
+./custom_set_test.go:94:30: undefined: equalCases
+./custom_set_test.go:98:21: undefined: addCases
+./custom_set_test.go:111:59: undefined: binOpCase
+./custom_set_test.go:126:42: undefined: intersectionCases
+./custom_set_test.go:130:38: undefined: differenceCases
+./custom_set_test.go:130:38: too many errors
+
+
+=== FINAL STATUS: FAILED ===

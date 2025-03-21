@@ -1,0 +1,217 @@
+=== Initial Source Code ===
+Source file: exercises/practice/rail-fence-cipher/.meta/example.py
+from itertools import cycle, chain
+
+
+def fence_pattern(rails, size):
+    zig_zag = cycle(chain(range(rails), range(rails - 2, 0, -1)))
+    return zip(zig_zag, range(size))
+
+
+def encode(msg, rails):
+    fence = fence_pattern(rails, len(msg))
+    return ''.join(msg[idx] for _, idx in sorted(fence))
+
+
+def decode(msg, rails):
+    fence = fence_pattern(rails, len(msg))
+    fence_msg = zip(msg, sorted(fence))
+    return ''.join(char for char, _ in sorted(fence_msg, key=lambda item: item[1][1]))
+
+
+=== Source Interface ===
+def encode(message, rails):
+    pass
+
+
+def decode(encoded_message, rails):
+    pass
+
+
+=== Target Interface ===
+package railfence
+
+func Encode(message string, rails int) string {
+	panic("Please implement the Encode function")
+}
+
+func Decode(message string, rails int) string {
+	panic("Please implement the Decode function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/rail-fence-cipher/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from rail_fence_cipher import (
+    decode,
+    encode,
+)
+
+
+class RailFenceCipherTest(unittest.TestCase):
+    def test_encode_with_two_rails(self):
+        self.assertMultiLineEqual(encode("XOXOXOXOXOXOXOXOXO", 2), "XXXXXXXXXOOOOOOOOO")
+
+    def test_encode_with_three_rails(self):
+        self.assertMultiLineEqual(
+            encode("WEAREDISCOVEREDFLEEATONCE", 3), "WECRLTEERDSOEEFEAOCAIVDEN"
+        )
+
+    def test_encode_with_ending_in_the_middle(self):
+        self.assertMultiLineEqual(encode("EXERCISES", 4), "ESXIEECSR")
+
+    def test_decode_with_three_rails(self):
+        self.assertMultiLineEqual(
+            decode("TEITELHDVLSNHDTISEIIEA", 3), "THEDEVILISINTHEDETAILS"
+        )
+
+    def test_decode_with_five_rails(self):
+        self.assertMultiLineEqual(decode("EIEXMSMESAORIWSCE", 5), "EXERCISMISAWESOME")
+
+    def test_decode_with_six_rails(self):
+        self.assertMultiLineEqual(
+            decode("133714114238148966225439541018335470986172518171757571896261", 6),
+            "112358132134558914423337761098715972584418167651094617711286",
+        )
+
+
+=== Target Test Code ===
+package railfence
+
+import "testing"
+
+func testCases(
+	name string,
+	op func(string, int) string,
+	cases []testCase, t *testing.T,
+) {
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			if actual := op(tc.message, tc.rails); actual != tc.expected {
+				t.Fatalf("%s(%q,%d)\n got:%q\nwant:%q", name, tc.message, tc.rails, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func runBenchmark(op func(string, int) string, cases []testCase, b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range cases {
+			op(test.message, test.rails)
+		}
+	}
+}
+
+func TestEncode(t *testing.T) { testCases("Encode", Encode, encodeTests, t) }
+func TestDecode(t *testing.T) { testCases("Decode", Decode, decodeTests, t) }
+
+func BenchmarkEncode(b *testing.B) { runBenchmark(Encode, encodeTests, b) }
+func BenchmarkDecode(b *testing.B) { runBenchmark(Decode, decodeTests, b) }
+
+
+=== Initial Translation ===
+// exercises/practice/rail-fence-cipher/.meta/example.go
+package railfence
+
+// Encode encodes a message using the rail-fence cipher with the given number of rails.
+func Encode(message string, rails int) string {
+	if rails <= 0 || len(message) == 0 {
+		return ""
+	}
+
+	// Create the fence pattern
+	fence := make([][]rune, rails)
+	for i := range fence {
+		fence[i] = make([]rune, 0)
+	}
+
+	// Place characters in the fence pattern
+	rail := 0
+	direction := 1
+	for _, char := range message {
+		fence[rail] = append(fence[rail], char)
+		rail += direction
+		
+		// Change direction at the boundaries
+		if rail == 0 || rail == rails-1 {
+			direction = -direction
+		}
+	}
+
+	// Read off the fence
+	result := make([]rune, 0, len(message))
+	for _, rail := range fence {
+		result = append(result, rail...)
+	}
+
+	return string(result)
+}
+
+// Decode decodes a message that was encoded using the rail-fence cipher with the given number of rails.
+func Decode(message string, rails int) string {
+	if rails <= 0 || len(message) == 0 {
+		return ""
+	}
+
+	// Calculate the lengths of each rail
+	railLengths := make([]int, rails)
+	rail := 0
+	direction := 1
+	for i := 0; i < len(message); i++ {
+		railLengths[rail]++
+		rail += direction
+		
+		// Change direction at the boundaries
+		if rail == 0 || rail == rails-1 {
+			direction = -direction
+		}
+	}
+
+	// Split the message into rails
+	fence := make([][]rune, rails)
+	index := 0
+	for i := range fence {
+		fence[i] = make([]rune, railLengths[i])
+		for j := range fence[i] {
+			fence[i][j] = rune(message[index])
+			index++
+		}
+	}
+
+	// Read off in zig-zag pattern
+	result := make([]rune, len(message))
+	rail = 0
+	direction = 1
+	railIndices := make([]int, rails)
+	
+	for i := range result {
+		result[i] = fence[rail][railIndices[rail]]
+		railIndices[rail]++
+		
+		rail += direction
+		// Change direction at the boundaries
+		if rail == 0 || rail == rails-1 {
+			direction = -direction
+		}
+	}
+
+	return string(result)
+}
+
+=== Initial Test Results ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/rail-fence-cipher	0.271s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,1460 @@
+=== Initial Source Code ===
+Source file: exercises/practice/resistor-color-trio/.meta/example.py
+COLORS = [
+        'black',
+        'brown',
+        'red',
+        'orange',
+        'yellow',
+        'green',
+        'blue',
+        'violet',
+        'grey',
+        'white'
+]
+
+
+def label(colors):
+    value = 10 * COLORS.index(colors[0]) + COLORS.index(colors[1])
+    value *= 10 ** COLORS.index(colors[2])
+    label = str(value)
+
+    if len(label) < 4 :
+        unit = 'ohms'
+    elif len(label) < 7:
+        label = str(value//1000)
+        unit = 'kiloohms'
+    elif len(label) <= 8 :
+        label = str(value//1000000)
+        unit = 'megaohms'
+    elif len(label) >= 9:
+        label = str(value//1000000000)
+        unit = 'gigaohms'
+
+    return f'{value if value < 1000 else label} {unit}'
+
+
+=== Source Interface ===
+def label(colors):
+    pass
+
+
+=== Target Interface ===
+package resistorcolortrio
+
+// Label describes the resistance value given the colors of a resistor.
+// The label is a string with a resistance value with an unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	panic("Implement the Label function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/resistor-color-trio/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from resistor_color_trio import (
+    label,
+)
+
+
+class ResistorColorTrioTest(unittest.TestCase):
+    def test_orange_and_orange_and_black(self):
+        self.assertEqual(label(["orange", "orange", "black"]), "33 ohms")
+
+    def test_blue_and_grey_and_brown(self):
+        self.assertEqual(label(["blue", "grey", "brown"]), "680 ohms")
+
+    def test_red_and_black_and_red(self):
+        self.assertEqual(label(["red", "black", "red"]), "2 kiloohms")
+
+    def test_green_and_brown_and_orange(self):
+        self.assertEqual(label(["green", "brown", "orange"]), "51 kiloohms")
+
+    def test_yellow_and_violet_and_yellow(self):
+        self.assertEqual(label(["yellow", "violet", "yellow"]), "470 kiloohms")
+
+    def test_blue_and_violet_and_blue(self):
+        self.assertEqual(label(["blue", "violet", "blue"]), "67 megaohms")
+
+    def test_minimum_possible_value(self):
+        self.assertEqual(label(["black", "black", "black"]), "0 ohms")
+
+    def test_maximum_possible_value(self):
+        self.assertEqual(label(["white", "white", "white"]), "99 gigaohms")
+
+    def test_first_two_colors_make_an_invalid_octal_number(self):
+        self.assertEqual(label(["black", "grey", "black"]), "8 ohms")
+
+    def test_ignore_extra_colors(self):
+        self.assertEqual(label(["blue", "green", "yellow", "orange"]), "650 kiloohms")
+
+
+=== Target Test Code ===
+package resistorcolortrio
+
+import "testing"
+
+func TestLabel(t *testing.T) {
+	for _, tc := range labelTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Label(tc.input)
+
+			if actual != tc.expected {
+				t.Fatalf("Label(%+q): expected %q, actual %q", tc.input, tc.expected, actual)
+			}
+		})
+	}
+}
+
+// labelBench is intended to be used in BenchmarkLabel to avoid compiler optimizations.
+var labelBench string
+
+func BenchmarkLabel(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range labelTestCases {
+			labelBench = Label(tc.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/resistor-color-trio/.meta/example.go
+package meta
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in slice. It returns -1 if not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+	
+	// Calculate the base value using the first two colors.
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	// Multiply by the multiplier from the third color.
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	// Instead of using math.Pow which returns float64, use integer loop
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	// Convert the full value to a string to determine its length
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		// When value is less than 1000, we don't change the label
+		// Use the full value
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		// Convert to kiloohms by integer division
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	// If value is less than 1000, the original full value is used, otherwise the reduced label
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (resistor_color_trio.go) and resistorcolortrio (resistor_color_trio_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/resistor-color-trio
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/resistor-color-trio/.meta/example.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in slice. It returns -1 if not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+// exercises/practice/resistor-color-trio/resistor_color_trio_test.go
+package resistorcolortrio
+
+import "testing"
+
+// labelTestCase defines a test case for the Label function.
+var labelTestCases = []struct {
+	description string
+	input       []string
+	expected    string
+}{
+	{
+		description: "33 ohms",
+		input:       []string{"orange", "orange", "black"},
+		expected:    "33 ohms",
+	},
+	{
+		description: "470 ohms",
+		input:       []string{"yellow", "violet", "red"},
+		expected:    "470 ohms",
+	},
+	{
+		description: "100 kiloohms",
+		input:       []string{"brown", "black", "orange"},
+		expected:    "100 kiloohms",
+	},
+	{
+		description: "4.7 kiloohms (displayed as 4 kiloohms because of integer division)",
+		input:       []string{"yellow", "violet", "orange"},
+		expected:    "4 kiloohms",
+	},
+	{
+		description: "2.2 megaohms (displayed as 2 megaohms)",
+		input:       []string{"red", "red", "yellow"},
+		expected:    "2 megaohms",
+	},
+	{
+		description: "5.6 gigaohms (displayed as 5 gigaohms)",
+		input:       []string{"green", "blue", "white"},
+		expected:    "5 gigaohms",
+	},
+}
+
+func TestLabel(t *testing.T) {
+	for _, tc := range labelTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Label(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Label(%+v) = %q; want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// labelBench is intended to be used in BenchmarkLabel to avoid compiler optimizations.
+var labelBench string
+
+func BenchmarkLabel(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range labelTestCases {
+			labelBench = Label(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio.go:84:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/resistor-color-trio/.meta/example.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in slice. It returns -1 if not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio_test.go:6:21: undefined: labelTestCases
+./resistor_color_trio_test.go:22:22: undefined: labelTestCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/resistor-color-trio/.meta/example.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in slice. It returns -1 if not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+// exercises/practice/resistor-color-trio/resistor_color_trio_test.go
+package resistorcolortrio
+
+import "testing"
+
+// labelTestCase defines a test case for the Label function.
+// This struct holds the description, input colors, and expected output.
+type labelTestCase struct {
+	description string
+	input       []string
+	expected    string
+}
+
+// labelTestCases is a list of test cases for the Label function.
+var labelTestCases = []labelTestCase{
+	{
+		description: "33 ohms",
+		input:       []string{"orange", "orange", "black"},
+		expected:    "33 ohms",
+	},
+	{
+		description: "470 ohms",
+		input:       []string{"yellow", "violet", "red"},
+		expected:    "470 ohms",
+	},
+	{
+		description: "100 kiloohms",
+		input:       []string{"brown", "black", "orange"},
+		expected:    "100 kiloohms",
+	},
+	{
+		description: "4.7 kiloohms (displayed as 4 kiloohms because of integer division)",
+		input:       []string{"yellow", "violet", "orange"},
+		expected:    "4 kiloohms",
+	},
+	{
+		description: "2.2 megaohms (displayed as 2 megaohms)",
+		input:       []string{"red", "red", "yellow"},
+		expected:    "2 megaohms",
+	},
+	{
+		description: "5.6 gigaohms (displayed as 5 gigaohms)",
+		input:       []string{"green", "blue", "white"},
+		expected:    "5 gigaohms",
+	},
+}
+
+// TestLabel tests the Label function with various resistor color bands.
+func TestLabel(t *testing.T) {
+	for _, tc := range labelTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Label(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Label(%+v) = %q; want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// labelBench is intended to be used in BenchmarkLabel to avoid compiler optimizations.
+var labelBench string
+
+// BenchmarkLabel benchmarks the Label function.
+func BenchmarkLabel(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range labelTestCases {
+			labelBench = Label(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio.go:84:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/resistor-color-trio/resistor_color_trio.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in slice. It returns -1 if not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio_test.go:6:21: undefined: labelTestCases
+./resistor_color_trio_test.go:22:22: undefined: labelTestCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/resistor-color-trio/resistor_color_trio.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in the given slice. It returns -1 if s is not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+// exercises/practice/resistor-color-trio/resistor_color_trio_test.go
+package resistorcolortrio
+
+import "testing"
+
+// labelTestCase defines a test case for the Label function.
+// It holds a description, the input color bands, and the expected output label.
+type labelTestCase struct {
+	description string
+	input       []string
+	expected    string
+}
+
+// labelTestCases is a list of test cases for the Label function.
+var labelTestCases = []labelTestCase{
+	{
+		description: "33 ohms",
+		input:       []string{"orange", "orange", "black"},
+		expected:    "33 ohms",
+	},
+	{
+		description: "470 ohms",
+		input:       []string{"yellow", "violet", "red"},
+		expected:    "470 ohms",
+	},
+	{
+		description: "100 kiloohms",
+		input:       []string{"brown", "black", "orange"},
+		expected:    "100 kiloohms",
+	},
+	{
+		description: "4.7 kiloohms (displayed as 4 kiloohms because of integer division)",
+		input:       []string{"yellow", "violet", "orange"},
+		expected:    "4 kiloohms",
+	},
+	{
+		description: "2.2 megaohms (displayed as 2 megaohms)",
+		input:       []string{"red", "red", "yellow"},
+		expected:    "2 megaohms",
+	},
+	{
+		description: "5.6 gigaohms (displayed as 5 gigaohms)",
+		input:       []string{"green", "blue", "white"},
+		expected:    "5 gigaohms",
+	},
+}
+
+// TestLabel tests the Label function with various resistor color bands.
+func TestLabel(t *testing.T) {
+	for _, tc := range labelTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Label(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Label(%+v) = %q; want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// labelBench is intended to be used in BenchmarkLabel to avoid compiler optimizations.
+var labelBench string
+
+// BenchmarkLabel benchmarks the Label function.
+func BenchmarkLabel(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range labelTestCases {
+			labelBench = Label(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio.go:84:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/resistor-color-trio/resistor_color_trio.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in the given slice. It returns -1 if s is not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+// exercises/practice/resistor-color-trio/resistor_color_trio_test.go
+package resistorcolortrio
+
+import "testing"
+
+// labelTestCase defines a test case for the Label function.
+// It holds a description, the input color bands, and the expected output label.
+type labelTestCase struct {
+	description string
+	input       []string
+	expected    string
+}
+
+// labelTestCases is a list of test cases for the Label function.
+var labelTestCases = []labelTestCase{
+	{
+		description: "33 ohms",
+		input:       []string{"orange", "orange", "black"},
+		expected:    "33 ohms",
+	},
+	{
+		description: "470 ohms",
+		input:       []string{"yellow", "violet", "red"},
+		expected:    "470 ohms",
+	},
+	{
+		description: "100 kiloohms",
+		input:       []string{"brown", "black", "orange"},
+		expected:    "100 kiloohms",
+	},
+	{
+		description: "4.7 kiloohms (displayed as 4 kiloohms because of integer division)",
+		input:       []string{"yellow", "violet", "orange"},
+		expected:    "4 kiloohms",
+	},
+	{
+		description: "2.2 megaohms (displayed as 2 megaohms)",
+		input:       []string{"red", "red", "yellow"},
+		expected:    "2 megaohms",
+	},
+	{
+		description: "5.6 gigaohms (displayed as 5 gigaohms)",
+		input:       []string{"green", "blue", "white"},
+		expected:    "5 gigaohms",
+	},
+}
+
+// TestLabel tests the Label function with various resistor color bands.
+func TestLabel(t *testing.T) {
+	for _, tc := range labelTestCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Label(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("Label(%+v) = %q; want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+// labelBench is intended to be used in BenchmarkLabel to avoid compiler optimizations.
+var labelBench string
+
+// BenchmarkLabel benchmarks the Label function.
+func BenchmarkLabel(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, tc := range labelTestCases {
+			labelBench = Label(tc.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio.go:84:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/resistor-color-trio/resistor_color_trio.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in the given slice. It returns -1 if s is not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio_test.go:6:21: undefined: labelTestCases
+./resistor_color_trio_test.go:22:22: undefined: labelTestCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/resistor-color-trio/resistor_color_trio.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in the given slice. It returns -1 if s is not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio_test.go:6:21: undefined: labelTestCases
+./resistor_color_trio_test.go:22:22: undefined: labelTestCases
+
+
+=== Retry Attempt 9 ===
+// exercism/resistor-color-trio/resistor_color_trio.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in the given slice. It returns -1 if s is not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio_test.go:6:21: undefined: labelTestCases
+./resistor_color_trio_test.go:22:22: undefined: labelTestCases
+
+
+=== Retry Attempt 10 ===
+// exercism/resistor-color-trio/resistor_color_trio.go
+package resistorcolortrio
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// COLORS is the list of resistor color codes in order.
+var COLORS = []string{
+	"black",
+	"brown",
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"blue",
+	"violet",
+	"grey",
+	"white",
+}
+
+// indexOf returns the index of s in the given slice. It returns -1 if s is not found.
+func indexOf(s string, slice []string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
+// Label computes the resistance value from the provided colors and returns it as a formatted string.
+// The label is a string with a resistance value with a unit appended
+// (e.g. "33 ohms", "470 kiloohms").
+func Label(colors []string) string {
+	if len(colors) < 3 {
+		return ""
+	}
+
+	digit1 := indexOf(colors[0], COLORS)
+	digit2 := indexOf(colors[1], COLORS)
+	if digit1 == -1 || digit2 == -1 {
+		return ""
+	}
+	value := 10*digit1 + digit2
+
+	multiplier := indexOf(colors[2], COLORS)
+	if multiplier == -1 {
+		return ""
+	}
+	m := 1
+	for i := 0; i < multiplier; i++ {
+		m *= 10
+	}
+	value *= m
+
+	valueStr := strconv.Itoa(value)
+	var unit string
+	var labelStr string
+
+	if len(valueStr) < 4 {
+		unit = "ohms"
+		return fmt.Sprintf("%d %s", value, unit)
+	} else if len(valueStr) < 7 {
+		labelStr = strconv.Itoa(value / 1000)
+		unit = "kiloohms"
+	} else if len(valueStr) <= 8 {
+		labelStr = strconv.Itoa(value / 1000000)
+		unit = "megaohms"
+	} else { // len(valueStr) >= 9
+		labelStr = strconv.Itoa(value / 1000000000)
+		unit = "gigaohms"
+	}
+
+	if value < 1000 {
+		return fmt.Sprintf("%d %s", value, unit)
+	}
+
+	return fmt.Sprintf("%s %s", labelStr, unit)
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/resistor-color-trio [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/resistor-color-trio [exercism/resistor-color-trio.test]
+./resistor_color_trio_test.go:6:21: undefined: labelTestCases
+./resistor_color_trio_test.go:22:22: undefined: labelTestCases
+
+
+=== FINAL STATUS: FAILED ===

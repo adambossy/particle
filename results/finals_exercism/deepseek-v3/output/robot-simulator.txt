@@ -1,0 +1,443 @@
+=== Initial Source Code ===
+Source file: exercises/practice/robot-simulator/.meta/example.py
+NORTH, EAST, SOUTH, WEST = range(4)
+
+
+class Compass:
+    compass = [NORTH, EAST, SOUTH, WEST]
+
+    def __init__(self, direction=NORTH):
+        self.direction = direction
+
+    def left(self):
+        self.direction = self.compass[self.direction - 1]
+
+    def right(self):
+        self.direction = self.compass[(self.direction + 1) % 4]
+
+
+class Robot:
+    def __init__(self, direction=NORTH, x_pos=0, y_pos=0):
+        self.compass = Compass(direction)
+        self.x_pos = x_pos
+        self.y_pos = y_pos
+
+    def advance(self):
+        if self.direction == NORTH:
+            self.y_pos += 1
+        elif self.direction == SOUTH:
+            self.y_pos -= 1
+        elif self.direction == EAST:
+            self.x_pos += 1
+        elif self.direction == WEST:
+            self.x_pos -= 1
+
+    def turn_left(self):
+        self.compass.left()
+
+    def turn_right(self):
+        self.compass.right()
+
+    def move(self, commands):
+        instructions = {'A': self.advance,
+                        'R': self.turn_right,
+                        'L': self.turn_left}
+        for cmd in commands:
+            if cmd in instructions:
+                instructions[cmd]()
+
+    @property
+    def direction(self):
+        return self.compass.direction
+
+    @property
+    def coordinates(self):
+        return (self.x_pos, self.y_pos)
+
+
+=== Source Interface ===
+# Globals for the directions
+# Change the values as you see fit
+EAST = None
+NORTH = None
+WEST = None
+SOUTH = None
+
+
+class Robot:
+    def __init__(self, direction=NORTH, x_pos=0, y_pos=0):
+        pass
+
+
+=== Target Interface ===
+package robot
+
+// See defs.go for other definitions
+
+// Step 1
+// Define N, E, S, W here.
+
+func Right() {
+	panic("Please implement the Right function")
+}
+
+func Left() {
+	panic("Please implement the Left function")
+}
+
+func Advance() {
+	panic("Please implement the Advance function")
+}
+
+func (d Dir) String() string {
+	panic("Please implement the String function")
+}
+
+// Step 2
+// Define Action type here.
+
+func StartRobot(command chan Command, action chan Action) {
+	panic("Please implement the StartRobot function")
+}
+
+func Room(extent Rect, robot Step2Robot, action chan Action, report chan Step2Robot) {
+	panic("Please implement the Room function")
+}
+
+// Step 3
+// Define Action3 type here.
+
+func StartRobot3(name, script string, action chan Action3, log chan string) {
+	panic("Please implement the StartRobot3 function")
+}
+
+func Room3(extent Rect, robots []Step3Robot, action chan Action3, rep chan []Step3Robot, log chan string) {
+	panic("Please implement the Room3 function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/robot-simulator/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from robot_simulator import (
+    Robot,
+    NORTH,
+    EAST,
+    SOUTH,
+    WEST,
+)
+
+
+class RobotSimulatorTest(unittest.TestCase):
+
+    # Test create robot
+    def test_at_origin_facing_north(self):
+        robot = Robot(NORTH, 0, 0)
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, NORTH)
+
+    def test_at_negative_position_facing_south(self):
+        robot = Robot(SOUTH, -1, -1)
+
+        self.assertEqual(robot.coordinates, (-1, -1))
+        self.assertEqual(robot.direction, SOUTH)
+
+    # Test rotating clockwise
+    def test_changes_north_to_east(self):
+        robot = Robot(NORTH, 0, 0)
+        robot.move("R")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, EAST)
+
+    def test_changes_east_to_south(self):
+        robot = Robot(EAST, 0, 0)
+        robot.move("R")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, SOUTH)
+
+    def test_changes_south_to_west(self):
+        robot = Robot(SOUTH, 0, 0)
+        robot.move("R")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, WEST)
+
+    def test_changes_west_to_north(self):
+        robot = Robot(WEST, 0, 0)
+        robot.move("R")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, NORTH)
+
+    # Test rotating counter-clockwise
+    def test_changes_north_to_west(self):
+        robot = Robot(NORTH, 0, 0)
+        robot.move("L")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, WEST)
+
+    def test_changes_west_to_south(self):
+        robot = Robot(WEST, 0, 0)
+        robot.move("L")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, SOUTH)
+
+    def test_changes_south_to_east(self):
+        robot = Robot(SOUTH, 0, 0)
+        robot.move("L")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, EAST)
+
+    def test_changes_east_to_north(self):
+        robot = Robot(EAST, 0, 0)
+        robot.move("L")
+
+        self.assertEqual(robot.coordinates, (0, 0))
+        self.assertEqual(robot.direction, NORTH)
+
+    # Test moving forward one
+    def test_facing_north_increments_y(self):
+        robot = Robot(NORTH, 0, 0)
+        robot.move("A")
+
+        self.assertEqual(robot.coordinates, (0, 1))
+        self.assertEqual(robot.direction, NORTH)
+
+    def test_facing_south_decrements_y(self):
+        robot = Robot(SOUTH, 0, 0)
+        robot.move("A")
+
+        self.assertEqual(robot.coordinates, (0, -1))
+        self.assertEqual(robot.direction, SOUTH)
+
+    def test_facing_east_increments_x(self):
+        robot = Robot(EAST, 0, 0)
+        robot.move("A")
+
+        self.assertEqual(robot.coordinates, (1, 0))
+        self.assertEqual(robot.direction, EAST)
+
+    def test_facing_west_decrements_x(self):
+        robot = Robot(WEST, 0, 0)
+        robot.move("A")
+
+        self.assertEqual(robot.coordinates, (-1, 0))
+        self.assertEqual(robot.direction, WEST)
+
+    # Test follow series of instructions
+    def test_moving_east_and_north_from_readme(self):
+        robot = Robot(NORTH, 7, 3)
+        robot.move("RAALAL")
+
+        self.assertEqual(robot.coordinates, (9, 4))
+        self.assertEqual(robot.direction, WEST)
+
+    def test_moving_west_and_north(self):
+        robot = Robot(NORTH, 0, 0)
+        robot.move("LAAARALA")
+
+        self.assertEqual(robot.coordinates, (-4, 1))
+        self.assertEqual(robot.direction, WEST)
+
+    def test_moving_west_and_south(self):
+        robot = Robot(EAST, 2, -7)
+        robot.move("RRAAAAALA")
+
+        self.assertEqual(robot.coordinates, (-3, -8))
+        self.assertEqual(robot.direction, SOUTH)
+
+    def test_moving_east_and_north(self):
+        robot = Robot(SOUTH, 8, 4)
+        robot.move("LAAARRRALLLL")
+
+        self.assertEqual(robot.coordinates, (11, 5))
+        self.assertEqual(robot.direction, NORTH)
+
+
+=== Target Test Code ===
+//go:build step1 || (!step2 && !step3)
+
+package robot
+
+// This source file contains step 1 tests only.  For other tests see
+// robot_simulator_step2_test.go and robot_simulator_step3_test.go.
+
+import (
+	"runtime"
+	"testing"
+)
+
+func TestStep1(t *testing.T) {
+
+	want := func(x, y int, dir Dir) {
+		_, _, line, _ := runtime.Caller(1)
+		if Step1Robot.X != x || Step1Robot.Y != y {
+			t.Fatalf("(from line %d) robot at = %d, %d.  Want %d, %d.",
+				line, Step1Robot.X, Step1Robot.Y, x, y)
+		}
+		if Step1Robot.Dir != dir {
+			t.Fatalf("(from line %d) robot facing %v, want %v.",
+				line, Step1Robot.Dir, dir)
+		}
+	}
+	want(0, 0, N)
+
+	Advance()
+	want(0, 1, N)
+
+	Right()
+	want(0, 1, E)
+
+	Advance()
+	want(1, 1, E)
+
+	Left()
+	want(1, 1, N)
+
+	Left()
+	Left()
+	Advance()
+	want(1, 0, S)
+
+	Right()
+	Advance()
+	want(0, 0, W)
+}
+
+
+=== Initial Translation ===
+// exercises/practice/robot-simulator/.meta/example.go
+package robot
+
+import (
+	"fmt"
+)
+
+// Define the directions
+const (
+	NORTH = iota
+	EAST
+	SOUTH
+	WEST
+)
+
+// Compass represents the direction compass
+type Compass struct {
+	direction int
+}
+
+// NewCompass initializes a new Compass
+func NewCompass(direction int) *Compass {
+	return &Compass{direction: direction}
+}
+
+// Left turns the compass to the left
+func (c *Compass) Left() {
+	c.direction = (c.direction - 1 + 4) % 4
+}
+
+// Right turns the compass to the right
+func (c *Compass) Right() {
+	c.direction = (c.direction + 1) % 4
+}
+
+// Robot represents the robot
+type Robot struct {
+	compass *Compass
+	xPos    int
+	yPos    int
+}
+
+// NewRobot initializes a new Robot
+func NewRobot(direction int, xPos int, yPos int) *Robot {
+	return &Robot{
+		compass: NewCompass(direction),
+		xPos:    xPos,
+		yPos:    yPos,
+	}
+}
+
+// Advance moves the robot one step in the current direction
+func (r *Robot) Advance() {
+	switch r.direction() {
+	case NORTH:
+		 r.yPos++
+	case SOUTH:
+		 r.yPos--
+	case EAST:
+		 r.xPos++
+	case WEST:
+		 r.xPos--
+	}
+}
+
+// TurnLeft turns the robot to the left
+func (r *Robot) TurnLeft() {
+	 r.compass.Left()
+}
+
+// TurnRight turns the robot to the right
+func (r *Robot) TurnRight() {
+	 r.compass.Right()
+}
+
+// Move executes a sequence of commands
+func (r *Robot) Move(commands string) {
+	instructions := map[rune]func(){
+		'A': r.Advance,
+		'R': r.TurnRight,
+		'L': r.TurnLeft,
+	}
+	for _, cmd := range commands {
+		if instruction, ok := instructions[cmd]; ok {
+			 instruction()
+		}
+	}
+}
+
+// Direction returns the current direction of the robot
+func (r *Robot) direction() int {
+	return r.compass.direction
+}
+
+// Coordinates returns the current coordinates of the robot
+func (r *Robot) Coordinates() (int, int) {
+	return r.xPos, r.yPos
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/robot-simulator [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/robot-simulator [exercism/robot-simulator.test]
+./robot_simulator_test.go:15:29: undefined: Dir
+./robot_simulator_test.go:17:6: undefined: Step1Robot
+./robot_simulator_test.go:19:11: undefined: Step1Robot
+./robot_simulator_test.go:21:6: undefined: Step1Robot
+./robot_simulator_test.go:23:11: undefined: Step1Robot
+./robot_simulator_test.go:26:13: undefined: N
+./robot_simulator_test.go:28:2: undefined: Advance
+./robot_simulator_test.go:29:13: undefined: N
+./robot_simulator_test.go:31:2: undefined: Right
+./robot_simulator_test.go:32:13: undefined: E
+./robot_simulator_test.go:32:13: too many errors
+
+
+=== ERROR ===
+Error processing sample (returncode=2): {'error': {'object': 'error', 'type': 'invalid_request_error', 'message': "Missing end token '<｜tool▁calls▁end｜>' in function calls: <｜tool▁calls▁begin｜><｜tool▁call▁begin｜>function<｜t..."}}
+
+=== FINAL STATUS: ERROR ===

@@ -1,0 +1,1565 @@
+=== Initial Source Code ===
+Source file: exercises/practice/crypto-square/.meta/example.py
+from math import ceil, sqrt
+from itertools import zip_longest
+
+
+def cipher_text(plain_text):
+    plain_text = _cleanse(plain_text)
+    square_size = int(ceil(sqrt(len(plain_text))))
+    square = _chunks_of(plain_text, square_size)
+    return ' '.join([''.join(column)
+                     for column in zip_longest(*square, fillvalue=' ')])
+
+
+def _cleanse(text):
+    """Lowercase a string and remove punctuation and whitespace
+    """
+    return ''.join([character for character in text
+                    if character.isalnum()]).lower()
+
+
+def _chunks_of(text, num):
+    if len(text) <= num:
+        return [text]
+    return [text[:num]] + _chunks_of(text[num:], num)
+
+
+=== Source Interface ===
+def cipher_text(plain_text):
+    pass
+
+
+=== Target Interface ===
+package cryptosquare
+
+func Encode(pt string) string {
+	panic("Please implement the Encode function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/crypto-square/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from crypto_square import (
+    cipher_text,
+)
+
+
+class CryptoSquareTest(unittest.TestCase):
+    def test_empty_plaintext_results_in_an_empty_ciphertext(self):
+        value = ""
+        expected = ""
+        self.assertEqual(cipher_text(value), expected)
+
+    def test_normalization_results_in_empty_plaintext(self):
+        value = "... --- ..."
+        expected = ""
+        self.assertEqual(cipher_text(value), expected)
+
+    def test_lowercase(self):
+        value = "A"
+        expected = "a"
+        self.assertEqual(cipher_text(value), expected)
+
+    def test_remove_spaces(self):
+        value = "  b "
+        expected = "b"
+        self.assertEqual(cipher_text(value), expected)
+
+    def test_remove_punctuation(self):
+        value = "@1,%!"
+        expected = "1"
+        self.assertEqual(cipher_text(value), expected)
+
+    def test_9_character_plaintext_results_in_3_chunks_of_3_characters(self):
+        value = "This is fun!"
+        expected = "tsf hiu isn"
+        self.assertEqual(cipher_text(value), expected)
+
+    def test_8_character_plaintext_results_in_3_chunks_the_last_one_with_a_trailing_space(
+        self,
+    ):
+        value = "Chill out."
+        expected = "clu hlt io "
+        self.assertEqual(cipher_text(value), expected)
+
+    def test_54_character_plaintext_results_in_7_chunks_the_last_two_with_trailing_spaces(
+        self,
+    ):
+        value = "If man was meant to stay on the ground, god would have given us roots."
+        expected = "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau "
+        self.assertEqual(cipher_text(value), expected)
+
+
+=== Target Test Code ===
+package cryptosquare
+
+import "testing"
+
+var tests = []struct {
+	input    string // plain text
+	expected string // cipher text
+}{
+	{
+		input:    "s#$%^&plunk",
+		expected: "su pn lk",
+	},
+	{
+		input:    "1, 2, 3 GO!",
+		expected: "1g 2o 3 ",
+	},
+	{
+		input:    "1234",
+		expected: "13 24",
+	},
+	{
+		input:    "123456789",
+		expected: "147 258 369",
+	},
+	{
+		input:    "123456789abc",
+		expected: "159 26a 37b 48c",
+	},
+	{
+		input:    "Never vex thine heart with idle woes",
+		expected: "neewl exhie vtetw ehaho ririe vntds",
+	},
+	{
+		input:    "ZOMG! ZOMBIES!!!",
+		expected: "zzi ooe mms gb ",
+	},
+	{
+		input:    "Time is an illusion. Lunchtime doubly so.",
+		expected: "tasney inicds miohoo elntu  illib  suuml ",
+	},
+	{
+		input:    "We all know interspecies romance is weird.",
+		expected: "wneiaw eorene awssci liprer lneoid ktcms ",
+	},
+	{
+		input:    "Madness, and then illumination.",
+		expected: "msemo aanin dnin  ndla  etlt  shui ",
+	},
+	{
+		input:    "Vampires are people too!",
+		expected: "vrel aepe mset paoo irpo",
+	},
+	{
+		input:    "",
+		expected: "",
+	},
+	{
+		input:    "1",
+		expected: "1",
+	},
+	{
+		input:    "12",
+		expected: "1 2",
+	},
+	{
+		input:    "12 3",
+		expected: "13 2 ",
+	},
+	{
+		input:    "12345678",
+		expected: "147 258 36 ",
+	},
+	{
+		input:    "123456789a",
+		expected: "159 26a 37  48 ",
+	},
+	{
+		input:    "If man was meant to stay on the ground god would have given us roots",
+		expected: "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau ",
+	},
+	{
+		input:    "Have a nice day. Feed the dog & chill out!",
+		expected: "hifei acedl veeol eddgo aatcu nyhht",
+	},
+}
+
+func TestEncode(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			if got := Encode(test.input); got != test.expected {
+				t.Fatalf("Encode(%q):\n got:%q\nwant:%q", test.input, got, test.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			Encode(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/crypto-square/.meta/example.go
+package meta
+
+import (
+	"math"
+	"strings"
+	"unicode"
+)
+
+// Encode returns the crypto square encoded text for a given plain text.
+// It cleanses the input by removing punctuation and whitespace, lowercases it,
+// and then arranges the text in a square (or rectangle) format to produce the cipher text.
+func Encode(plainText string) string {
+	cleaned := cleanse(plainText)
+	if len(cleaned) == 0 {
+		return ""
+	}
+	// Convert to runes for proper character handling
+	runesCleaned := []rune(cleaned)
+	squareSize := int(math.Ceil(math.Sqrt(float64(len(runesCleaned)))));
+	chunks := chunksOfRunes(runesCleaned, squareSize)
+
+	// Build the cipher text by reading down the columns
+	columns := make([]string, squareSize)
+	for col := 0; col < squareSize; col++ {
+		var columnRunes []rune
+		for _, chunk := range chunks {
+			if col < len(chunk) {
+				columnRunes = append(columnRunes, chunk[col])
+			} else {
+				// Fill missing values with a space
+				columnRunes = append(columnRunes, ' ')
+			}
+		}
+		columns[col] = string(columnRunes)
+	}
+
+	return strings.Join(columns, " ")
+}
+
+// cleanse lowercases a string and removes punctuation and whitespace.
+func cleanse(text string) string {
+	var builder strings.Builder
+	for _, c := range text {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			builder.WriteRune(unicode.ToLower(c))
+		}
+	}
+	return builder.String()
+}
+
+// chunksOfRunes splits a slice of runes into chunks of the specified size.
+func chunksOfRunes(runes []rune, chunkSize int) [][]rune {
+	if chunkSize <= 0 {
+		return nil
+	}
+	var chunks [][]rune
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, runes[i:end])
+	}
+	return chunks
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (crypto_square.go) and cryptosquare (crypto_square_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/crypto-square
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/crypto-square/.meta/example.go
+package meta
+
+import (
+	"math"
+	"strings"
+	"unicode"
+)
+
+// Encode returns the crypto square encoded text for a given plain text.
+// It cleanses the input by removing punctuation and whitespace, lowercases it,
+// and then arranges the text in a square (or rectangle) format to produce the cipher text.
+func Encode(plainText string) string {
+	cleaned := cleanse(plainText)
+	if len(cleaned) == 0 {
+		return ""
+	}
+
+	runesCleaned := []rune(cleaned)
+	squareSize := int(math.Ceil(math.Sqrt(float64(len(runesCleaned)))));
+	chunks := chunksOfRunes(runesCleaned, squareSize)
+
+	// Build the cipher text by reading down the columns
+	columns := make([]string, squareSize)
+	for col := 0; col < squareSize; col++ {
+		var columnRunes []rune
+		for _, chunk := range chunks {
+			if col < len(chunk) {
+				columnRunes = append(columnRunes, chunk[col])
+			} else {
+				// Fill missing values with a space
+				columnRunes = append(columnRunes, ' ')
+			}
+		}
+		columns[col] = string(columnRunes)
+	}
+
+	return strings.Join(columns, " ")
+}
+
+// cleanse lowercases a string and removes punctuation and whitespace.
+func cleanse(text string) string {
+	var builder strings.Builder
+	for _, c := range text {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			builder.WriteRune(unicode.ToLower(c))
+		}
+	}
+	return builder.String()
+}
+
+// chunksOfRunes splits a slice of runes into chunks of the specified size.
+func chunksOfRunes(runes []rune, chunkSize int) [][]rune {
+	if chunkSize <= 0 {
+		return nil
+	}
+	var chunks [][]rune
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, runes[i:end])
+	}
+	return chunks
+}
+
+// exercises/practice/crypto-square/.meta/example_test.go
+// To run these tests, use: go test
+package meta
+
+import (
+	"testing"
+)
+
+var tests = []struct {
+	input    string // plain text
+	expected string // cipher text
+}{
+	{
+		input:    "s#$%^&plunk",
+		expected: "su pn lk",
+	},
+	{
+		input:    "1, 2, 3 GO!",
+		expected: "1g 2o 3 ",
+	},
+	{
+		input:    "1234",
+		expected: "13 24",
+	},
+	{
+		input:    "123456789",
+		expected: "147 258 369",
+	},
+	{
+		input:    "123456789abc",
+		expected: "159 26a 37b 48c",
+	},
+	{
+		input:    "Never vex thine heart with idle woes",
+		expected: "neewl exhie vtetw ehaho ririe vntds",
+	},
+	{
+		input:    "ZOMG! ZOMBIES!!!",
+		expected: "zzi ooe mms gb ",
+	},
+	{
+		input:    "Time is an illusion. Lunchtime doubly so.",
+		expected: "tasney inicds miohoo elntu  illib  suuml ",
+	},
+	{
+		input:    "We all know interspecies romance is weird.",
+		expected: "wneiaw eorene awssci liprer lneoid ktcms ",
+	},
+	{
+		input:    "Madness, and then illumination.",
+		expected: "msemo aanin dnin  ndla  etlt  shui ",
+	},
+	{
+		input:    "Vampires are people too!",
+		expected: "vrel aepe mset paoo irpo",
+	},
+	{
+		input:    "",
+		expected: "",
+	},
+	{
+		input:    "1",
+		expected: "1",
+	},
+	{
+		input:    "12",
+		expected: "1 2",
+	},
+	{
+		input:    "12 3",
+		expected: "13 2 ",
+	},
+	{
+		input:    "12345678",
+		expected: "147 258 36 ",
+	},
+	{
+		input:    "123456789a",
+		expected: "159 26a 37  48 ",
+	},
+	{
+		input:    "If man was meant to stay on the ground god would have given us roots",
+		expected: "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau ",
+	},
+	{
+		input:    "Have a nice day. Feed the dog & chill out!",
+		expected: "hifei acedl veeol eddgo aatcu nyhht",
+	},
+}
+
+func TestEncode(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			got := Encode(test.input)
+			if got != test.expected {
+				t.Errorf("Encode(%q) = %q, want %q", test.input, got, test.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			Encode(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (crypto_square.go) and cryptosquare (crypto_square_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/crypto-square
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/crypto-square/.meta/example.go
+package meta
+
+import (
+	"math"
+	"strings"
+	"unicode"
+)
+
+// Encode returns the crypto square encoded text for a given plain text.
+// It cleanses the input by removing punctuation and whitespace, lowercases it,
+// and then arranges the text in a square (or rectangle) format to produce the cipher text.
+func Encode(plainText string) string {
+	cleaned := cleanse(plainText)
+	if len(cleaned) == 0 {
+		return ""
+	}
+
+	runesCleaned := []rune(cleaned)
+	squareSize := int(math.Ceil(math.Sqrt(float64(len(runesCleaned)))));
+	chunks := chunksOfRunes(runesCleaned, squareSize)
+
+	// Build the cipher text by reading down the columns
+	columns := make([]string, squareSize)
+	for col := 0; col < squareSize; col++ {
+		var columnRunes []rune
+		for _, chunk := range chunks {
+			if col < len(chunk) {
+				columnRunes = append(columnRunes, chunk[col])
+			} else {
+				// Fill missing values with a space
+				columnRunes = append(columnRunes, ' ')
+			}
+		}
+		columns[col] = string(columnRunes)
+	}
+
+	return strings.Join(columns, " ")
+}
+
+// cleanse lowercases a string and removes punctuation and whitespace.
+func cleanse(text string) string {
+	var builder strings.Builder
+	for _, c := range text {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			builder.WriteRune(unicode.ToLower(c))
+		}
+	}
+	return builder.String()
+}
+
+// chunksOfRunes splits a slice of runes into chunks of the specified size.
+func chunksOfRunes(runes []rune, chunkSize int) [][]rune {
+	if chunkSize <= 0 {
+		return nil
+	}
+	var chunks [][]rune
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, runes[i:end])
+	}
+	return chunks
+}
+
+// exercises/practice/crypto-square/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+var tests = []struct {
+	input    string // plain text
+	expected string // cipher text
+}{
+	{
+		input:    "s#$%^&plunk",
+		expected: "su pn lk",
+	},
+	{
+		input:    "1, 2, 3 GO!",
+		expected: "1g 2o 3 ",
+	},
+	{
+		input:    "1234",
+		expected: "13 24",
+	},
+	{
+		input:    "123456789",
+		expected: "147 258 369",
+	},
+	{
+		input:    "123456789abc",
+		expected: "159 26a 37b 48c",
+	},
+	{
+		input:    "Never vex thine heart with idle woes",
+		expected: "neewl exhie vtetw ehaho ririe vntds",
+	},
+	{
+		input:    "ZOMG! ZOMBIES!!!",
+		expected: "zzi ooe mms gb ",
+	},
+	{
+		input:    "Time is an illusion. Lunchtime doubly so.",
+		expected: "tasney inicds miohoo elntu  illib  suuml ",
+	},
+	{
+		input:    "We all know interspecies romance is weird.",
+		expected: "wneiaw eorene awssci liprer lneoid ktcms ",
+	},
+	{
+		input:    "Madness, and then illumination.",
+		expected: "msemo aanin dnin  ndla  etlt  shui ",
+	},
+	{
+		input:    "Vampires are people too!",
+		expected: "vrel aepe mset paoo irpo",
+	},
+	{
+		input:    "",
+		expected: "",
+	},
+	{
+		input:    "1",
+		expected: "1",
+	},
+	{
+		input:    "12",
+		expected: "1 2",
+	},
+	{
+		input:    "12 3",
+		expected: "13 2 ",
+	},
+	{
+		input:    "12345678",
+		expected: "147 258 36 ",
+	},
+	{
+		input:    "123456789a",
+		expected: "159 26a 37  48 ",
+	},
+	{
+		input:    "If man was meant to stay on the ground god would have given us roots",
+		expected: "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau ",
+	},
+	{
+		input:    "Have a nice day. Feed the dog & chill out!",
+		expected: "hifei acedl veeol eddgo aatcu nyhht",
+	},
+}
+
+func TestEncode(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			got := Encode(test.input)
+			if got != test.expected {
+				t.Errorf("Encode(%q) = %q, want %q", test.input, got, test.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			Encode(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (crypto_square.go) and cryptosquare (crypto_square_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/crypto-square
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/crypto-square/.meta/example.go
+package meta
+
+import (
+	"math"
+	"strings"
+	"unicode"
+)
+
+// Encode returns the crypto square encoded text for a given plain text.
+// It cleanses the input by removing punctuation and whitespace, lowercases it,
+// and then arranges the text in a square (or rectangle) format to produce the cipher text.
+func Encode(plainText string) string {
+	cleaned := cleanse(plainText)
+	if len(cleaned) == 0 {
+		return ""
+	}
+
+	runesCleaned := []rune(cleaned)
+	squareSize := int(math.Ceil(math.Sqrt(float64(len(runesCleaned)))));
+	chunks := chunksOfRunes(runesCleaned, squareSize)
+
+	// Build the cipher text by reading down the columns
+	columns := make([]string, squareSize)
+	for col := 0; col < squareSize; col++ {
+		var columnRunes []rune
+		for _, chunk := range chunks {
+			if col < len(chunk) {
+				columnRunes = append(columnRunes, chunk[col])
+			} else {
+				// Fill missing values with a space
+				columnRunes = append(columnRunes, ' ')
+			}
+		}
+		columns[col] = string(columnRunes)
+	}
+
+	return strings.Join(columns, " ")
+}
+
+// cleanse lowercases a string and removes punctuation and whitespace.
+func cleanse(text string) string {
+	var builder strings.Builder
+	for _, c := range text {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			builder.WriteRune(unicode.ToLower(c))
+		}
+	}
+	return builder.String()
+}
+
+// chunksOfRunes splits a slice of runes into chunks of the specified size.
+func chunksOfRunes(runes []rune, chunkSize int) [][]rune {
+	if chunkSize <= 0 {
+		return nil
+	}
+	var chunks [][]rune
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, runes[i:end])
+	}
+	return chunks
+}
+
+// exercises/practice/crypto-square/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+var tests = []struct {
+	input    string // plain text
+	expected string // cipher text
+}{
+	{
+		input:    "s#$%^&plunk",
+		expected: "su pn lk",
+	},
+	{
+		input:    "1, 2, 3 GO!",
+		expected: "1g 2o 3 ",
+	},
+	{
+		input:    "1234",
+		expected: "13 24",
+	},
+	{
+		input:    "123456789",
+		expected: "147 258 369",
+	},
+	{
+		input:    "123456789abc",
+		expected: "159 26a 37b 48c",
+	},
+	{
+		input:    "Never vex thine heart with idle woes",
+		expected: "neewl exhie vtetw ehaho ririe vntds",
+	},
+	{
+		input:    "ZOMG! ZOMBIES!!!",
+		expected: "zzi ooe mms gb ",
+	},
+	{
+		input:    "Time is an illusion. Lunchtime doubly so.",
+		expected: "tasney inicds miohoo elntu  illib  suuml ",
+	},
+	{
+		input:    "We all know interspecies romance is weird.",
+		expected: "wneiaw eorene awssci liprer lneoid ktcms ",
+	},
+	{
+		input:    "Madness, and then illumination.",
+		expected: "msemo aanin dnin  ndla  etlt  shui ",
+	},
+	{
+		input:    "Vampires are people too!",
+		expected: "vrel aepe mset paoo irpo",
+	},
+	{
+		input:    "",
+		expected: "",
+	},
+	{
+		input:    "1",
+		expected: "1",
+	},
+	{
+		input:    "12",
+		expected: "1 2",
+	},
+	{
+		input:    "12 3",
+		expected: "13 2 ",
+	},
+	{
+		input:    "12345678",
+		expected: "147 258 36 ",
+	},
+	{
+		input:    "123456789a",
+		expected: "159 26a 37  48 ",
+	},
+	{
+		input:    "If man was meant to stay on the ground god would have given us roots",
+		expected: "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau ",
+	},
+	{
+		input:    "Have a nice day. Feed the dog & chill out!",
+		expected: "hifei acedl veeol eddgo aatcu nyhht",
+	},
+}
+
+func TestEncode(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			got := Encode(test.input)
+			if got != test.expected {
+				t.Errorf("Encode(%q) = %q, want %q", test.input, got, test.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			Encode(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (crypto_square.go) and cryptosquare (crypto_square_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/crypto-square
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/crypto-square/.meta/example.go
+package meta
+
+import (
+	"math"
+	"strings"
+	"unicode"
+)
+
+// Encode returns the crypto square encoded text for a given plain text.
+// It cleanses the input by removing punctuation and whitespace, lowercases it,
+// and then arranges the text in a square (or rectangle) format to produce the cipher text.
+func Encode(plainText string) string {
+	cleaned := cleanse(plainText)
+	if len(cleaned) == 0 {
+		return ""
+	}
+
+	runesCleaned := []rune(cleaned)
+	squareSize := int(math.Ceil(math.Sqrt(float64(len(runesCleaned)))));
+	chunks := chunksOfRunes(runesCleaned, squareSize)
+
+	// Build the cipher text by reading down the columns
+	columns := make([]string, squareSize)
+	for col := 0; col < squareSize; col++ {
+		var columnRunes []rune
+		for _, chunk := range chunks {
+			if col < len(chunk) {
+				columnRunes = append(columnRunes, chunk[col])
+			} else {
+				// Fill missing values with a space
+				columnRunes = append(columnRunes, ' ')
+			}
+		}
+		columns[col] = string(columnRunes)
+	}
+
+	return strings.Join(columns, " ")
+}
+
+// cleanse lowercases a string and removes punctuation and whitespace.
+func cleanse(text string) string {
+	var builder strings.Builder
+	for _, c := range text {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			builder.WriteRune(unicode.ToLower(c))
+		}
+	}
+	return builder.String()
+}
+
+// chunksOfRunes splits a slice of runes into chunks of the specified size.
+func chunksOfRunes(runes []rune, chunkSize int) [][]rune {
+	if chunkSize <= 0 {
+		return nil
+	}
+	var chunks [][]rune
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, runes[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (crypto_square.go) and cryptosquare (crypto_square_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/crypto-square
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/crypto-square/.meta/example.go
+package meta
+
+import (
+	"math"
+	"strings"
+	"unicode"
+)
+
+// Encode returns the crypto square encoded text for a given plain text.
+// It cleanses the input by removing punctuation and whitespace, lowercases it,
+// and then arranges the text in a square (or rectangle) format to produce the cipher text.
+func Encode(plainText string) string {
+	cleaned := cleanse(plainText)
+	if len(cleaned) == 0 {
+		return ""
+	}
+
+	runesCleaned := []rune(cleaned)
+	squareSize := int(math.Ceil(math.Sqrt(float64(len(runesCleaned)))));
+	chunks := chunksOfRunes(runesCleaned, squareSize)
+
+	// Build the cipher text by reading down the columns
+	columns := make([]string, squareSize)
+	for col := 0; col < squareSize; col++ {
+		var columnRunes []rune
+		for _, chunk := range chunks {
+			if col < len(chunk) {
+				columnRunes = append(columnRunes, chunk[col])
+			} else {
+				// Fill missing values with a space
+				columnRunes = append(columnRunes, ' ')
+			}
+		}
+		columns[col] = string(columnRunes)
+	}
+
+	return strings.Join(columns, " ")
+}
+
+// cleanse lowercases a string and removes punctuation and whitespace.
+func cleanse(text string) string {
+	var builder strings.Builder
+	for _, c := range text {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			builder.WriteRune(unicode.ToLower(c))
+		}
+	}
+	return builder.String()
+}
+
+// chunksOfRunes splits a slice of runes into chunks of the specified size.
+func chunksOfRunes(runes []rune, chunkSize int) [][]rune {
+	if chunkSize <= 0 {
+		return nil
+	}
+	var chunks [][]rune
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, runes[i:end])
+	}
+	return chunks
+}
+
+// exercises/practice/crypto-square/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+var tests = []struct {
+	input    string // plain text
+	expected string // cipher text
+}{
+	{
+		input:    "s#$%^&plunk",
+		expected: "su pn lk",
+	},
+	{
+		input:    "1, 2, 3 GO!",
+		expected: "1g 2o 3 ",
+	},
+	{
+		input:    "1234",
+		expected: "13 24",
+	},
+	{
+		input:    "123456789",
+		expected: "147 258 369",
+	},
+	{
+		input:    "123456789abc",
+		expected: "159 26a 37b 48c",
+	},
+	{
+		input:    "Never vex thine heart with idle woes",
+		expected: "neewl exhie vtetw ehaho ririe vntds",
+	},
+	{
+		input:    "ZOMG! ZOMBIES!!!",
+		expected: "zzi ooe mms gb ",
+	},
+	{
+		input:    "Time is an illusion. Lunchtime doubly so.",
+		expected: "tasney inicds miohoo elntu  illib  suuml ",
+	},
+	{
+		input:    "We all know interspecies romance is weird.",
+		expected: "wneiaw eorene awssci liprer lneoid ktcms ",
+	},
+	{
+		input:    "Madness, and then illumination.",
+		expected: "msemo aanin dnin  ndla  etlt  shui ",
+	},
+	{
+		input:    "Vampires are people too!",
+		expected: "vrel aepe mset paoo irpo",
+	},
+	{
+		input:    "",
+		expected: "",
+	},
+	{
+		input:    "1",
+		expected: "1",
+	},
+	{
+		input:    "12",
+		expected: "1 2",
+	},
+	{
+		input:    "12 3",
+		expected: "13 2 ",
+	},
+	{
+		input:    "12345678",
+		expected: "147 258 36 ",
+	},
+	{
+		input:    "123456789a",
+		expected: "159 26a 37  48 ",
+	},
+	{
+		input:    "If man was meant to stay on the ground god would have given us roots",
+		expected: "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau ",
+	},
+	{
+		input:    "Have a nice day. Feed the dog & chill out!",
+		expected: "hifei acedl veeol eddgo aatcu nyhht",
+	},
+}
+
+func TestEncode(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			got := Encode(test.input)
+			if got != test.expected {
+				t.Errorf("Encode(%q) = %q, want %q", test.input, got, test.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			Encode(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (crypto_square.go) and cryptosquare (crypto_square_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/crypto-square
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/crypto-square/.meta/example.go
+package meta
+
+import (
+	"math"
+	"strings"
+	"unicode"
+)
+
+// Encode returns the crypto square encoded text for a given plain text.
+// It cleanses the input by removing punctuation and whitespace, lowercases it,
+// and then arranges the text in a square (or rectangle) format to produce the cipher text.
+func Encode(plainText string) string {
+	cleaned := cleanse(plainText)
+	if len(cleaned) == 0 {
+		return ""
+	}
+
+	runesCleaned := []rune(cleaned)
+	squareSize := int(math.Ceil(math.Sqrt(float64(len(runesCleaned)))));
+	chunks := chunksOfRunes(runesCleaned, squareSize)
+
+	// Build the cipher text by reading down the columns
+	columns := make([]string, squareSize)
+	for col := 0; col < squareSize; col++ {
+		var columnRunes []rune
+		for _, chunk := range chunks {
+			if col < len(chunk) {
+				columnRunes = append(columnRunes, chunk[col])
+			} else {
+				// Fill missing values with a space
+				columnRunes = append(columnRunes, ' ')
+			}
+		}
+		columns[col] = string(columnRunes)
+	}
+
+	return strings.Join(columns, " ")
+}
+
+// cleanse lowercases a string and removes punctuation and whitespace.
+func cleanse(text string) string {
+	var builder strings.Builder
+	for _, c := range text {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			builder.WriteRune(unicode.ToLower(c))
+		}
+	}
+	return builder.String()
+}
+
+// chunksOfRunes splits a slice of runes into chunks of the specified size.
+func chunksOfRunes(runes []rune, chunkSize int) [][]rune {
+	if chunkSize <= 0 {
+		return nil
+	}
+	var chunks [][]rune
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, runes[i:end])
+	}
+	return chunks
+}
+
+// exercises/practice/crypto-square/.meta/example_test.go
+package meta
+
+import (
+	"testing"
+)
+
+var tests = []struct {
+	input    string // plain text
+	expected string // cipher text
+}{
+	{
+		input:    "s#$%^&plunk",
+		expected: "su pn lk",
+	},
+	{
+		input:    "1, 2, 3 GO!",
+		expected: "1g 2o 3 ",
+	},
+	{
+		input:    "1234",
+		expected: "13 24",
+	},
+	{
+		input:    "123456789",
+		expected: "147 258 369",
+	},
+	{
+		input:    "123456789abc",
+		expected: "159 26a 37b 48c",
+	},
+	{
+		input:    "Never vex thine heart with idle woes",
+		expected: "neewl exhie vtetw ehaho ririe vntds",
+	},
+	{
+		input:    "ZOMG! ZOMBIES!!!",
+		expected: "zzi ooe mms gb ",
+	},
+	{
+		input:    "Time is an illusion. Lunchtime doubly so.",
+		expected: "tasney inicds miohoo elntu  illib  suuml ",
+	},
+	{
+		input:    "We all know interspecies romance is weird.",
+		expected: "wneiaw eorene awssci liprer lneoid ktcms ",
+	},
+	{
+		input:    "Madness, and then illumination.",
+		expected: "msemo aanin dnin  ndla  etlt  shui ",
+	},
+	{
+		input:    "Vampires are people too!",
+		expected: "vrel aepe mset paoo irpo",
+	},
+	{
+		input:    "",
+		expected: "",
+	},
+	{
+		input:    "1",
+		expected: "1",
+	},
+	{
+		input:    "12",
+		expected: "1 2",
+	},
+	{
+		input:    "12 3",
+		expected: "13 2 ",
+	},
+	{
+		input:    "12345678",
+		expected: "147 258 36 ",
+	},
+	{
+		input:    "123456789a",
+		expected: "159 26a 37  48 ",
+	},
+	{
+		input:    "If man was meant to stay on the ground god would have given us roots",
+		expected: "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau ",
+	},
+	{
+		input:    "Have a nice day. Feed the dog & chill out!",
+		expected: "hifei acedl veeol eddgo aatcu nyhht",
+	},
+}
+
+func TestEncode(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			got := Encode(test.input)
+			if got != test.expected {
+				t.Errorf("Encode(%q) = %q, want %q", test.input, got, test.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			Encode(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (crypto_square.go) and cryptosquare (crypto_square_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/crypto-square
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/crypto-square/.meta/example.go
+package cryptosquare
+
+import (
+	"math"
+	"strings"
+	"unicode"
+)
+
+// Encode returns the crypto square encoded text for a given plain text.
+// It cleanses the input by removing punctuation and whitespace, lowercases it,
+// and then arranges the text in a square (or rectangle) format to produce the cipher text.
+func Encode(plainText string) string {
+	cleaned := cleanse(plainText)
+	if len(cleaned) == 0 {
+		return ""
+	}
+
+	runesCleaned := []rune(cleaned)
+	squareSize := int(math.Ceil(math.Sqrt(float64(len(runesCleaned)))));
+	chunks := chunksOfRunes(runesCleaned, squareSize)
+
+	// Build the cipher text by reading down the columns
+	columns := make([]string, squareSize)
+	for col := 0; col < squareSize; col++ {
+		var columnRunes []rune
+		for _, chunk := range chunks {
+			if col < len(chunk) {
+				columnRunes = append(columnRunes, chunk[col])
+			} else {
+				// Fill missing values with a space
+				columnRunes = append(columnRunes, ' ')
+			}
+		}
+		columns[col] = string(columnRunes)
+	}
+
+	return strings.Join(columns, " ")
+}
+
+// cleanse lowercases a string and removes punctuation and whitespace.
+func cleanse(text string) string {
+	var builder strings.Builder
+	for _, c := range text {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			builder.WriteRune(unicode.ToLower(c))
+		}
+	}
+	return builder.String()
+}
+
+// chunksOfRunes splits a slice of runes into chunks of the specified size.
+func chunksOfRunes(runes []rune, chunkSize int) [][]rune {
+	if chunkSize <= 0 {
+		return nil
+	}
+	var chunks [][]rune
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, runes[i:end])
+	}
+	return chunks
+}
+
+// exercises/practice/crypto-square/crypto_square_test.go
+package cryptosquare
+
+import (
+	"testing"
+)
+
+var tests = []struct {
+	input    string // plain text
+	expected string // cipher text
+}{
+	{
+		input:    "s#$%^&plunk",
+		expected: "su pn lk",
+	},
+	{
+		input:    "1, 2, 3 GO!",
+		expected: "1g 2o 3 ",
+	},
+	{
+		input:    "1234",
+		expected: "13 24",
+	},
+	{
+		input:    "123456789",
+		expected: "147 258 369",
+	},
+	{
+		input:    "123456789abc",
+		expected: "159 26a 37b 48c",
+	},
+	{
+		input:    "Never vex thine heart with idle woes",
+		expected: "neewl exhie vtetw ehaho ririe vntds",
+	},
+	{
+		input:    "ZOMG! ZOMBIES!!!",
+		expected: "zzi ooe mms gb ",
+	},
+	{
+		input:    "Time is an illusion. Lunchtime doubly so.",
+		expected: "tasney inicds miohoo elntu  illib  suuml ",
+	},
+	{
+		input:    "We all know interspecies romance is weird.",
+		expected: "wneiaw eorene awssci liprer lneoid ktcms ",
+	},
+	{
+		input:    "Madness, and then illumination.",
+		expected: "msemo aanin dnin  ndla  etlt  shui ",
+	},
+	{
+		input:    "Vampires are people too!",
+		expected: "vrel aepe mset paoo irpo",
+	},
+	{
+		input:    "",
+		expected: "",
+	},
+	{
+		input:    "1",
+		expected: "1",
+	},
+	{
+		input:    "12",
+		expected: "1 2",
+	},
+	{
+		input:    "12 3",
+		expected: "13 2 ",
+	},
+	{
+		input:    "12345678",
+		expected: "147 258 36 ",
+	},
+	{
+		input:    "123456789a",
+		expected: "159 26a 37  48 ",
+	},
+	{
+		input:    "If man was meant to stay on the ground god would have given us roots",
+		expected: "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau ",
+	},
+	{
+		input:    "Have a nice day. Feed the dog & chill out!",
+		expected: "hifei acedl veeol eddgo aatcu nyhht",
+	},
+}
+
+func TestEncode(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			got := Encode(test.input)
+			if got != test.expected {
+				t.Errorf("Encode(%q) = %q, want %q", test.input, got, test.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			Encode(test.input)
+		}
+	}
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/crypto-square [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/crypto-square [exercism/crypto-square.test]
+./crypto_square.go:69:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 8 ===
+// exercism/crypto-square/crypto_square.go
+package cryptosquare
+
+import (
+	"math"
+	"strings"
+	"unicode"
+)
+
+// Encode returns the crypto square encoded text for a given plain text.
+// It cleanses the input by removing punctuation and whitespace, lowercases it,
+// and then arranges the text in a square (or rectangle) format to produce the cipher text.
+func Encode(plainText string) string {
+	cleaned := cleanse(plainText)
+	if len(cleaned) == 0 {
+		return ""
+	}
+
+	runesCleaned := []rune(cleaned)
+	squareSize := int(math.Ceil(math.Sqrt(float64(len(runesCleaned)))));
+	chunks := chunksOfRunes(runesCleaned, squareSize)
+
+	// Build the cipher text by reading down the columns
+	columns := make([]string, squareSize)
+	for col := 0; col < squareSize; col++ {
+		var columnRunes []rune
+		for _, chunk := range chunks {
+			if col < len(chunk) {
+				columnRunes = append(columnRunes, chunk[col])
+			} else {
+				// Fill missing values with a space
+				columnRunes = append(columnRunes, ' ')
+			}
+		}
+		columns[col] = string(columnRunes)
+	}
+
+	return strings.Join(columns, " ")
+}
+
+// cleanse lowercases a string and removes punctuation and whitespace.
+func cleanse(text string) string {
+	var builder strings.Builder
+	for _, c := range text {
+		if unicode.IsLetter(c) || unicode.IsDigit(c) {
+			builder.WriteRune(unicode.ToLower(c))
+		}
+	}
+	return builder.String()
+}
+
+// chunksOfRunes splits a slice of runes into chunks of the specified size.
+func chunksOfRunes(runes []rune, chunkSize int) [][]rune {
+	if chunkSize <= 0 {
+		return nil
+	}
+	var chunks [][]rune
+	for i := 0; i < len(runes); i += chunkSize {
+		end := i + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, runes[i:end])
+	}
+	return chunks
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/crypto-square	0.280s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

@@ -1,0 +1,517 @@
+=== Initial Source Code ===
+Source file: exercises/practice/series/.meta/example.py
+def slices(series, length):
+    if not series:
+        raise ValueError('series cannot be empty')
+    elif length == 0:
+        raise ValueError('slice length cannot be zero')
+    elif length < 0:
+        raise ValueError('slice length cannot be negative')
+    elif len(series) < length:
+        raise ValueError('slice length cannot be greater than series length')
+
+    return [series[idx:idx + length] for idx in range(len(series) - length + 1)]
+
+
+=== Source Interface ===
+def slices(series, length):
+    pass
+
+
+=== Target Interface ===
+package series
+
+func All(n int, s string) []string {
+	panic("Please implement the All function")
+}
+
+func UnsafeFirst(n int, s string) string {
+	panic("Please implement the UnsafeFirst function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/series/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from series import (
+    slices,
+)
+
+
+class SeriesTest(unittest.TestCase):
+    def test_slices_of_one_from_one(self):
+        self.assertEqual(slices("1", 1), ["1"])
+
+    def test_slices_of_one_from_two(self):
+        self.assertEqual(slices("12", 1), ["1", "2"])
+
+    def test_slices_of_two(self):
+        self.assertEqual(slices("35", 2), ["35"])
+
+    def test_slices_of_two_overlap(self):
+        self.assertEqual(slices("9142", 2), ["91", "14", "42"])
+
+    def test_slices_can_include_duplicates(self):
+        self.assertEqual(slices("777777", 3), ["777", "777", "777", "777"])
+
+    def test_slices_of_a_long_series(self):
+        self.assertEqual(
+            slices("918493904243", 5),
+            ["91849", "18493", "84939", "49390", "93904", "39042", "90424", "04243"],
+        )
+
+    def test_slice_length_is_too_large(self):
+        with self.assertRaises(ValueError) as err:
+            slices("12345", 6)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "slice length cannot be greater than series length"
+        )
+
+    def test_slice_length_is_way_too_large(self):
+        with self.assertRaises(ValueError) as err:
+            slices("12345", 42)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(
+            err.exception.args[0], "slice length cannot be greater than series length"
+        )
+
+    def test_slice_length_cannot_be_zero(self):
+        with self.assertRaises(ValueError) as err:
+            slices("12345", 0)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "slice length cannot be zero")
+
+    def test_slice_length_cannot_be_negative(self):
+        with self.assertRaises(ValueError) as err:
+            slices("123", -1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "slice length cannot be negative")
+
+    def test_empty_series_is_invalid(self):
+        with self.assertRaises(ValueError) as err:
+            slices("", 1)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "series cannot be empty")
+
+
+=== Target Test Code ===
+package series
+
+import (
+	"fmt"
+	"reflect"
+	"testing"
+)
+
+var testCases = []struct {
+	digits   int
+	input    string
+	expected []string
+}{
+	{
+		digits:   1,
+		input:    "01234",
+		expected: []string{"0", "1", "2", "3", "4"},
+	},
+	{
+		digits:   1,
+		input:    "92834",
+		expected: []string{"9", "2", "8", "3", "4"},
+	},
+	{
+		digits:   2,
+		input:    "01234",
+		expected: []string{"01", "12", "23", "34"},
+	},
+	{
+		digits:   2,
+		input:    "98273463",
+		expected: []string{"98", "82", "27", "73", "34", "46", "63"},
+	},
+	{
+		digits:   2,
+		input:    "37103",
+		expected: []string{"37", "71", "10", "03"},
+	},
+	{
+		digits:   3,
+		input:    "01234",
+		expected: []string{"012", "123", "234"},
+	},
+	{
+		digits:   3,
+		input:    "31001",
+		expected: []string{"310", "100", "001"},
+	},
+	{
+		digits:   3,
+		input:    "982347",
+		expected: []string{"982", "823", "234", "347"},
+	},
+	{
+		digits:   4,
+		input:    "01234",
+		expected: []string{"0123", "1234"},
+	},
+	{
+		digits:   4,
+		input:    "91274",
+		expected: []string{"9127", "1274"},
+	},
+	{
+		digits:   5,
+		input:    "01234",
+		expected: []string{"01234"},
+	},
+	{
+		digits:   5,
+		input:    "81228",
+		expected: []string{"81228"},
+	},
+	{
+		digits:   6,
+		input:    "01234",
+		expected: nil,
+	},
+	{
+		digits:   len(cx) + 1,
+		input:    cx,
+		expected: nil,
+	},
+}
+
+var cx = "01032987583"
+
+func TestAll(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%d digits in %s", tc.digits, tc.input), func(t *testing.T) {
+			got := All(tc.digits, tc.input)
+			if len(got) == 0 && len(tc.expected) == 0 {
+				return
+			}
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Fatalf("All(%d, %q)\n got: %v, want: %v", tc.digits, tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestUnsafeFirst(t *testing.T) {
+	for _, tc := range testCases {
+		if len(tc.expected) == 0 {
+			continue
+		}
+		t.Run(fmt.Sprintf("first with %d digits in %s", tc.digits, tc.input), func(t *testing.T) {
+			if got := UnsafeFirst(tc.digits, tc.input); got != tc.expected[0] {
+				t.Fatalf("UnsafeFirst(%d, %q) = %q, want: %q", tc.digits, tc.input, got, tc.expected[0])
+			}
+		})
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/series/.meta/example.go
+package meta
+
+import "fmt"
+
+// All extracts all slices of the given series (string) with a slice length n.
+// It returns a slice of substrings in the format of all possible consecutive substrings of length n.
+// If the input is invalid, an error is returned. 
+func All(n int, s string) ([]string, error) {
+	if s == "" {
+		return nil, fmt.Errorf("series cannot be empty")
+	}
+	if n == 0 {
+		return nil, fmt.Errorf("slice length cannot be zero")
+	}
+	if n < 0 {
+		return nil, fmt.Errorf("slice length cannot be negative")
+	}
+	if len(s) < n {
+		return nil, fmt.Errorf("slice length cannot be greater than series length")
+	}
+
+	var slices []string
+	for i := 0; i <= len(s)-n; i++ {
+		slices = append(slices, s[i:i+n])
+	}
+	return slices, nil
+}
+
+// UnsafeFirst returns the first slice from the series for the given length n.
+// It panics if an error occurs while extracting the slice.
+func UnsafeFirst(n int, s string) string {
+	slices, err := All(n, s)
+	if err != nil {
+		panic(err)
+	}
+	return slices[0]
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (series.go) and series (series_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/series
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/series/.meta/example.go
+package meta
+
+import "fmt"
+
+// All extracts all consecutive substrings (slices) of length n from the series string s.
+// It returns a slice of substrings and an error if the input is invalid.
+func All(n int, s string) ([]string, error) {
+	if s == "" {
+		return nil, fmt.Errorf("series cannot be empty")
+	}
+	if n == 0 {
+		return nil, fmt.Errorf("slice length cannot be zero")
+	}
+	if n < 0 {
+		return nil, fmt.Errorf("slice length cannot be negative")
+	}
+	if len(s) < n {
+		return nil, fmt.Errorf("slice length cannot be greater than series length")
+	}
+
+	slices := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		slices = append(slices, s[i:i+n])
+	}
+	return slices, nil
+}
+
+// UnsafeFirst returns the first slice from the series for the given length n.
+// It panics if an error occurs while extracting the slice.
+func UnsafeFirst(n int, s string) string {
+	result, err := All(n, s)
+	if err != nil {
+		panic(err)
+	}
+	return result[0]
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (series.go) and series (series_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/series
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/series/.meta/example.go
+package meta
+
+import "fmt"
+
+// All returns all consecutive substrings (slices) of length n from the series string s.
+// If the input is invalid (empty series, zero or negative slice length, or slice length greater than series length),
+// it returns nil.
+func All(n int, s string) []string {
+	if s == "" {
+		return nil
+	}
+	if n == 0 {
+		return nil
+	}
+	if n < 0 {
+		return nil
+	}
+	if len(s) < n {
+		return nil
+	}
+
+	slices := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		slices = append(slices, s[i:i+n])
+	}
+	return slices
+}
+
+// UnsafeFirst returns the first slice (substring) from the series of length n.
+// If the input is invalid such that no slice can be produced, it panics.
+func UnsafeFirst(n int, s string) string {
+	s := All(n, s)
+	if s == nil || len(s) == 0 {
+		panic(fmt.Sprintf("cannot take a slice of length %d from series %q", n, s))
+	}
+	return s[0]
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (series.go) and series (series_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/series
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/series/.meta/example.go
+package meta
+
+import "fmt"
+
+// All returns all consecutive substrings (slices) of length n from the series string s.
+// If the input is invalid (empty series, zero or negative slice length, or slice length greater than series length),
+// it returns nil.
+func All(n int, s string) []string {
+	if s == "" {
+		return nil
+	}
+	if n == 0 {
+		return nil
+	}
+	if n < 0 {
+		return nil
+	}
+	if len(s) < n {
+		return nil
+	}
+
+	slices := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		slices = append(slices, s[i:i+n])
+	}
+	return slices
+}
+
+// UnsafeFirst returns the first slice (substring) from the series of length n.
+// It panics if the input is invalid and no slice can be produced.
+func UnsafeFirst(n int, s string) string {
+	s := All(n, s)
+	if s == nil || len(s) == 0 {
+		panic(fmt.Sprintf("cannot take a slice of length %d from series %q", n, s))
+	}
+	return s[0]
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (series.go) and series (series_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/series
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/series/.meta/example.go
+package series
+
+import "fmt"
+
+// All returns all consecutive substrings (slices) of length n from the series string s.
+// If the input is invalid (empty series, zero or negative slice length, or slice length greater than series length),
+// it returns nil.
+func All(n int, s string) []string {
+	if s == "" {
+		return nil
+	}
+	if n == 0 {
+		return nil
+	}
+	if n < 0 {
+		return nil
+	}
+	if len(s) < n {
+		return nil
+	}
+
+	slices := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		slices = append(slices, s[i:i+n])
+	}
+	return slices
+}
+
+// UnsafeFirst returns the first slice (substring) from the series of length n.
+// It panics if no valid slice can be produced from the input.
+func UnsafeFirst(n int, s string) string {
+	s := All(n, s)
+	if s == "" || s == nil || len(s) == 0 {
+		panic(fmt.Sprintf("cannot take a slice of length %d from series %q", n, s))
+	}
+	return s[0]
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/series [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/series [exercism/series.test]
+./series.go:33:4: no new variables on left side of :=
+./series.go:33:7: cannot use All(n, s) (value of type []string) as type string in assignment
+./series.go:34:21: invalid operation: s == nil (mismatched types string and untyped nil)
+./series.go:37:9: cannot use s[0] (value of type byte) as type string in return statement
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/series/.meta/example.go
+package series
+
+import "fmt"
+
+// All returns all consecutive substrings (slices) of length n from the series string s.
+// If the input is invalid (empty series, zero or negative slice length, or slice length greater than series length),
+// it returns nil.
+func All(n int, s string) []string {
+	if s == "" {
+		return nil
+	}
+	if n == 0 {
+		return nil
+	}
+	if n < 0 {
+		return nil
+	}
+	if len(s) < n {
+		return nil
+	}
+
+	slices := make([]string, 0, len(s)-n+1)
+	for i := 0; i <= len(s)-n; i++ {
+		slices = append(slices, s[i:i+n])
+	}
+	return slices
+}
+
+// UnsafeFirst returns the first slice (substring) from the series of length n.
+// It panics if no valid slice can be produced from the input.
+func UnsafeFirst(n int, s string) string {
+	slices := All(n, s)
+	if slices == nil || len(slices) == 0 {
+		panic(fmt.Sprintf("cannot take a slice of length %d from series %q", n, s))
+	}
+	return slices[0]
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/series	0.367s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

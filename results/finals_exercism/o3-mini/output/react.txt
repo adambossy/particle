@@ -1,0 +1,3218 @@
+=== Initial Source Code ===
+Source file: exercises/practice/react/.meta/example.py
+class Cell:
+    def __init__(self):
+        self._watchers = []
+        self._value = None
+        self.counter = 0
+
+    def add_watcher(self, cell):
+        self._watchers.append(cell)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        self._value = new_value
+        self.counter += 1
+        for cell in self._watchers:
+            cell.compute()
+
+
+class InputCell(Cell):
+    def __init__(self, initial_value):
+        super().__init__()
+        self._value = initial_value
+
+
+class ComputeCell(Cell):
+    def __init__(self, inputs, compute_function):
+        super().__init__()
+        self.inputs = inputs
+        self.func = compute_function
+        self.callbacks = set()
+        self.compute()
+        self._register_inputs()
+
+    def _register_inputs(self):
+        for inp in self.inputs:
+            inp.add_watcher(self)
+
+    def compute(self):
+        # Only compute this cell when all inputs have same counters
+        if len({inp.counter for inp in self.inputs}) > 1:
+            return
+        new_val = self.func([inp.value for inp in self.inputs])
+        if new_val != self._value:
+            self.value = new_val
+            for cb in self.callbacks:
+                cb(new_val)
+
+    def add_callback(self, callback):
+        self.callbacks.add(callback)
+
+    def remove_callback(self, callback):
+        if callback in self.callbacks:
+            self.callbacks.remove(callback)
+
+
+=== Source Interface ===
+class InputCell:
+    def __init__(self, initial_value):
+        self.value = None
+
+
+class ComputeCell:
+    def __init__(self, inputs, compute_function):
+        self.value = None
+
+    def add_callback(self, callback):
+        pass
+
+    def remove_callback(self, callback):
+        pass
+    
+
+=== Target Interface ===
+package react
+
+// Define reactor, cell and canceler types here.
+// These types will implement the Reactor, Cell and Canceler interfaces, respectively.
+
+func (c *canceler) Cancel() {
+	panic("Please implement the Cancel function")
+}
+
+func (c *cell) Value() int {
+	panic("Please implement the Value function")
+}
+
+func (c *cell) SetValue(value int) {
+	panic("Please implement the SetValue function")
+}
+
+func (c *cell) AddCallback(callback func(int)) Canceler {
+	panic("Please implement the AddCallback function")
+}
+
+func New() Reactor {
+	panic("Please implement the New function")
+}
+
+func (r *reactor) CreateInput(initial int) InputCell {
+	panic("Please implement the CreateInput function")
+}
+
+func (r *reactor) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	panic("Please implement the CreateCompute1 function")
+}
+
+func (r *reactor) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	panic("Please implement the CreateCompute2 function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/react/canonical-data.json
+# File last updated on 2023-07-19
+
+from functools import partial
+import unittest
+
+from react import (
+    InputCell,
+    ComputeCell,
+)
+
+
+class ReactTest(unittest.TestCase):
+    def test_input_cells_have_a_value(self):
+        input = InputCell(10)
+        self.assertEqual(input.value, 10)
+
+    def test_an_input_cell_s_value_can_be_set(self):
+        input = InputCell(4)
+        input.value = 20
+        self.assertEqual(input.value, 20)
+
+    def test_compute_cells_calculate_initial_value(self):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        self.assertEqual(output.value, 2)
+
+    def test_compute_cells_take_inputs_in_the_right_order(self):
+        one = InputCell(1)
+        two = InputCell(2)
+        output = ComputeCell(
+            [
+                one,
+                two,
+            ],
+            lambda inputs: inputs[0] + inputs[1] * 10,
+        )
+        self.assertEqual(output.value, 21)
+
+    def test_compute_cells_update_value_when_dependencies_are_changed(self):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        input.value = 3
+        self.assertEqual(output.value, 4)
+
+    def test_compute_cells_can_depend_on_other_compute_cells(self):
+        input = InputCell(1)
+        times_two = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] * 2,
+        )
+        times_thirty = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] * 30,
+        )
+        output = ComputeCell(
+            [
+                times_two,
+                times_thirty,
+            ],
+            lambda inputs: inputs[0] + inputs[1],
+        )
+        self.assertEqual(output.value, 32)
+        input.value = 3
+        self.assertEqual(output.value, 96)
+
+    def test_compute_cells_fire_callbacks(self):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        output.add_callback(callback1)
+        input.value = 3
+        self.assertEqual(cb1_observer[-1], 4)
+
+    def test_callback_cells_only_fire_on_change(self):
+        input = InputCell(1)
+        output = ComputeCell([input], lambda inputs: 111 if inputs[0] < 3 else 222)
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        output.add_callback(callback1)
+        input.value = 2
+        self.assertEqual(cb1_observer, [])
+        input.value = 4
+        self.assertEqual(cb1_observer[-1], 222)
+
+    def test_callbacks_do_not_report_already_reported_values(self):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        output.add_callback(callback1)
+        input.value = 2
+        self.assertEqual(cb1_observer[-1], 3)
+        input.value = 3
+        self.assertEqual(cb1_observer[-1], 4)
+
+    def test_callbacks_can_fire_from_multiple_cells(self):
+        input = InputCell(1)
+        plus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        minus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] - 1,
+        )
+        cb1_observer = []
+        cb2_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        callback2 = self.callback_factory(cb2_observer)
+        plus_one.add_callback(callback1)
+        minus_one.add_callback(callback2)
+        input.value = 10
+        self.assertEqual(cb1_observer[-1], 11)
+        self.assertEqual(cb2_observer[-1], 9)
+
+    def test_callbacks_can_be_added_and_removed(self):
+        input = InputCell(11)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        cb1_observer = []
+        cb2_observer = []
+        cb3_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        callback2 = self.callback_factory(cb2_observer)
+        callback3 = self.callback_factory(cb3_observer)
+        output.add_callback(callback1)
+        output.add_callback(callback2)
+        input.value = 31
+        self.assertEqual(cb1_observer[-1], 32)
+        self.assertEqual(cb2_observer[-1], 32)
+        output.remove_callback(callback1)
+        output.add_callback(callback3)
+        input.value = 41
+        self.assertEqual(len(cb1_observer), 1)
+        self.assertEqual(cb2_observer[-1], 42)
+        self.assertEqual(cb3_observer[-1], 42)
+
+    def test_removing_a_callback_multiple_times_doesn_t_interfere_with_other_callbacks(
+        self,
+    ):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        cb1_observer = []
+        cb2_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        callback2 = self.callback_factory(cb2_observer)
+        output.add_callback(callback1)
+        output.add_callback(callback2)
+        output.remove_callback(callback1)
+        output.remove_callback(callback1)
+        output.remove_callback(callback1)
+        input.value = 2
+        self.assertEqual(cb1_observer, [])
+        self.assertEqual(cb2_observer[-1], 3)
+
+    def test_callbacks_should_only_be_called_once_even_if_multiple_dependencies_change(
+        self,
+    ):
+        input = InputCell(1)
+        plus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        minus_one1 = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] - 1,
+        )
+        minus_one2 = ComputeCell(
+            [
+                minus_one1,
+            ],
+            lambda inputs: inputs[0] - 1,
+        )
+        output = ComputeCell(
+            [
+                plus_one,
+                minus_one2,
+            ],
+            lambda inputs: inputs[0] * inputs[1],
+        )
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        output.add_callback(callback1)
+        input.value = 4
+        self.assertEqual(cb1_observer[-1], 10)
+
+    def test_callbacks_should_not_be_called_if_dependencies_change_but_output_value_doesn_t_change(
+        self,
+    ):
+        input = InputCell(1)
+        plus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        minus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] - 1,
+        )
+        always_two = ComputeCell(
+            [
+                plus_one,
+                minus_one,
+            ],
+            lambda inputs: inputs[0] - inputs[1],
+        )
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        always_two.add_callback(callback1)
+        input.value = 2
+        self.assertEqual(cb1_observer, [])
+        input.value = 3
+        self.assertEqual(cb1_observer, [])
+        input.value = 4
+        self.assertEqual(cb1_observer, [])
+        input.value = 5
+        self.assertEqual(cb1_observer, [])
+
+    # Utility functions.
+    def callback_factory(self, observer):
+        def callback(observer, value):
+            observer.append(value)
+
+        return partial(callback, observer)
+
+
+=== Target Test Code ===
+package react
+
+import (
+	"runtime"
+	"testing"
+)
+
+// Define a function New() Reactor and the stuff that follows from
+// implementing Reactor.
+
+// This is a compile time check to see if you've properly implemented New().
+var _ Reactor = New()
+
+func assertCellValue(t *testing.T, c Cell, expected int, explanation string) {
+	observed := c.Value()
+	_, _, line, _ := runtime.Caller(1)
+	if observed != expected {
+		t.Fatalf("(from line %d) %s: expected %d, got %d", line, explanation, expected, observed)
+	}
+}
+
+// Setting the value of an input cell changes the observable Value()
+func TestSetInput(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	assertCellValue(t, i, 1, "i.Value() doesn't match initial value")
+	i.SetValue(2)
+	assertCellValue(t, i, 2, "i.Value() doesn't match changed value")
+}
+
+// The value of a compute 1 cell is determined by the value of the dependencies.
+func TestBasicCompute1(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	assertCellValue(t, c, 2, "c.Value() isn't properly computed based on initial input cell value")
+	i.SetValue(2)
+	assertCellValue(t, c, 3, "c.Value() isn't properly computed based on changed input cell value")
+}
+
+// The value of a compute 2 cell is determined by the value of the dependencies.
+func TestBasicCompute2(t *testing.T) {
+	r := New()
+	i1 := r.CreateInput(1)
+	i2 := r.CreateInput(2)
+	c := r.CreateCompute2(i1, i2, func(v1, v2 int) int { return v1 | v2 })
+	assertCellValue(t, c, 3, "c.Value() isn't properly computed based on initial input cell values")
+	i1.SetValue(4)
+	assertCellValue(t, c, 6, "c.Value() isn't properly computed when first input cell value changes")
+	i2.SetValue(8)
+	assertCellValue(t, c, 12, "c.Value() isn't properly computed when second input cell value changes")
+}
+
+// Compute 2 cells can depend on compute 1 cells.
+func TestCompute2Diamond(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c1 := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	c2 := r.CreateCompute1(i, func(v int) int { return v - 1 })
+	c3 := r.CreateCompute2(c1, c2, func(v1, v2 int) int { return v1 * v2 })
+	assertCellValue(t, c3, 0, "c3.Value() isn't properly computed based on initial input cell value")
+	i.SetValue(3)
+	assertCellValue(t, c3, 8, "c3.Value() isn't properly computed based on changed input cell value")
+}
+
+// Compute 1 cells can depend on other compute 1 cells.
+func TestCompute1Chain(t *testing.T) {
+	r := New()
+	inp := r.CreateInput(1)
+	var c Cell = inp
+	for i := 2; i <= 8; i++ {
+		// must save current value of loop variable i for correct behavior.
+		// compute function has to use digitToAdd not i.
+		digitToAdd := i
+		c = r.CreateCompute1(c, func(v int) int { return v*10 + digitToAdd })
+	}
+	assertCellValue(t, c, 12345678, "c.Value() isn't properly computed based on initial input cell value")
+	inp.SetValue(9)
+	assertCellValue(t, c, 92345678, "c.Value() isn't properly computed based on changed input cell value")
+}
+
+// Compute 2 cells can depend on other compute 2 cells.
+func TestCompute2Tree(t *testing.T) {
+	r := New()
+	ins := make([]InputCell, 3)
+	for i, v := range []int{1, 10, 100} {
+		ins[i] = r.CreateInput(v)
+	}
+
+	add := func(v1, v2 int) int { return v1 + v2 }
+
+	firstLevel := make([]ComputeCell, 2)
+	for i := 0; i < 2; i++ {
+		firstLevel[i] = r.CreateCompute2(ins[i], ins[i+1], add)
+	}
+
+	output := r.CreateCompute2(firstLevel[0], firstLevel[1], add)
+	assertCellValue(t, output, 121, "output.Value() isn't properly computed based on initial input cell values")
+
+	for i := 0; i < 3; i++ {
+		ins[i].SetValue(ins[i].Value() * 2)
+	}
+
+	assertCellValue(t, output, 242, "output.Value() isn't properly computed based on changed input cell values")
+}
+
+// Compute cells can have callbacks.
+func TestBasicCallback(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	var observed []int
+	c.AddCallback(func(v int) {
+		observed = append(observed, v)
+	})
+	if len(observed) != 0 {
+		t.Fatalf("callback called before changes were made")
+	}
+	i.SetValue(2)
+	if len(observed) != 1 {
+		t.Fatalf("callback not called when changes were made")
+	}
+	if observed[0] != 3 {
+		t.Fatalf("callback not called with proper value")
+	}
+}
+
+// Callbacks and only trigger on change.
+func TestOnlyCallOnChanges(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c := r.CreateCompute1(i, func(v int) int {
+		if v > 3 {
+			return v + 1
+		}
+		return 2
+	})
+	var observedCalled int
+	c.AddCallback(func(int) {
+		observedCalled++
+	})
+	i.SetValue(1)
+	if observedCalled != 0 {
+		t.Fatalf("observe function called even though input didn't change")
+	}
+	i.SetValue(2)
+	if observedCalled != 0 {
+		t.Fatalf("observe function called even though computed value didn't change")
+	}
+}
+
+// Callbacks can be added and removed.
+func TestCallbackAddRemove(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	var observed1 []int
+	cb1 := c.AddCallback(func(v int) {
+		observed1 = append(observed1, v)
+	})
+	var observed2 []int
+	c.AddCallback(func(v int) {
+		observed2 = append(observed2, v)
+	})
+	i.SetValue(2)
+	if len(observed1) != 1 || observed1[0] != 3 {
+		t.Fatalf("observed1 not properly called")
+	}
+	if len(observed2) != 1 || observed2[0] != 3 {
+		t.Fatalf("observed2 not properly called")
+	}
+	cb1.Cancel()
+	i.SetValue(3)
+	if len(observed1) != 1 {
+		t.Fatalf("observed1 called after removal")
+	}
+	if len(observed2) != 2 || observed2[1] != 4 {
+		t.Fatalf("observed2 not properly called after first callback removal")
+	}
+}
+
+func TestMultipleCallbackRemoval(t *testing.T) {
+	r := New()
+	inp := r.CreateInput(1)
+	c := r.CreateCompute1(inp, func(v int) int { return v + 1 })
+
+	numCallbacks := 5
+
+	calls := make([]int, numCallbacks)
+	cancelers := make([]Canceler, numCallbacks)
+	for i := 0; i < numCallbacks; i++ {
+		// Rebind i, otherwise all callbacks will use i = numCallbacks
+		i := i
+		cancelers[i] = c.AddCallback(func(v int) { calls[i]++ })
+	}
+
+	inp.SetValue(2)
+	for i := 0; i < numCallbacks; i++ {
+		if calls[i] != 1 {
+			t.Fatalf("callback %d/%d should be called 1 time, was called %d times", i+1, numCallbacks, calls[i])
+		}
+		cancelers[i].Cancel()
+	}
+
+	inp.SetValue(3)
+	for i := 0; i < numCallbacks; i++ {
+		if calls[i] != 1 {
+			t.Fatalf("callback %d/%d was called after it was removed", i+1, numCallbacks)
+		}
+	}
+}
+
+func TestRemoveIdempotence(t *testing.T) {
+	r := New()
+	inp := r.CreateInput(1)
+	output := r.CreateCompute1(inp, func(v int) int { return v + 1 })
+	timesCalled := 0
+	cb1 := output.AddCallback(func(int) {})
+	output.AddCallback(func(int) { timesCalled++ })
+	for i := 0; i < 10; i++ {
+		cb1.Cancel()
+	}
+	inp.SetValue(2)
+	if timesCalled != 1 {
+		t.Fatalf("remaining callback function was not called")
+	}
+}
+
+// Callbacks should only be called once even though
+// multiple dependencies have changed.
+func TestOnlyCallOnceOnMultipleDepChanges(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c1 := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	c2 := r.CreateCompute1(i, func(v int) int { return v - 1 })
+	c3 := r.CreateCompute1(c2, func(v int) int { return v - 1 })
+	c4 := r.CreateCompute2(c1, c3, func(v1, v3 int) int { return v1 * v3 })
+	changed4 := 0
+	c4.AddCallback(func(int) { changed4++ })
+	i.SetValue(3)
+	if changed4 < 1 {
+		t.Fatalf("callback function was not called")
+	} else if changed4 > 1 {
+		t.Fatalf("callback function was called too often")
+	}
+}
+
+// Callbacks should not be called if dependencies change in such a way
+// that the final value of the compute cell does not change.
+func TestNoCallOnDepChangesResultingInNoChange(t *testing.T) {
+	r := New()
+	inp := r.CreateInput(0)
+	plus1 := r.CreateCompute1(inp, func(v int) int { return v + 1 })
+	minus1 := r.CreateCompute1(inp, func(v int) int { return v - 1 })
+	// The output's value is always 2, no matter what the input is.
+	output := r.CreateCompute2(plus1, minus1, func(v1, v2 int) int { return v1 - v2 })
+
+	timesCalled := 0
+	output.AddCallback(func(int) { timesCalled++ })
+
+	inp.SetValue(5)
+	if timesCalled != 0 {
+		t.Fatalf("callback function called even though computed value didn't change")
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/react/.meta/example.go
+package meta
+
+import (
+	"fmt"
+	"reflect"
+)
+
+// Computeable is an interface for cells that can compute their value.
+// It is used for notifying dependent cells.
+type Computeable interface {
+	Compute()
+}
+
+// Base represents the base cell with common functionality
+// such as storing the cell's value, a counter that tracks updates,
+// and a list of watchers to notify when the value changes.
+// This matches the functionality of the Python Cell class.
+type Base struct {
+	value    int
+	counter  int
+	watchers []Computeable
+}
+
+// AddWatcher adds a dependent cell that will be notified when the value changes.
+func (b *Base) AddWatcher(w Computeable) {
+	b.watchers = append(b.watchers, w)
+}
+
+// SetValue updates the cell's value and counter, then notifies watchers.
+func (b *Base) SetValue(newValue int) {
+	b.value = newValue
+	b.counter++
+	for _, watcher := range b.watchers {
+		watcher.Compute()
+	}
+}
+
+// Value returns the current value of the cell.
+func (b *Base) Value() int {
+	return b.value
+}
+
+// InputCell represents an input cell that holds an initial value.
+// This corresponds to the Python InputCell class.
+type InputCell struct {
+	Base
+}
+
+// NewInputCell creates a new InputCell with the given initial value.
+func NewInputCell(initial int) *InputCell {
+	cell := &InputCell{Base: Base{value: initial, counter: 0}}
+	return cell
+}
+
+// ComputeCell represents a cell whose value is computed from one or more input cells.
+// It holds a compute function that takes the list of input values and returns the computed value.
+// It also maintains a list of callback functions to call when its value changes.
+type ComputeCell struct {
+	Base
+	inputs      []*Base
+	computeFunc func([]int) int
+	callbacks   []func(int)
+}
+
+// NewComputeCell creates a new ComputeCell with the given input cells and compute function.
+// It computes its initial value and registers itself as a watcher on its input cells.
+func NewComputeCell(inputs []*Base, computeFunc func([]int) int) *ComputeCell {
+	cc := &ComputeCell{
+		inputs:      inputs,
+		computeFunc: computeFunc,
+		callbacks:   make([]func(int), 0),
+	}
+	// Compute initial value
+	cc.Compute()
+	// Register as watcher on each input cell
+	for _, inp := range inputs {
+		inp.AddWatcher(cc)
+	}
+	return cc
+}
+
+// Compute recalculates the value of the ComputeCell if all inputs are in sync (i.e., have the same counter).
+// If the computed value differs from the current value, it updates its value and calls registered callbacks.
+func (cc *ComputeCell) Compute() {
+	// Check if all input cells have the same counter
+	counters := make(map[int]struct{})
+	for _, inp := range cc.inputs {
+		counters[inp.counter] = struct{}{}
+	}
+	if len(counters) > 1 {
+		return
+	}
+
+	// Gather input values
+	values := make([]int, len(cc.inputs))
+	for i, inp := range cc.inputs {
+		values[i] = inp.value
+	}
+
+	newVal := cc.computeFunc(values)
+	if newVal != cc.value {
+		cc.SetValue(newVal) // This updates cc.value and cc.counter, and notifies watchers
+		// Call callbacks with the new value
+		for _, cb := range cc.callbacks {
+			cb(newVal)
+		}
+	}
+}
+
+// AddCallback registers a callback function that will be called when the ComputeCell's value changes.
+// It ensures the same callback is not added more than once.
+func (cc *ComputeCell) AddCallback(cb func(int)) {
+	// Check if the callback is already registered by comparing function pointers
+	cbPtr := reflect.ValueOf(cb).Pointer()
+	for _, existing := range cc.callbacks {
+		if reflect.ValueOf(existing).Pointer() == cbPtr {
+			return
+		}
+	}
+	cc.callbacks = append(cc.callbacks, cb)
+}
+
+// RemoveCallback removes a previously registered callback function.
+func (cc *ComputeCell) RemoveCallback(cb func(int)) {
+	cbPtr := reflect.ValueOf(cb).Pointer()
+	newCallbacks := make([]func(int), 0, len(cc.callbacks))
+	for _, existing := range cc.callbacks {
+		if reflect.ValueOf(existing).Pointer() != cbPtr {
+			newCallbacks = append(newCallbacks, existing)
+		}
+	}
+	cc.callbacks = newCallbacks
+}
+
+// For debugging purposes, String returns a string representation of the Base cell.
+func (b *Base) String() string {
+	return fmt.Sprintf("Value: %d, Counter: %d", b.value, b.counter)
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (react.go) and react (react_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/react
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"fmt"
+	"reflect"
+)
+
+// This file contains a reactor implementation that satisfies the following interfaces and tests:
+// Reactor, Cell, InputCell, ComputeCell, and Canceler.
+
+// Reactor represents the reactor interface with methods to create input and compute cells.
+type Reactor interface {
+	CreateInput(initial int) InputCell
+	CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+	CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+}
+
+// Cell represents a cell whose value can be observed and changed.
+// Both InputCell and ComputeCell implement Cell.
+type Cell interface {
+	Value() int
+	SetValue(int)
+}
+
+// InputCell is a cell that can have its value directly set.
+type InputCell interface {
+	Cell
+}
+
+// ComputeCell is a cell whose value is computed from one or more dependency cells.
+// It also supports registering callbacks that are triggered when its value changes.
+type ComputeCell interface {
+	Cell
+	AddCallback(func(int)) Canceler
+}
+
+// Canceler represents a handle that can cancel a previously registered callback.
+type Canceler interface {
+	Cancel()
+}
+
+// computable is an internal interface for cells that can recompute their value.
+// It is used for watchers on dependency cells.
+type computable interface {
+	Compute()
+}
+
+// baseCell holds common properties for cells: value, counter (number of updates), and watchers.
+type baseCell struct {
+	value    int
+	counter  int
+	watchers []computable
+}
+
+// Value returns the current value of the cell.
+func (b *baseCell) Value() int {
+	return b.value
+}
+
+// SetValue sets the cell's value if it differs from the current value and increments the counter.
+// It then notifies all registered watchers by calling their Compute method.
+func (b *baseCell) SetValue(val int) {
+	if b.value == val {
+		return
+	}
+	b.value = val
+	b.counter++
+	for _, w := range b.watchers {
+		w.Compute()
+	}
+}
+
+// addWatcher registers a watcher for value changes.
+func (b *baseCell) addWatcher(w computable) {
+	b.watchers = append(b.watchers, w)
+}
+
+// inputCell implements InputCell. It embeds baseCell.
+type inputCell struct {
+	baseCell
+}
+
+// NewInputCell creates a new inputCell with the given initial value.
+func NewInputCell(initial int) *inputCell {
+	return &inputCell{
+		baseCell: baseCell{
+			value:    initial,
+			counter:  0,
+			watchers: []computable{},
+		},
+	}
+}
+
+// computeCellImpl implements ComputeCell and computable. It has dependencies, a compute function, and callbacks.
+type computeCellImpl struct {
+	baseCell
+	dependencies []Cell
+	computeFunc  func([]int) int
+	callbacks    []func(int)
+}
+
+// Compute recalculates the cell's value based on its dependencies.
+// It only computes when all dependencies have the same update counter.
+// If the newly computed value differs from the current value, it updates the value,
+// increments the counter, and triggers all registered callbacks.
+func (c *computeCellImpl) Compute() {
+	// Check if all dependencies have the same counter
+	counterSet := make(map[int]struct{})
+	vals := make([]int, len(c.dependencies))
+	for i, dep := range c.dependencies {
+		switch d := dep.(type) {
+		case *inputCell:
+			counterSet[d.counter] = struct{}{}
+			vals[i] = d.value
+		case *computeCellImpl:
+			counterSet[d.counter] = struct{}{}
+			vals[i] = d.value
+		default:
+			counterSet[0] = struct{}{}
+			vals[i] = dep.Value()
+		}
+	}
+	if len(counterSet) > 1 {
+		return
+	}
+
+	newVal := c.computeFunc(vals)
+	if newVal != c.value {
+		c.SetValue(newVal) // This will update the value and counter and notify watchers
+		// Trigger callbacks
+		for _, cb := range c.callbacks {
+			cb(newVal)
+		}
+	}
+}
+
+// AddCallback registers a callback function to be called when the computed value changes.
+// It returns a Canceler which can be used to remove the callback.
+func (c *computeCellImpl) AddCallback(cb func(int)) Canceler {
+	c.callbacks = append(c.callbacks, cb)
+	return &canceler{
+		cell:     c,
+		callback: cb,
+		removed:  false,
+	}
+}
+
+// removeCallback removes a callback from the callbacks list based on function pointer comparison.
+func (c *computeCellImpl) removeCallback(cb func(int)) {
+	cbPtr := getFuncPointer(cb)
+	newCallbacks := c.callbacks[:0]
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) != cbPtr {
+			newCallbacks = append(newCallbacks, existing)
+		}
+	}
+	c.callbacks = newCallbacks
+}
+
+// getFuncPointer returns the pointer value of a function using reflection.
+func getFuncPointer(f func(int)) uintptr {
+	return reflect.ValueOf(f).Pointer()
+}
+
+// canceler implements Canceler. It holds a reference to a computeCellImpl and a specific callback function.
+type canceler struct {
+	cell     *computeCellImpl
+	callback func(int)
+	removed  bool
+}
+
+// Cancel removes the associated callback from the compute cell. It is idempotent.
+func (c *canceler) Cancel() {
+	if !c.removed {
+		c.cell.removeCallback(c.callback)
+		c.removed = true
+	}
+}
+
+// reactorImpl implements Reactor.
+type reactorImpl struct{}
+
+// New creates a new Reactor instance.
+func New() Reactor {
+	return &reactorImpl{}
+}
+
+// CreateInput creates a new InputCell with the given initial value.
+func (r *reactorImpl) CreateInput(initial int) InputCell {
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency and a compute function that takes an int.
+func (r *reactorImpl) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) > 0 {
+			return compute(vals[0])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	// Register cc as a watcher on dep if possible
+	if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+		watcher.addWatcher(cc)
+	}
+	cc.Compute()
+	return cc
+}
+
+// CreateCompute2 creates a new ComputeCell with two dependencies and a compute function that takes two ints.
+func (r *reactorImpl) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) >= 2 {
+			return compute(vals[0], vals[1])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep1, dep2},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	for _, dep := range []Cell{dep1, dep2} {
+		if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+			watcher.addWatcher(cc)
+		}
+	}
+	cc.Compute()
+	return cc
+}
+
+// To allow inputCell and computeCellImpl to satisfy the addWatcher requirement, add the method to them.
+func (i *inputCell) addWatcher(w computable) {
+	i.baseCell.addWatcher(w)
+}
+
+func (c *computeCellImpl) addWatcher(w computable) {
+	c.baseCell.addWatcher(w)
+}
+
+// String methods for debugging
+func (b *baseCell) String() string {
+	return fmt.Sprintf("Value: %d, Counter: %d", b.value, b.counter)
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestBasicCompute2 (0.00s)
+    react_test.go:18: (from line 49) c.Value() isn't properly computed when first input cell value changes: expected 6, got 3
+--- FAIL: TestCompute2Diamond (0.00s)
+    react_test.go:18: (from line 63) c3.Value() isn't properly computed based on changed input cell value: expected 8, got 0
+FAIL
+FAIL	exercism/react	0.281s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"fmt"
+	"reflect"
+)
+
+// This file contains a reactor implementation that satisfies the following interfaces and tests:
+// Reactor, Cell, InputCell, ComputeCell, and Canceler.
+
+// Reactor represents the reactor interface with methods to create input and compute cells.
+// The reactor is responsible for cell creation and wiring.
+//
+// Methods:
+//   CreateInput(initial int) InputCell
+//   CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+//   CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+//
+// The package name is "react" as it is in the enclosing directory.
+
+// Reactor is the reactor interface.
+type Reactor interface {
+	CreateInput(initial int) InputCell
+	CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+	CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+}
+
+// Cell represents a cell whose value can be observed and changed.
+// Both InputCell and ComputeCell implement Cell.
+type Cell interface {
+	Value() int
+	SetValue(int)
+}
+
+// InputCell is a cell that can have its value directly set.
+type InputCell interface {
+	Cell
+}
+
+// ComputeCell is a cell whose value is computed from one or more dependency cells.
+// It also supports registering callbacks that are triggered when its value changes.
+type ComputeCell interface {
+	Cell
+	// AddCallback registers a callback and returns a Canceler to remove it.
+	AddCallback(func(int)) Canceler
+}
+
+// Canceler represents a handle that can cancel a previously registered callback.
+type Canceler interface {
+	Cancel()
+}
+
+// computable is an internal interface for cells that can recompute their value.
+// It is used as watchers on dependency cells.
+type computable interface {
+	Compute()
+}
+
+// baseCell holds common properties for cells: value, counter (number of updates), and watchers.
+// The counter is incremented on every value change.
+// The watchers are other cells that depend on this cell.
+type baseCell struct {
+	value    int
+	counter  int
+	watchers []computable
+}
+
+// Value returns the current value of the cell.
+func (b *baseCell) Value() int {
+	return b.value
+}
+
+// SetValue sets the cell's value if it differs from the current value and increments the counter.
+// It then notifies all registered watchers by calling their Compute method.
+func (b *baseCell) SetValue(val int) {
+	if b.value == val {
+		return
+	}
+	b.value = val
+	b.counter++
+	for _, w := range b.watchers {
+		w.Compute()
+	}
+}
+
+// addWatcher registers a watcher for value changes.
+func (b *baseCell) addWatcher(w computable) {
+	b.watchers = append(b.watchers, w)
+}
+
+// inputCell implements InputCell and embeds baseCell.
+type inputCell struct {
+	baseCell
+}
+
+// NewInputCell creates a new inputCell with the given initial value.
+func NewInputCell(initial int) *inputCell {
+	return &inputCell{
+		baseCell: baseCell{
+			value:    initial,
+			counter:  0,
+			watchers: []computable{},
+		},
+	}
+}
+
+// computeCellImpl implements ComputeCell and computable.
+// It computes its value based on dependencies using a compute function.
+// It also supports callbacks when the value changes.
+type computeCellImpl struct {
+	baseCell
+	dependencies []Cell
+	computeFunc  func([]int) int
+	callbacks    []func(int)
+}
+
+// Compute recalculates the cell's value based on its dependencies.
+// It gathers the latest dependency values, applies the computeFunc,
+// and if the new value differs from the current one, it updates and triggers callbacks.
+func (c *computeCellImpl) Compute() {
+	// Gather dependency values
+	values := make([]int, len(c.dependencies))
+	for i, dep := range c.dependencies {
+		values[i] = dep.Value()
+	}
+	newVal := c.computeFunc(values)
+	if newVal != c.value {
+		c.SetValue(newVal) // This updates the value, increments the counter, and notifies watchers
+		// Trigger callbacks
+		for _, cb := range c.callbacks {
+			cb(newVal)
+		}
+	}
+}
+
+// AddCallback registers a callback function to be called when the computed value changes.
+// It returns a Canceler which can be used to remove the callback.
+func (c *computeCellImpl) AddCallback(cb func(int)) Canceler {
+	c.callbacks = append(c.callbacks, cb)
+	return &canceler{
+		cell:     c,
+		callback: cb,
+		removed:  false,
+	}
+}
+
+// removeCallback removes a callback from the callbacks slice by comparing function pointers.
+func (c *computeCellImpl) removeCallback(cb func(int)) {
+	cbPtr := getFuncPointer(cb)
+	newCallbacks := c.callbacks[:0]
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) != cbPtr {
+			newCallbacks = append(newCallbacks, existing)
+		}
+	}
+	c.callbacks = newCallbacks
+}
+
+// getFuncPointer returns the pointer of a function using reflection.
+func getFuncPointer(f func(int)) uintptr {
+	return reflect.ValueOf(f).Pointer()
+}
+
+// canceler implements Canceler and holds a reference to a computeCellImpl and a callback function.
+type canceler struct {
+	cell     *computeCellImpl
+	callback func(int)
+	removed  bool
+}
+
+// Cancel removes the associated callback from the compute cell. It is idempotent.
+func (c *canceler) Cancel() {
+	if !c.removed {
+		c.cell.removeCallback(c.callback)
+		c.removed = true
+	}
+}
+
+// reactorImpl implements Reactor.
+type reactorImpl struct{}
+
+// New creates a new Reactor instance.
+func New() Reactor {
+	return &reactorImpl{}
+}
+
+// CreateInput creates a new InputCell with the given initial value.
+func (r *reactorImpl) CreateInput(initial int) InputCell {
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency and a compute function that takes an int.
+func (r *reactorImpl) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) > 0 {
+			return compute(vals[0])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	// Register cc as a watcher on dep if possible
+	if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+		watcher.addWatcher(cc)
+	}
+	cc.Compute()
+	return cc
+}
+
+// CreateCompute2 creates a new ComputeCell with two dependencies and a compute function that takes two ints.
+func (r *reactorImpl) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) >= 2 {
+			return compute(vals[0], vals[1])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep1, dep2},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	for _, dep := range []Cell{dep1, dep2} {
+		if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+			watcher.addWatcher(cc)
+		}
+	}
+	cc.Compute()
+	return cc
+}
+
+// To allow inputCell and computeCellImpl to satisfy the addWatcher requirement,
+// add the method to them.
+func (i *inputCell) addWatcher(w computable) {
+	i.baseCell.addWatcher(w)
+}
+
+func (c *computeCellImpl) addWatcher(w computable) {
+	c.baseCell.addWatcher(w)
+}
+
+// String returns a string representation of the base cell for debugging purposes.
+func (b *baseCell) String() string {
+	return fmt.Sprintf("Value: %d, Counter: %d", b.value, b.counter)
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestOnlyCallOnceOnMultipleDepChanges (0.00s)
+    react_test.go:244: callback function was called too often
+--- FAIL: TestNoCallOnDepChangesResultingInNoChange (0.00s)
+    react_test.go:263: callback function called even though computed value didn't change
+FAIL
+FAIL	exercism/react	0.634s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"fmt"
+	"reflect"
+)
+
+// This file contains a reactor implementation that satisfies the following interfaces and tests:
+// Reactor, Cell, InputCell, ComputeCell, and Canceler.
+
+// Reactor represents the reactor interface with methods to create input and compute cells.
+// The reactor is responsible for cell creation and wiring.
+//
+// Methods:
+//   CreateInput(initial int) InputCell
+//   CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+//   CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+//
+// The package name is "react" as it is in the enclosing directory.
+
+// Reactor is the reactor interface.
+type Reactor interface {
+	CreateInput(initial int) InputCell
+	CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+	CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+}
+
+// Cell represents a cell whose value can be observed and changed.
+// Both InputCell and ComputeCell implement Cell.
+type Cell interface {
+	Value() int
+	SetValue(int)
+}
+
+// InputCell is a cell that can have its value directly set.
+type InputCell interface {
+	Cell
+}
+
+// ComputeCell is a cell whose value is computed from one or more dependency cells.
+// It also supports registering callbacks that are triggered when its value changes.
+type ComputeCell interface {
+	Cell
+	// AddCallback registers a callback and returns a Canceler to remove it.
+	AddCallback(func(int)) Canceler
+}
+
+// Canceler represents a handle that can cancel a previously registered callback.
+type Canceler interface {
+	Cancel()
+}
+
+// computable is an internal interface for cells that can recompute their value.
+// It is used as watchers on dependency cells.
+type computable interface {
+	Compute()
+}
+
+// baseCell holds common properties for cells: value, counter (number of updates), and watchers.
+// The counter is incremented on every value change.
+// The watchers are other cells that depend on this cell.
+type baseCell struct {
+	value    int
+	counter  int
+	watchers []computable
+}
+
+// Value returns the current value of the cell.
+func (b *baseCell) Value() int {
+	return b.value
+}
+
+// SetValue sets the cell's value if it differs from the current value and increments the counter.
+// It then notifies all registered watchers by calling their Compute method.
+func (b *baseCell) SetValue(val int) {
+	if b.value == val {
+		return
+	}
+	b.value = val
+	b.counter++
+	for _, w := range b.watchers {
+		w.Compute()
+	}
+}
+
+// addWatcher registers a watcher for value changes.
+func (b *baseCell) addWatcher(w computable) {
+	b.watchers = append(b.watchers, w)
+}
+
+// inputCell implements InputCell and embeds baseCell.
+type inputCell struct {
+	baseCell
+}
+
+// NewInputCell creates a new inputCell with the given initial value.
+func NewInputCell(initial int) *inputCell {
+	return &inputCell{
+		baseCell: baseCell{
+			value:    initial,
+			counter:  0,
+			watchers: []computable{},
+		},
+	}
+}
+
+// computeCellImpl implements ComputeCell and computable.
+// It computes its value based on dependencies using a compute function.
+// It also supports callbacks when the value changes.
+type computeCellImpl struct {
+	baseCell
+	dependencies []Cell
+	computeFunc  func([]int) int
+	callbacks    []func(int)
+}
+
+// getCounter returns the counter value for a cell. Assumes underlying cell is either *inputCell or *computeCellImpl.
+func getCounter(c Cell) int {
+	if ic, ok := c.(*inputCell); ok {
+		return ic.counter
+	}
+	if cc, ok := c.(*computeCellImpl); ok {
+		return cc.counter
+	}
+	return 0
+}
+
+// Compute recalculates the cell's value based on its dependencies.
+// It gathers the latest dependency values and applies the computeFunc.
+// Before computing, it checks that all dependencies have the same counter value; if not, it defers computation.
+// If the new value differs from the current one, it updates the value and triggers callbacks.
+func (c *computeCellImpl) Compute() {
+	// Check if all dependencies are in sync (i.e., have the same counter)
+	counters := make(map[int]struct{})
+	for _, dep := range c.dependencies {
+		counters[getCounter(dep)] = struct{}{}
+	}
+	if len(counters) > 1 {
+		return
+	}
+
+	// Gather dependency values
+	values := make([]int, len(c.dependencies))
+	for i, dep := range c.dependencies {
+		values[i] = dep.Value()
+	}
+
+	newVal := c.computeFunc(values)
+	if newVal != c.value {
+		c.SetValue(newVal) // This updates the value, increments the counter, and notifies watchers
+		// Trigger callbacks
+		for _, cb := range c.callbacks {
+			cb(newVal)
+		}
+	}
+}
+
+// AddCallback registers a callback function to be called when the computed value changes.
+// It returns a Canceler which can be used to remove the callback.
+func (c *computeCellImpl) AddCallback(cb func(int)) Canceler {
+	c.callbacks = append(c.callbacks, cb)
+	return &canceler{
+		cell:     c,
+		callback: cb,
+		removed:  false,
+	}
+}
+
+// removeCallback removes a callback from the callbacks slice by comparing function pointers.
+func (c *computeCellImpl) removeCallback(cb func(int)) {
+	cbPtr := getFuncPointer(cb)
+	newCallbacks := c.callbacks[:0]
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) != cbPtr {
+			newCallbacks = append(newCallbacks, existing)
+		}
+	}
+	c.callbacks = newCallbacks
+}
+
+// getFuncPointer returns the pointer of a function using reflection.
+func getFuncPointer(f func(int)) uintptr {
+	return reflect.ValueOf(f).Pointer()
+}
+
+// canceler implements Canceler and holds a reference to a computeCellImpl and a callback function.
+type canceler struct {
+	cell     *computeCellImpl
+	callback func(int)
+	removed  bool
+}
+
+// Cancel removes the associated callback from the compute cell. It is idempotent.
+func (c *canceler) Cancel() {
+	if !c.removed {
+		c.cell.removeCallback(c.callback)
+		c.removed = true
+	}
+}
+
+// reactorImpl implements Reactor.
+type reactorImpl struct{}
+
+// New creates a new Reactor instance.
+func New() Reactor {
+	return &reactorImpl{}
+}
+
+// CreateInput creates a new InputCell with the given initial value.
+func (r *reactorImpl) CreateInput(initial int) InputCell {
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency and a compute function that takes an int.
+func (r *reactorImpl) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) > 0 {
+			return compute(vals[0])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	// Register cc as a watcher on dep if possible
+	if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+		watcher.addWatcher(cc)
+	}
+	cc.Compute()
+	return cc
+}
+
+// CreateCompute2 creates a new ComputeCell with two dependencies and a compute function that takes two ints.
+func (r *reactorImpl) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) >= 2 {
+			return compute(vals[0], vals[1])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep1, dep2},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	for _, dep := range []Cell{dep1, dep2} {
+		if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+			watcher.addWatcher(cc)
+		}
+	}
+	cc.Compute()
+	return cc
+}
+
+// To allow inputCell and computeCellImpl to satisfy the addWatcher requirement,
+// add the method to them.
+func (i *inputCell) addWatcher(w computable) {
+	i.baseCell.addWatcher(w)
+}
+
+func (c *computeCellImpl) addWatcher(w computable) {
+	c.baseCell.addWatcher(w)
+}
+
+// String returns a string representation of the base cell for debugging purposes.
+func (b *baseCell) String() string {
+	return fmt.Sprintf("Value: %d, Counter: %d", b.value, b.counter)
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestBasicCompute2 (0.00s)
+    react_test.go:18: (from line 49) c.Value() isn't properly computed when first input cell value changes: expected 6, got 3
+--- FAIL: TestCompute2Diamond (0.00s)
+    react_test.go:18: (from line 63) c3.Value() isn't properly computed based on changed input cell value: expected 8, got 0
+FAIL
+FAIL	exercism/react	0.275s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"fmt"
+	"reflect"
+)
+
+// This file contains a reactor implementation that satisfies the following interfaces and tests:
+// Reactor, Cell, InputCell, ComputeCell, and Canceler.
+
+// Reactor represents the reactor interface with methods to create input and compute cells.
+// The reactor is responsible for cell creation and wiring.
+//
+// Methods:
+//   CreateInput(initial int) InputCell
+//   CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+//   CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+//
+// The package name is "react" as it is in the enclosing directory.
+
+// Reactor is the reactor interface.
+type Reactor interface {
+	CreateInput(initial int) InputCell
+	CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+	CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+}
+
+// Cell represents a cell whose value can be observed and changed.
+// Both InputCell and ComputeCell implement Cell.
+type Cell interface {
+	Value() int
+	SetValue(int)
+}
+
+// InputCell is a cell that can have its value directly set.
+type InputCell interface {
+	Cell
+}
+
+// ComputeCell is a cell whose value is computed from one or more dependency cells.
+// It also supports registering callbacks that are triggered when its value changes.
+type ComputeCell interface {
+	Cell
+	// AddCallback registers a callback and returns a Canceler to remove it.
+	AddCallback(func(int)) Canceler
+}
+
+// Canceler represents a handle that can cancel a previously registered callback.
+type Canceler interface {
+	Cancel()
+}
+
+// computable is an internal interface for cells that can recompute their value.
+// It is used as watchers on dependency cells.
+type computable interface {
+	Compute()
+}
+
+// baseCell holds common properties for cells: value, counter (number of updates), and watchers.
+// The counter is incremented on every value change.
+// The watchers are other cells that depend on this cell.
+type baseCell struct {
+	value    int
+	counter  int
+	watchers []computable
+}
+
+// Value returns the current value of the cell.
+func (b *baseCell) Value() int {
+	return b.value
+}
+
+// SetValue sets the cell's value if it differs from the current value and increments the counter.
+// It then notifies all registered watchers by calling their Compute method.
+func (b *baseCell) SetValue(val int) {
+	if b.value == val {
+		return
+	}
+	b.value = val
+	b.counter++
+	for _, w := range b.watchers {
+		w.Compute()
+	}
+}
+
+// addWatcher registers a watcher for value changes.
+func (b *baseCell) addWatcher(w computable) {
+	b.watchers = append(b.watchers, w)
+}
+
+// inputCell implements InputCell and embeds baseCell.
+type inputCell struct {
+	baseCell
+}
+
+// NewInputCell creates a new inputCell with the given initial value.
+func NewInputCell(initial int) *inputCell {
+	return &inputCell{
+		baseCell: baseCell{
+			value:    initial,
+			counter:  0,
+			watchers: []computable{},
+		},
+	}
+}
+
+// computeCellImpl implements ComputeCell and computable.
+// It computes its value based on dependencies using a compute function.
+// It also supports callbacks when the value changes.
+type computeCellImpl struct {
+	baseCell
+	dependencies []Cell
+	computeFunc  func([]int) int
+	callbacks    []func(int)
+}
+
+// Compute recalculates the cell's value based on its dependencies.
+// It gathers the latest dependency values, applies the computeFunc,
+// and if the new value differs from the current one, it updates the value and triggers callbacks.
+func (c *computeCellImpl) Compute() {
+	// Always compute based on current dependency values
+	values := make([]int, len(c.dependencies))
+	for i, dep := range c.dependencies {
+		values[i] = dep.Value()
+	}
+
+	newVal := c.computeFunc(values)
+	if newVal != c.value {
+		c.SetValue(newVal) // This updates the value, increments the counter, and notifies watchers
+		// Trigger callbacks
+		for _, cb := range c.callbacks {
+			cb(newVal)
+		}
+	}
+}
+
+// AddCallback registers a callback function to be called when the computed value changes.
+// It returns a Canceler which can be used to remove the callback.
+func (c *computeCellImpl) AddCallback(cb func(int)) Canceler {
+	c.callbacks = append(c.callbacks, cb)
+	return &canceler{
+		cell:     c,
+		callback: cb,
+		removed:  false,
+	}
+}
+
+// removeCallback removes a callback from the callbacks slice by comparing function pointers.
+func (c *computeCellImpl) removeCallback(cb func(int)) {
+	cbPtr := getFuncPointer(cb)
+	newCallbacks := c.callbacks[:0]
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) != cbPtr {
+			newCallbacks = append(newCallbacks, existing)
+		}
+	}
+	c.callbacks = newCallbacks
+}
+
+// getFuncPointer returns the pointer of a function using reflection.
+func getFuncPointer(f func(int)) uintptr {
+	return reflect.ValueOf(f).Pointer()
+}
+
+// canceler implements Canceler and holds a reference to a computeCellImpl and a callback function.
+type canceler struct {
+	cell     *computeCellImpl
+	callback func(int)
+	removed  bool
+}
+
+// Cancel removes the associated callback from the compute cell. It is idempotent.
+func (c *canceler) Cancel() {
+	if !c.removed {
+		c.cell.removeCallback(c.callback)
+		c.removed = true
+	}
+}
+
+// reactorImpl implements Reactor.
+type reactorImpl struct{}
+
+// New creates a new Reactor instance.
+func New() Reactor {
+	return &reactorImpl{}
+}
+
+// CreateInput creates a new InputCell with the given initial value.
+func (r *reactorImpl) CreateInput(initial int) InputCell {
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency and a compute function that takes an int.
+func (r *reactorImpl) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) > 0 {
+			return compute(vals[0])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	// Register cc as a watcher on dep if possible
+	if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+		watcher.addWatcher(cc)
+	}
+	cc.Compute()
+	return cc
+}
+
+// CreateCompute2 creates a new ComputeCell with two dependencies and a compute function that takes two ints.
+func (r *reactorImpl) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) >= 2 {
+			return compute(vals[0], vals[1])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep1, dep2},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	for _, dep := range []Cell{dep1, dep2} {
+		if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+			watcher.addWatcher(cc)
+		}
+	}
+	cc.Compute()
+	return cc
+}
+
+// To allow inputCell and computeCellImpl to satisfy the addWatcher requirement,
+// add the method to them.
+func (i *inputCell) addWatcher(w computable) {
+	i.baseCell.addWatcher(w)
+}
+
+func (c *computeCellImpl) addWatcher(w computable) {
+	c.baseCell.addWatcher(w)
+}
+
+// String returns a string representation of the base cell for debugging purposes.
+func (b *baseCell) String() string {
+	return fmt.Sprintf("Value: %d, Counter: %d", b.value, b.counter)
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestOnlyCallOnceOnMultipleDepChanges (0.00s)
+    react_test.go:244: callback function was called too often
+--- FAIL: TestNoCallOnDepChangesResultingInNoChange (0.00s)
+    react_test.go:263: callback function called even though computed value didn't change
+FAIL
+FAIL	exercism/react	0.270s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"fmt"
+	"reflect"
+)
+
+// This file contains a reactor implementation that satisfies the following interfaces and tests:
+// Reactor, Cell, InputCell, ComputeCell, and Canceler.
+//
+// Due to the synchronous nature of cell updates and the requirement that callbacks
+// on computed cells are triggered only once per external update, we implement an update
+// batching mechanism. When an input cell's SetValue is called, all dependent computed cells
+// are scheduled for recomputation. After stabilization, all computed cells that changed
+// trigger their callbacks exactly once with their final value.
+
+// Global variables for batching updates.
+var (
+	pending      []computable
+	changedCells = make(map[*computeCellImpl]struct{})
+)
+
+// addPending adds a computable cell to the pending update queue.
+func addPending(c computable) {
+	pending = append(pending, c)
+}
+
+// flushPending processes all pending computable updates until stabilization, then triggers callbacks
+// for all computed cells that changed during the update.
+func flushPending() {
+	for len(pending) > 0 {
+		current := pending
+		pending = nil
+		for _, comp := range current {
+			comp.Compute()
+		}
+	}
+	// After stabilization, invoke callbacks of computed cells that changed, exactly once.
+	for cell := range changedCells {
+		for _, cb := range cell.callbacks {
+			cb(cell.value)
+		}
+	}
+	changedCells = make(map[*computeCellImpl]struct{})
+}
+
+// Reactor represents the reactor interface responsible for creating cells.
+type Reactor interface {
+	CreateInput(initial int) InputCell
+	CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+	CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+}
+
+// Cell represents a cell whose value can be observed and changed.
+// Both InputCell and ComputeCell implement Cell.
+type Cell interface {
+	Value() int
+	SetValue(int)
+}
+
+// InputCell is a cell that can have its value directly set.
+type InputCell interface {
+	Cell
+}
+
+// ComputeCell is a cell whose value is computed from one or more dependency cells.
+// It also supports registering callbacks that are triggered when its value changes.
+type ComputeCell interface {
+	Cell
+	// AddCallback registers a callback and returns a Canceler to remove it.
+	AddCallback(func(int)) Canceler
+}
+
+// Canceler represents a handle that can cancel a previously registered callback.
+type Canceler interface {
+	Cancel()
+}
+
+// computable is an internal interface for cells that can recompute their value.
+// It is used as watchers on dependency cells.
+type computable interface {
+	Compute()
+}
+
+// baseCell holds common properties for cells: value, counter (number of updates), and watchers.
+// The counter is incremented on every value change.
+// The watchers are other cells that depend on this cell.
+type baseCell struct {
+	value    int
+	counter  int
+	watchers []computable
+}
+
+// Value returns the current value of the cell.
+func (b *baseCell) Value() int {
+	return b.value
+}
+
+// SetValue sets the cell's value if it differs from the current value and increments the counter.
+// It then schedules all registered watchers for update.
+func (b *baseCell) SetValue(val int) {
+	if b.value == val {
+		return
+	}
+	b.value = val
+	b.counter++
+	for _, w := range b.watchers {
+		addPending(w)
+	}
+}
+
+// inputCell implements InputCell and embeds baseCell.
+type inputCell struct {
+	baseCell
+}
+
+// NewInputCell creates a new inputCell with the given initial value.
+func NewInputCell(initial int) *inputCell {
+	return &inputCell{
+		baseCell: baseCell{
+			value:    initial,
+			counter:  0,
+			watchers: []computable{},
+		},
+	}
+}
+
+// Override SetValue for inputCell to flush pending updates immediately.
+func (i *inputCell) SetValue(val int) {
+	i.baseCell.SetValue(val)
+	flushPending()
+}
+
+// computeCellImpl implements ComputeCell and computable.
+// It computes its value based on dependencies using a compute function.
+// It also supports callbacks when the value changes. Callback invocations are batched.
+type computeCellImpl struct {
+	baseCell
+	dependencies []Cell
+	computeFunc  func([]int) int
+	callbacks    []func(int)
+}
+
+// Override SetValue for computeCellImpl to mark the cell as changed (for callback batching) without flushing.
+func (c *computeCellImpl) SetValue(val int) {
+	if c.value == val {
+		return
+	}
+	c.value = val
+	c.counter++
+	// Mark this compute cell as changed
+	changedCells[c] = struct{}{}
+	for _, w := range c.watchers {
+		addPending(w)
+	}
+}
+
+// Compute recalculates the cell's value based on its dependencies.
+// It gathers the latest dependency values, applies the computeFunc,
+// and if the new value differs from the current one, updates the value (but does not immediately invoke callbacks).
+func (c *computeCellImpl) Compute() {
+	values := make([]int, len(c.dependencies))
+	for i, dep := range c.dependencies {
+		values[i] = dep.Value()
+	}
+	newVal := c.computeFunc(values)
+	if newVal != c.value {
+		c.SetValue(newVal)
+	}
+}
+
+// AddCallback registers a callback function to be called when the computed value changes.
+// It returns a Canceler, which can be used to remove the callback.
+func (c *computeCellImpl) AddCallback(cb func(int)) Canceler {
+	// Ensure the callback is not already added (by comparing function pointers).
+	cbPtr := getFuncPointer(cb)
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) == cbPtr {
+			return &canceler{cell: c, callback: cb, removed: true} // already added; return a dummy canceler
+		}
+	}
+	c.callbacks = append(c.callbacks, cb)
+	return &canceler{cell: c, callback: cb, removed: false}
+}
+
+// removeCallback removes a callback from the callbacks slice by comparing function pointers.
+func (c *computeCellImpl) removeCallback(cb func(int)) {
+	cbPtr := getFuncPointer(cb)
+	newCallbacks := c.callbacks[:0]
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) != cbPtr {
+			newCallbacks = append(newCallbacks, existing)
+		}
+	}
+	c.callbacks = newCallbacks
+}
+
+// getFuncPointer returns the pointer of a function using reflection.
+func getFuncPointer(f func(int)) uintptr {
+	return reflect.ValueOf(f).Pointer()
+}
+
+// canceler implements Canceler and holds a reference to a computeCellImpl and a callback function.
+type canceler struct {
+	cell     *computeCellImpl
+	callback func(int)
+	removed  bool
+}
+
+// Cancel removes the associated callback from the compute cell. It is idempotent.
+func (c *canceler) Cancel() {
+	if !c.removed {
+		c.cell.removeCallback(c.callback)
+		c.removed = true
+	}
+}
+
+// reactorImpl implements Reactor.
+type reactorImpl struct{}
+
+// New creates a new Reactor instance.
+func New() Reactor {
+	return &reactorImpl{}
+}
+
+// CreateInput creates a new InputCell with the given initial value.
+func (r *reactorImpl) CreateInput(initial int) InputCell {
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency and a compute function that takes an int.
+func (r *reactorImpl) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) > 0 {
+			return compute(vals[0])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	// Register cc as a watcher on dep if possible
+	if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+		watcher.addWatcher(cc)
+	}
+	cc.Compute()
+	return cc
+}
+
+// CreateCompute2 creates a new ComputeCell with two dependencies and a compute function that takes two ints.
+func (r *reactorImpl) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) >= 2 {
+			return compute(vals[0], vals[1])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep1, dep2},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	for _, dep := range []Cell{dep1, dep2} {
+		if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+			watcher.addWatcher(cc)
+		}
+	}
+	cc.Compute()
+	return cc
+}
+
+// To allow inputCell and computeCellImpl to satisfy the addWatcher requirement,
+// add the method to them.
+func (i *inputCell) addWatcher(w computable) {
+	i.baseCell.addWatcher(w)
+}
+
+func (c *computeCellImpl) addWatcher(w computable) {
+	c.baseCell.addWatcher(w)
+}
+
+// String returns a string representation of the base cell for debugging purposes.
+func (b *baseCell) String() string {
+	return fmt.Sprintf("Value: %d, Counter: %d", b.value, b.counter)
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/react [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/react [exercism/react.test]
+./react.go:288:13: i.baseCell.addWatcher undefined (type baseCell has no field or method addWatcher)
+./react.go:292:13: c.baseCell.addWatcher undefined (type baseCell has no field or method addWatcher)
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"fmt"
+	"reflect"
+)
+
+// This file contains a reactor implementation that satisfies the following interfaces and tests:
+// Reactor, Cell, InputCell, ComputeCell, and Canceler.
+//
+// To correctly batch updates and ensure that computed cell callbacks are invoked only once per external update,
+// we implement an update batching mechanism. When an input cell's SetValue is called, all dependent computed
+// cells are scheduled for recomputation. After stabilization, all computed cells which changed trigger
+// their callbacks exactly once with their final value.
+
+// Global variables for batching updates.
+var (
+	pending      []computable
+	changedCells = make(map[*computeCellImpl]struct{})
+)
+
+// addPending adds a computable cell to the pending update queue.
+func addPending(c computable) {
+	pending = append(pending, c)
+}
+
+// flushPending processes all pending computable updates until stabilization, then triggers callbacks
+// for all computed cells that changed during the update.
+func flushPending() {
+	for len(pending) > 0 {
+		current := pending
+		pending = nil
+		for _, comp := range current {
+			comp.Compute()
+		}
+	}
+	// After stabilization, invoke callbacks on all computed cells that changed, exactly once.
+	for cell := range changedCells {
+		for _, cb := range cell.callbacks {
+			cb(cell.value)
+		}
+	}
+	changedCells = make(map[*computeCellImpl]struct{})
+}
+
+// Reactor represents the reactor interface responsible for creating cells.
+// Methods:
+//   CreateInput(initial int) InputCell
+//   CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+//   CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+//
+// The package name is "react".
+
+// Reactor is the reactor interface.
+type Reactor interface {
+	CreateInput(initial int) InputCell
+	CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+	CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+}
+
+// Cell represents a cell whose value can be observed and changed.
+// Both InputCell and ComputeCell implement Cell.
+type Cell interface {
+	Value() int
+	SetValue(int)
+}
+
+// InputCell is a cell whose value can be directly set.
+type InputCell interface {
+	Cell
+}
+
+// ComputeCell is a cell whose value is computed from one or more dependency cells.
+// It supports registering callbacks that are triggered when its value changes.
+type ComputeCell interface {
+	Cell
+	// AddCallback registers a callback and returns a Canceler to remove it.
+	AddCallback(func(int)) Canceler
+}
+
+// Canceler represents a handle that can cancel a previously registered callback.
+type Canceler interface {
+	Cancel()
+}
+
+// computable is an internal interface for cells that can recompute their value.
+// It is used as watchers on dependency cells.
+type computable interface {
+	Compute()
+}
+
+// baseCell holds common properties for cells: value, counter (number of updates), and watchers.
+// The counter is incremented on every value change.
+// The watchers are other cells that depend on this cell.
+// Note: baseCell is embedded as a pointer in cell implementations so that methods with pointer receivers
+// work correctly.
+type baseCell struct {
+	value    int
+	counter  int
+	watchers []computable
+}
+
+// Value returns the current value of the cell.
+func (b *baseCell) Value() int {
+	return b.value
+}
+
+// SetValue sets the cell's value if it differs from the current value and increments the counter.
+// It then schedules all registered watchers for update.
+func (b *baseCell) SetValue(val int) {
+	if b.value == val {
+		return
+	}
+	b.value = val
+	b.counter++
+	for _, w := range b.watchers {
+		addPending(w)
+	}
+}
+
+// addWatcher registers a watcher for value changes.
+func (b *baseCell) addWatcher(w computable) {
+	b.watchers = append(b.watchers, w)
+}
+
+// inputCell implements InputCell and embeds *baseCell.
+type inputCell struct {
+	*baseCell
+}
+
+// NewInputCell creates a new inputCell with the given initial value.
+func NewInputCell(initial int) *inputCell {
+	return &inputCell{
+		baseCell: &baseCell{
+			value:    initial,
+			counter:  0,
+			watchers: []computable{},
+		},
+	}
+}
+
+// Override SetValue for inputCell to flush pending updates immediately.
+func (i *inputCell) SetValue(val int) {
+	i.baseCell.SetValue(val)
+	flushPending()
+}
+
+// computeCellImpl implements ComputeCell and computable.
+// It computes its value based on dependencies using a compute function.
+// It also supports callbacks when the value changes. Callback invocations are batched.
+// Note: It embeds *baseCell.
+type computeCellImpl struct {
+	*baseCell
+	dependencies []Cell
+	computeFunc  func([]int) int
+	callbacks    []func(int)
+}
+
+// Override SetValue for computeCellImpl to mark the cell as changed (for callback batching) without flushing.
+func (c *computeCellImpl) SetValue(val int) {
+	if c.value == val {
+		return
+	}
+	c.value = val
+	c.counter++
+	// Mark this compute cell as changed so that its callbacks will be invoked after stabilization.
+	changedCells[c] = struct{}{}
+	for _, w := range c.watchers {
+		addPending(w)
+	}
+}
+
+// Compute recalculates the cell's value based on its dependencies.
+// It gathers the latest dependency values, applies the computeFunc,
+// and if the new value differs from the current one, updates the value (but does not immediately invoke callbacks).
+func (c *computeCellImpl) Compute() {
+	values := make([]int, len(c.dependencies))
+	for i, dep := range c.dependencies {
+		values[i] = dep.Value()
+	}
+	newVal := c.computeFunc(values)
+	if newVal != c.value {
+		c.SetValue(newVal)
+	}
+}
+
+// AddCallback registers a callback function to be called when the computed value changes.
+// It returns a Canceler, which can be used to remove the callback.
+func (c *computeCellImpl) AddCallback(cb func(int)) Canceler {
+	// Prevent duplicate callbacks by comparing function pointers.
+	cbPtr := getFuncPointer(cb)
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) == cbPtr {
+			return &canceler{cell: c, callback: cb, removed: true} // already added; return a dummy canceler
+		}
+	}
+	c.callbacks = append(c.callbacks, cb)
+	return &canceler{cell: c, callback: cb, removed: false}
+}
+
+// removeCallback removes a callback from the callbacks slice by comparing function pointers.
+func (c *computeCellImpl) removeCallback(cb func(int)) {
+	cbPtr := getFuncPointer(cb)
+	newCallbacks := c.callbacks[:0]
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) != cbPtr {
+			newCallbacks = append(newCallbacks, existing)
+		}
+	}
+	c.callbacks = newCallbacks
+}
+
+// getFuncPointer returns the pointer of a function using reflection.
+func getFuncPointer(f func(int)) uintptr {
+	return reflect.ValueOf(f).Pointer()
+}
+
+// canceler implements Canceler and holds a reference to a computeCellImpl and a callback function.
+type canceler struct {
+	cell     *computeCellImpl
+	callback func(int)
+	removed  bool
+}
+
+// Cancel removes the associated callback from the compute cell. It is idempotent.
+func (c *canceler) Cancel() {
+	if !c.removed {
+		c.cell.removeCallback(c.callback)
+		c.removed = true
+	}
+}
+
+// reactorImpl implements Reactor.
+type reactorImpl struct{}
+
+// New creates a new Reactor instance.
+func New() Reactor {
+	return &reactorImpl{}
+}
+
+// CreateInput creates a new InputCell with the given initial value.
+func (r *reactorImpl) CreateInput(initial int) InputCell {
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency and a compute function that takes an int.
+func (r *reactorImpl) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) > 0 {
+			return compute(vals[0])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: &baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	// Register cc as a watcher on dep if possible
+	if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+		watcher.addWatcher(cc)
+	}
+	cc.Compute()
+	return cc
+}
+
+// CreateCompute2 creates a new ComputeCell with two dependencies and a compute function that takes two ints.
+func (r *reactorImpl) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) >= 2 {
+			return compute(vals[0], vals[1])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: &baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep1, dep2},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+	}
+	for _, dep := range []Cell{dep1, dep2} {
+		if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+			watcher.addWatcher(cc)
+		}
+	}
+	cc.Compute()
+	return cc
+}
+
+// To allow inputCell and computeCellImpl to satisfy the addWatcher requirement,
+// add the method to them. Their embedded *baseCell already provides this method,
+// so no additional method definitions are needed.
+
+// String returns a string representation of the base cell for debugging purposes.
+func (b *baseCell) String() string {
+	return fmt.Sprintf("Value: %d, Counter: %d", b.value, b.counter)
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestOnlyCallOnChanges (0.00s)
+    react_test.go:144: observe function called even though input didn't change
+--- FAIL: TestMultipleCallbackRemoval (0.00s)
+    react_test.go:200: callback 2/5 should be called 1 time, was called 0 times
+--- FAIL: TestNoCallOnDepChangesResultingInNoChange (0.00s)
+    react_test.go:263: callback function called even though computed value didn't change
+FAIL
+FAIL	exercism/react	0.286s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"fmt"
+	"reflect"
+)
+
+// This file contains a reactor implementation that satisfies the following interfaces and tests:
+// Reactor, Cell, InputCell, ComputeCell, and Canceler.
+//
+// The implementation uses a generation mechanism to batch updates so that callbacks on computed cells
+// are invoked at most once per external update. When an input cell is externally updated, the global
+// generation counter is incremented, and computed cells record the generation in which they were last
+// updated. After propagation, callbacks for computed cells that changed in the current generation are
+// fired exactly once with their final value.
+
+// Global update management
+var (
+	currentGen   int = 0
+	pending      []computable
+	changedCells = make(map[*computeCellImpl]struct{})
+)
+
+// addPending adds a computable cell to the pending update queue.
+func addPending(c computable) {
+	pending = append(pending, c)
+}
+
+// flushPending processes all pending computable updates until stabilization, then triggers callbacks
+// for all computed cells that changed during the current generation.
+func flushPending() {
+	for len(pending) > 0 {
+		current := pending
+		pending = nil
+		for _, comp := range current {
+			comp.Compute()
+		}
+	}
+	// Fire callbacks once for each computed cell that changed this generation.
+	for cell := range changedCells {
+		for _, cb := range cell.callbacks {
+			cb(cell.value)
+		}
+	}
+	changedCells = make(map[*computeCellImpl]struct{})
+}
+
+// Reactor represents the reactor interface responsible for creating cells.
+// Methods:
+//   CreateInput(initial int) InputCell
+//   CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+//   CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+//
+// The package name is "react".
+
+type Reactor interface {
+	CreateInput(initial int) InputCell
+	CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+	CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+}
+
+// Cell represents a cell whose value can be observed and changed.
+// Both InputCell and ComputeCell implement Cell.
+type Cell interface {
+	Value() int
+	SetValue(int)
+}
+
+// InputCell is a cell whose value can be directly set.
+type InputCell interface {
+	Cell
+}
+
+// ComputeCell is a cell whose value is computed from one or more dependency cells.
+// It supports registering callbacks that are triggered when its value changes.
+type ComputeCell interface {
+	Cell
+	AddCallback(func(int)) Canceler
+}
+
+// Canceler represents a handle which can cancel a previously registered callback.
+type Canceler interface {
+	Cancel()
+}
+
+// computable is an internal interface for cells that can recompute their value.
+// It is used as watchers on dependency cells.
+type computable interface {
+	Compute()
+}
+
+// baseCell holds common properties for cells: value, counter (number of updates), and watchers.
+// The counter is incremented on every value change. The watchers are other cells that depend on this cell.
+// baseCell is embedded as a pointer in cell implementations.
+type baseCell struct {
+	value    int
+	counter  int
+	watchers []computable
+}
+
+// Value returns the current value of the cell.
+func (b *baseCell) Value() int {
+	return b.value
+}
+
+// SetValue sets the cell's value if it differs from the current value and increments the counter.
+// It then schedules all registered watchers for update.
+func (b *baseCell) SetValue(val int) {
+	if b.value == val {
+		return
+	}
+	b.value = val
+	b.counter++
+	for _, w := range b.watchers {
+		addPending(w)
+	}
+}
+
+// addWatcher registers a watcher for value changes.
+func (b *baseCell) addWatcher(w computable) {
+	b.watchers = append(b.watchers, w)
+}
+
+// inputCell implements InputCell and embeds *baseCell.
+type inputCell struct {
+	*baseCell
+}
+
+// NewInputCell creates a new inputCell with the given initial value.
+func NewInputCell(initial int) *inputCell {
+	return &inputCell{
+		baseCell: &baseCell{
+			value:    initial,
+			counter:  0,
+			watchers: []computable{},
+		},
+	}
+}
+
+// SetValue for inputCell overrides baseCell.SetValue to flush updates immediately and increment the generation if a change occurs.
+func (i *inputCell) SetValue(val int) {
+	old := i.value
+	i.baseCell.SetValue(val)
+	if old != val {
+		currentGen++
+	}
+	flushPending()
+}
+
+// computeCellImpl implements ComputeCell and computable.
+// It computes its value based on dependencies using a compute function. It also supports callbacks
+// when the value changes. Callback invocations are batched, and each computed cell fires its callbacks
+// at most once per generation.
+// It embeds *baseCell and has additional fields: dependencies, computeFunc, callbacks, and lastGen.
+type computeCellImpl struct {
+	*baseCell
+	dependencies []Cell
+	computeFunc  func([]int) int
+	callbacks    []func(int)
+	// lastGen records the generation in which this cell last changed value
+	lastGen int
+}
+
+// SetValue for computeCellImpl overrides baseCell.SetValue to mark the cell as changed for the current generation
+// (and schedules propagation) without flushing pending updates immediately.
+func (c *computeCellImpl) SetValue(val int) {
+	if c.value == val {
+		return
+	}
+	c.value = val
+	c.counter++
+	if c.lastGen != currentGen {
+		changedCells[c] = struct{}{}
+		c.lastGen = currentGen
+	}
+	for _, w := range c.watchers {
+		addPending(w)
+	}
+}
+
+// Compute recalculates the cell's value based on its dependencies. It gathers the latest dependency values,
+// applies the computeFunc, and if the new value differs from the current one, updates the value.
+func (c *computeCellImpl) Compute() {
+	values := make([]int, len(c.dependencies))
+	for i, dep := range c.dependencies {
+		values[i] = dep.Value()
+	}
+	newVal := c.computeFunc(values)
+	if newVal != c.value {
+		c.SetValue(newVal)
+	}
+}
+
+// AddCallback registers a callback to be fired when the computed cell's value changes in a generation.
+// It returns a Canceler to remove the callback. Duplicate callbacks are not added.
+func (c *computeCellImpl) AddCallback(cb func(int)) Canceler {
+	cbPtr := getFuncPointer(cb)
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) == cbPtr {
+			// Already added; return a dummy canceler
+			return &canceler{cell: c, callback: cb, removed: true}
+		}
+	}
+	c.callbacks = append(c.callbacks, cb)
+	return &canceler{cell: c, callback: cb, removed: false}
+}
+
+// removeCallback removes a callback from the callbacks slice by comparing function pointers.
+func (c *computeCellImpl) removeCallback(cb func(int)) {
+	cbPtr := getFuncPointer(cb)
+	newCallbacks := c.callbacks[:0]
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) != cbPtr {
+			newCallbacks = append(newCallbacks, existing)
+		}
+	}
+	c.callbacks = newCallbacks
+}
+
+// getFuncPointer returns the pointer of a function using reflection.
+func getFuncPointer(f func(int)) uintptr {
+	return reflect.ValueOf(f).Pointer()
+}
+
+// canceler implements Canceler and holds a reference to a computeCellImpl and a callback.
+type canceler struct {
+	cell     *computeCellImpl
+	callback func(int)
+	removed  bool
+}
+
+// Cancel removes the associated callback from the compute cell. It is idempotent.
+func (c *canceler) Cancel() {
+	if !c.removed {
+		c.cell.removeCallback(c.callback)
+		c.removed = true
+	}
+}
+
+// reactorImpl implements Reactor.
+type reactorImpl struct{}
+
+// New creates a new Reactor instance.
+func New() Reactor {
+	return &reactorImpl{}
+}
+
+// CreateInput creates a new InputCell with the given initial value.
+func (r *reactorImpl) CreateInput(initial int) InputCell {
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency and a compute function that takes an int.
+func (r *reactorImpl) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) > 0 {
+			return compute(vals[0])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: &baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+		lastGen:      currentGen,
+	}
+	if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+		watcher.addWatcher(cc)
+	}
+	cc.Compute()
+	return cc
+}
+
+// CreateCompute2 creates a new ComputeCell with two dependencies and a compute function that takes two ints.
+func (r *reactorImpl) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) >= 2 {
+			return compute(vals[0], vals[1])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: &baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep1, dep2},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+		lastGen:      currentGen,
+	}
+	for _, dep := range []Cell{dep1, dep2} {
+		if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+			watcher.addWatcher(cc)
+		}
+	}
+	cc.Compute()
+	return cc
+}
+
+// The embedded *baseCell already provides the addWatcher method, so no further methods are needed.
+
+// String returns a string representation of the base cell for debugging purposes.
+func (b *baseCell) String() string {
+	return fmt.Sprintf("Value: %d, Counter: %d", b.value, b.counter)
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 1
+=== STDOUT ===
+--- FAIL: TestMultipleCallbackRemoval (0.00s)
+    react_test.go:200: callback 2/5 should be called 1 time, was called 0 times
+FAIL
+FAIL	exercism/react	0.274s
+FAIL
+
+=== STDERR ===
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"fmt"
+	"reflect"
+)
+
+// This file contains a reactor implementation that satisfies the following interfaces and tests:
+// Reactor, Cell, InputCell, ComputeCell, and Canceler.
+//
+// The implementation uses a generation mechanism to batch updates so that callbacks on computed cells
+// are invoked at most once per external update. When an input cell is externally updated, the global
+// generation counter is incremented, and computed cells record the generation in which they were last
+// updated. After propagation, callbacks for computed cells that changed in the current generation are
+// fired exactly once with their final value.
+
+// Global update management
+var (
+	currentGen   int = 0
+	pending      []computable
+	changedCells = make(map[*computeCellImpl]struct{})
+)
+
+// addPending adds a computable cell to the pending update queue.
+func addPending(c computable) {
+	pending = append(pending, c)
+}
+
+// flushPending processes all pending computable updates until stabilization, then triggers callbacks
+// for all computed cells that changed during the current generation.
+func flushPending() {
+	for len(pending) > 0 {
+		current := pending
+		pending = nil
+		for _, comp := range current {
+			comp.Compute()
+		}
+	}
+	// Fire callbacks once for each computed cell that changed this generation.
+	for cell := range changedCells {
+		for _, cb := range cell.callbacks {
+			cb(cell.value)
+		}
+	}
+	changedCells = make(map[*computeCellImpl]struct{})
+}
+
+// Reactor represents the reactor interface responsible for creating cells.
+// Methods:
+//   CreateInput(initial int) InputCell
+//   CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+//   CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+
+type Reactor interface {
+	CreateInput(initial int) InputCell
+	CreateCompute1(dep Cell, compute func(int) int) ComputeCell
+	CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell
+}
+
+// Cell represents a cell whose value can be observed and changed.
+// Both InputCell and ComputeCell implement Cell.
+type Cell interface {
+	Value() int
+	SetValue(int)
+}
+
+// InputCell is a cell whose value can be directly set.
+type InputCell interface {
+	Cell
+}
+
+// ComputeCell is a cell whose value is computed from one or more dependency cells.
+// It supports registering callbacks that are triggered when its value changes.
+type ComputeCell interface {
+	Cell
+	AddCallback(func(int)) Canceler
+}
+
+// Canceler represents a handle that can cancel a previously registered callback.
+type Canceler interface {
+	Cancel()
+}
+
+// computable is an internal interface for cells that can recompute their value.
+// It is used as watchers on dependency cells.
+type computable interface {
+	Compute()
+}
+
+// baseCell holds common properties for cells: value, counter (number of updates), and watchers.
+// The counter is incremented on every value change. The watchers are other cells that depend on this cell.
+// baseCell is embedded as a pointer in cell implementations.
+type baseCell struct {
+	value    int
+	counter  int
+	watchers []computable
+}
+
+// Value returns the current value of the cell.
+func (b *baseCell) Value() int {
+	return b.value
+}
+
+// SetValue sets the cell's value if it differs from the current value and increments the counter.
+// It then schedules all registered watchers for update.
+func (b *baseCell) SetValue(val int) {
+	if b.value == val {
+		return
+	}
+	b.value = val
+	b.counter++
+	for _, w := range b.watchers {
+		addPending(w)
+	}
+}
+
+// addWatcher registers a watcher for value changes.
+func (b *baseCell) addWatcher(w computable) {
+	b.watchers = append(b.watchers, w)
+}
+
+// inputCell implements InputCell and embeds *baseCell.
+type inputCell struct {
+	*baseCell
+}
+
+// NewInputCell creates a new inputCell with the given initial value.
+func NewInputCell(initial int) *inputCell {
+	return &inputCell{
+		baseCell: &baseCell{
+			value:    initial,
+			counter:  0,
+			watchers: []computable{},
+		},
+	}
+}
+
+// SetValue for inputCell overrides baseCell.SetValue to flush updates immediately and increment the generation if a change occurs.
+func (i *inputCell) SetValue(val int) {
+	old := i.value
+	i.baseCell.SetValue(val)
+	if old != val {
+		currentGen++
+	}
+	flushPending()
+}
+
+// computeCellImpl implements ComputeCell and computable.
+// It computes its value based on dependencies using a compute function. It also supports callbacks
+// when the value changes. Callback invocations are batched, and each computed cell fires its callbacks
+// at most once per generation. It embeds *baseCell and has additional fields: dependencies, computeFunc, callbacks, and lastGen.
+type computeCellImpl struct {
+	*baseCell
+	dependencies []Cell
+	computeFunc  func([]int) int
+	callbacks    []func(int)
+	// lastGen records the generation in which this cell last changed value
+	lastGen int
+}
+
+// SetValue for computeCellImpl overrides baseCell.SetValue to mark the cell as changed for the current generation
+// (and schedules propagation) without flushing pending updates immediately.
+func (c *computeCellImpl) SetValue(val int) {
+	if c.value == val {
+		return
+	}
+	c.value = val
+	c.counter++
+	if c.lastGen != currentGen {
+		changedCells[c] = struct{}{}
+		c.lastGen = currentGen
+	}
+	for _, w := range c.watchers {
+		addPending(w)
+	}
+}
+
+// Compute recalculates the cell's value based on its dependencies. It gathers the latest dependency values,
+// applies the computeFunc, and if the new value differs from the current one, updates the value.
+func (c *computeCellImpl) Compute() {
+	values := make([]int, len(c.dependencies))
+	for i, dep := range c.dependencies {
+		values[i] = dep.Value()
+	}
+	newVal := c.computeFunc(values)
+	if newVal != c.value {
+		c.SetValue(newVal)
+	}
+}
+
+// AddCallback registers a callback to be fired when the computed cell's value changes in a generation.
+// It returns a Canceler to remove the callback. Duplicate callbacks are not checked now to allow distinct
+// closures with different environments to be registered.
+func (c *computeCellImpl) AddCallback(cb func(int)) Canceler {
+	c.callbacks = append(c.callbacks, cb)
+	return &canceler{cell: c, callback: cb, removed: false}
+}
+
+// removeCallback removes a callback from the callbacks slice by comparing function pointers.
+func (c *computeCellImpl) removeCallback(cb func(int)) {
+	cbPtr := getFuncPointer(cb)
+	newCallbacks := c.callbacks[:0]
+	for _, existing := range c.callbacks {
+		if getFuncPointer(existing) != cbPtr {
+			newCallbacks = append(newCallbacks, existing)
+		}
+	}
+	c.callbacks = newCallbacks
+}
+
+// getFuncPointer returns the pointer of a function using reflection.
+func getFuncPointer(f func(int)) uintptr {
+	return reflect.ValueOf(f).Pointer()
+}
+
+// canceler implements Canceler and holds a reference to a computeCellImpl and a callback.
+type canceler struct {
+	cell     *computeCellImpl
+	callback func(int)
+	removed  bool
+}
+
+// Cancel removes the associated callback from the compute cell. It is idempotent.
+func (c *canceler) Cancel() {
+	if !c.removed {
+		c.cell.removeCallback(c.callback)
+		c.removed = true
+	}
+}
+
+// reactorImpl implements Reactor.
+type reactorImpl struct{}
+
+// New creates a new Reactor instance.
+func New() Reactor {
+	return &reactorImpl{}
+}
+
+// CreateInput creates a new InputCell with the given initial value.
+func (r *reactorImpl) CreateInput(initial int) InputCell {
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency and a compute function that takes an int.
+func (r *reactorImpl) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) > 0 {
+			return compute(vals[0])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: &baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+		lastGen:      currentGen,
+	}
+	if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+		watcher.addWatcher(cc)
+	}
+	cc.Compute()
+	return cc
+}
+
+// CreateCompute2 creates a new ComputeCell with two dependencies and a compute function that takes two ints.
+func (r *reactorImpl) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	wrappedFunc := func(vals []int) int {
+		if len(vals) >= 2 {
+			return compute(vals[0], vals[1])
+		}
+		return 0
+	}
+	cc := &computeCellImpl{
+		baseCell: &baseCell{
+			value:    0,
+			counter:  0,
+			watchers: []computable{},
+		},
+		dependencies: []Cell{dep1, dep2},
+		computeFunc:  wrappedFunc,
+		callbacks:    []func(int){},
+		lastGen:      currentGen,
+	}
+	for _, dep := range []Cell{dep1, dep2} {
+		if watcher, ok := dep.(interface{ addWatcher(w computable) }); ok {
+			watcher.addWatcher(cc)
+		}
+	}
+	cc.Compute()
+	return cc
+}
+
+// The embedded *baseCell in inputCell and computeCellImpl already provides the addWatcher method.
+
+// String returns a string representation of the base cell for debugging.
+func (b *baseCell) String() string {
+	return fmt.Sprintf("Value: %d, Counter: %d", b.value, b.counter)
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 0
+=== STDOUT ===
+ok  	exercism/react	0.284s
+
+=== STDERR ===
+
+
+=== FINAL STATUS: SUCCESS ===

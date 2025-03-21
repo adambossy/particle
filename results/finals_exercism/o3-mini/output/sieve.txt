@@ -1,0 +1,946 @@
+=== Initial Source Code ===
+Source file: exercises/practice/sieve/.meta/example.py
+def primes(limit):
+    prime = [True] * (limit + 1)
+    prime[0] = prime[1] = False
+    for idx in range(2, int(limit ** 0.5) + 1):
+        if prime[idx]:
+            for edx in range(idx * idx, limit + 1, idx):
+                prime[edx] = False
+
+    return [edx for edx, idx in enumerate(prime) if idx]
+
+
+=== Source Interface ===
+def primes(limit):
+    pass
+
+
+=== Target Interface ===
+package sieve
+
+func Sieve(limit int) []int {
+	panic("Please implement the Sieve function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/sieve/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from sieve import (
+    primes,
+)
+
+
+class SieveTest(unittest.TestCase):
+    def test_no_primes_under_two(self):
+        self.assertEqual(primes(1), [])
+
+    def test_find_first_prime(self):
+        self.assertEqual(primes(2), [2])
+
+    def test_find_primes_up_to_10(self):
+        self.assertEqual(primes(10), [2, 3, 5, 7])
+
+    def test_limit_is_prime(self):
+        self.assertEqual(primes(13), [2, 3, 5, 7, 11, 13])
+
+    def test_find_primes_up_to_1000(self):
+        self.assertEqual(
+            primes(1000),
+            [
+                2,
+                3,
+                5,
+                7,
+                11,
+                13,
+                17,
+                19,
+                23,
+                29,
+                31,
+                37,
+                41,
+                43,
+                47,
+                53,
+                59,
+                61,
+                67,
+                71,
+                73,
+                79,
+                83,
+                89,
+                97,
+                101,
+                103,
+                107,
+                109,
+                113,
+                127,
+                131,
+                137,
+                139,
+                149,
+                151,
+                157,
+                163,
+                167,
+                173,
+                179,
+                181,
+                191,
+                193,
+                197,
+                199,
+                211,
+                223,
+                227,
+                229,
+                233,
+                239,
+                241,
+                251,
+                257,
+                263,
+                269,
+                271,
+                277,
+                281,
+                283,
+                293,
+                307,
+                311,
+                313,
+                317,
+                331,
+                337,
+                347,
+                349,
+                353,
+                359,
+                367,
+                373,
+                379,
+                383,
+                389,
+                397,
+                401,
+                409,
+                419,
+                421,
+                431,
+                433,
+                439,
+                443,
+                449,
+                457,
+                461,
+                463,
+                467,
+                479,
+                487,
+                491,
+                499,
+                503,
+                509,
+                521,
+                523,
+                541,
+                547,
+                557,
+                563,
+                569,
+                571,
+                577,
+                587,
+                593,
+                599,
+                601,
+                607,
+                613,
+                617,
+                619,
+                631,
+                641,
+                643,
+                647,
+                653,
+                659,
+                661,
+                673,
+                677,
+                683,
+                691,
+                701,
+                709,
+                719,
+                727,
+                733,
+                739,
+                743,
+                751,
+                757,
+                761,
+                769,
+                773,
+                787,
+                797,
+                809,
+                811,
+                821,
+                823,
+                827,
+                829,
+                839,
+                853,
+                857,
+                859,
+                863,
+                877,
+                881,
+                883,
+                887,
+                907,
+                911,
+                919,
+                929,
+                937,
+                941,
+                947,
+                953,
+                967,
+                971,
+                977,
+                983,
+                991,
+                997,
+            ],
+        )
+
+
+=== Target Test Code ===
+package sieve
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestSieve(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Sieve(tc.limit)
+			// use len() to allow either nil or empty list, because they are not equal by DeepEqual
+			if len(actual) == 0 && len(tc.expected) == 0 {
+				return
+			}
+			if !reflect.DeepEqual(actual, tc.expected) {
+				t.Fatalf("Sieve(%d)\n got:%#v\nwant:%#v", tc.limit, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkSieve(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, tc := range testCases {
+			Sieve(tc.limit)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "fmt"
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It filters out non-prime numbers and includes only primes in the returned slice.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Create a slice to mark whether numbers are prime; initially assume all numbers are prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+	// 0 and 1 are not prime
+	prime[0], prime[1] = false, false
+
+	// Sieve of Eratosthenes: mark non-prime numbers
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect primes
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+	return primes
+}
+
+// Example usage for demonstration purposes
+// Not run in actual test suites, but can be used for manual testing.
+func main() {
+	// Just print the primes up to 30
+	fmt.Println(Sieve(30))
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers and collects the ones that remain prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Initialize a boolean slice where each index represents whether the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+	// 0 and 1 are not prime
+	prime[0], prime[1] = false, false
+
+	// Perform Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers and collects the ones that remain prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Initialize a boolean slice where each index represents whether the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+	// 0 and 1 are not prime
+	prime[0], prime[1] = false, false
+
+	// Perform Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+// A main function is provided for manual testing and demonstration purposes.
+// It is not used by automated tests.
+func main() {
+	// Example: Print all prime numbers up to 30
+	// Uncomment the following line to run the sieve manually.
+	// fmt.Println(Sieve(30))
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers in a boolean slice and collects the remaining indices which are prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Create a boolean slice where each index represents if the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+
+	// 0 and 1 are not prime
+	prime[0], prime[1] = false, false
+
+	// Perform Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+// main is provided for manual testing, it is not used by automated tests.
+func main() {
+	// Uncomment the following lines to run manual tests
+	// fmt.Println(Sieve(30))
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers in a boolean slice and collects the remaining indices which are prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Create a boolean slice where each index represents whether the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+	
+	// 0 and 1 are not prime
+	prime[0], prime[1] = false, false
+
+	// Perform Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+// main is provided for manual testing; it is not used by automated tests.
+func main() {
+	// Example manual test: Print all prime numbers up to 30
+	// Uncomment the following line to run manually:
+	// fmt.Println(Sieve(30))
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers in a boolean slice and collects the remaining indices which are prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Create a boolean slice where each index represents whether the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+	
+	// 0 and 1 are not prime
+	prime[0], prime[1] = false, false
+
+	// Perform Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+// main is provided for manual testing; it is not used by automated tests.
+func main() {
+	// Example manual test: Print all prime numbers up to 30
+	// Uncomment the following line to run manually:
+	// fmt.Println(Sieve(30))
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers in a boolean slice and collects the indices that remain prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Create a boolean slice where each index represents whether the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+
+	// 0 and 1 are not prime
+	prime[0], prime[1] = false, false
+
+	// Perform the Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+// main is provided for manual testing; it is not used by automated tests.
+func main() {
+	// Example manual test: Print all prime numbers up to 30
+	// Uncomment the following line to run manually:
+	// fmt.Println(Sieve(30))
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers in a boolean slice and collects the indices that remain prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Create a boolean slice where each index represents whether the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+
+	// 0 and 1 are not prime
+	prime[0], prime[1] = false, false
+
+	// Perform the Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+// main is provided for manual testing; it is not used by automated tests.
+func main() {
+	// Example manual test: Print all prime numbers up to 30
+	// Uncomment the following line to run manually:
+	// fmt.Println(Sieve(30))
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers in a boolean slice and collects the indices that remain prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Create a boolean slice where each index represents whether the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+
+	// 0 and 1 are not prime
+	prime[0], prime[1] = false, false
+
+	// Perform the Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+// main is provided for manual testing; it is not used by automated tests.
+func main() {
+	// Example manual test: Print all prime numbers up to 30
+	// Uncomment the following line to run manually:
+	// fmt.Println(Sieve(30))
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers in a boolean slice and collects the indices that remain prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Create a boolean slice where each index represents whether the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+
+	// 0 and 1 are not prime numbers
+	prime[0], prime[1] = false, false
+
+	// Perform the Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+// main is provided for manual testing; it is not used by automated tests.
+func main() {
+	// Example manual test: Print all prime numbers up to 30
+	// Uncomment the line below to run manually:
+	// fmt.Println(Sieve(30))
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/sieve/.meta/example.go
+package sieve
+
+import "math"
+
+// Sieve returns a slice of prime numbers up to the given limit using the Sieve of Eratosthenes.
+// It marks non-prime numbers in a boolean slice and collects the indices that remain prime.
+func Sieve(limit int) []int {
+	if limit < 2 {
+		return []int{}
+	}
+
+	// Create a boolean slice where each index represents whether the number is prime
+	prime := make([]bool, limit+1)
+	for i := 0; i <= limit; i++ {
+		prime[i] = true
+	}
+
+	// 0 and 1 are not prime numbers
+	prime[0], prime[1] = false, false
+
+	// Perform the Sieve of Eratosthenes
+	sqrtLimit := int(math.Sqrt(float64(limit)))
+	for i := 2; i <= sqrtLimit; i++ {
+		if prime[i] {
+			for j := i * i; j <= limit; j += i {
+				prime[j] = false
+			}
+		}
+	}
+
+	// Collect all prime numbers
+	primes := []int{}
+	for i, isPrime := range prime {
+		if isPrime {
+			primes = append(primes, i)
+		}
+	}
+
+	return primes
+}
+
+// main is provided for manual testing; it is not used by automated tests.
+func main() {
+	// Example manual test: Print all prime numbers up to 30
+	// Uncomment the following line to run manually:
+	// fmt.Println(Sieve(30))
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/sieve [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/sieve [exercism/sieve.test]
+./sieve_test.go:9:21: undefined: testCases
+./sieve_test.go:28:22: undefined: testCases
+
+
+=== FINAL STATUS: FAILED ===

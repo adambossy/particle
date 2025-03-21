@@ -1,0 +1,503 @@
+=== Initial Source Code ===
+Source file: exercises/practice/acronym/.meta/example.py
+import re
+
+
+def abbreviate(words):
+    regex = "[A-Z]+['a-z]*|['a-z]+"
+    return ''.join(word[0].upper() for word in re.findall(regex, words))
+
+
+=== Source Interface ===
+def abbreviate(words):
+    pass
+
+
+=== Target Interface ===
+// This is a "stub" file.  It's a little start on your solution.
+// It's not a complete solution though; you have to write some code.
+
+// Package acronym should have a package comment that summarizes what it's about.
+// https://golang.org/doc/effective_go.html#commentary
+package acronym
+
+// Abbreviate should have a comment documenting it.
+func Abbreviate(s string) string {
+	// Write some code here to pass the test suite.
+	// Then remove all the stock comments.
+	// They're here to help you get started but they only clutter a finished solution.
+	// If you leave them in, reviewers may protest!
+	return ""
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/acronym/canonical-data.json
+# File last updated on 2023-07-20
+
+import unittest
+
+from acronym import (
+    abbreviate,
+)
+
+
+class AcronymTest(unittest.TestCase):
+    def test_basic(self):
+        self.assertEqual(abbreviate("Portable Network Graphics"), "PNG")
+
+    def test_lowercase_words(self):
+        self.assertEqual(abbreviate("Ruby on Rails"), "ROR")
+
+    def test_punctuation(self):
+        self.assertEqual(abbreviate("First In, First Out"), "FIFO")
+
+    def test_all_caps_word(self):
+        self.assertEqual(abbreviate("GNU Image Manipulation Program"), "GIMP")
+
+    def test_punctuation_without_whitespace(self):
+        self.assertEqual(abbreviate("Complementary metal-oxide semiconductor"), "CMOS")
+
+    def test_very_long_abbreviation(self):
+        self.assertEqual(
+            abbreviate(
+                "Rolling On The Floor Laughing So Hard That My Dogs Came Over And Licked Me"
+            ),
+            "ROTFLSHTMDCOALM",
+        )
+
+    def test_consecutive_delimiters(self):
+        self.assertEqual(abbreviate("Something - I made up from thin air"), "SIMUFTA")
+
+    def test_apostrophes(self):
+        self.assertEqual(abbreviate("Halley's Comet"), "HC")
+
+    def test_underscore_emphasis(self):
+        self.assertEqual(abbreviate("The Road _Not_ Taken"), "TRNT")
+
+
+=== Target Test Code ===
+package acronym
+
+import (
+	"testing"
+)
+
+func TestAcronym(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual := Abbreviate(tc.input)
+			if actual != tc.expected {
+				t.Errorf("Abbreviate(%q) = %q, want: %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkAcronym(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		for _, test := range testCases {
+			Abbreviate(test.input)
+		}
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/acronym/.meta/example.go
+package acronym
+
+import "regexp"
+
+// Abbreviate converts a phrase to its acronym.
+func Abbreviate(words string) string {
+    re := regexp.MustCompile("[A-Z]+['a-z]*|['a-z]+")
+    matches := re.FindAllString(words, -1)
+    acronym := ""
+    for _, word := range matches {
+        acronym += string(word[0])
+    }
+    return acronym
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/acronym [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/acronym [exercism/acronym.test]
+./acronym_test.go:8:21: undefined: testCases
+./acronym_test.go:23:24: undefined: testCases
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/acronym/.meta/example.go
+package acronym
+
+import "regexp"
+
+// Abbreviate converts a phrase to its acronym.
+func Abbreviate(words string) string {
+    re := regexp.MustCompile("[A-Z]+['a-z]*|['a-z]+")
+    matches := re.FindAllString(words, -1)
+    acronym := ""
+    for _, word := range matches {
+        acronym += string(word[0])
+    }
+    return acronym
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/acronym [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/acronym [exercism/acronym.test]
+./acronym_test.go:8:21: undefined: testCases
+./acronym_test.go:23:24: undefined: testCases
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/acronym/.meta/example.go
+package acronym
+
+import "regexp"
+
+// Abbreviate converts a phrase to its acronym.
+func Abbreviate(words string) string {
+    re := regexp.MustCompile("[A-Z]+['a-z]*|['a-z]+")
+    matches := re.FindAllString(words, -1)
+    acronym := ""
+    for _, word := range matches {
+        acronym += string(word[0])
+    }
+    return acronym
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/acronym [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/acronym [exercism/acronym.test]
+./acronym_test.go:8:21: undefined: testCases
+./acronym_test.go:23:24: undefined: testCases
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/acronym/.meta/example.go
+package acronym
+
+import "regexp"
+
+// Abbreviate converts a phrase to its acronym.
+func Abbreviate(words string) string {
+    re := regexp.MustCompile("[A-Z]+['a-z]*|['a-z]+")
+    matches := re.FindAllString(words, -1)
+    acronym := ""
+    for _, word := range matches {
+        acronym += string(word[0])
+    }
+    return acronym
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/acronym [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/acronym [exercism/acronym.test]
+./acronym_test.go:8:21: undefined: testCases
+./acronym_test.go:23:24: undefined: testCases
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/acronym/.meta/example.go
+package acronym
+
+import "regexp"
+
+// Abbreviate converts a phrase to its acronym.
+func Abbreviate(words string) string {
+    re := regexp.MustCompile("[A-Z]+['a-z]*|['a-z]+")
+    matches := re.FindAllString(words, -1)
+    acronym := ""
+    for _, word := range matches {
+        acronym += string(word[0])
+    }
+    return acronym
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/acronym [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/acronym [exercism/acronym.test]
+./acronym_test.go:8:21: undefined: testCases
+./acronym_test.go:23:24: undefined: testCases
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/acronym/.meta/example.go
+package acronym
+
+import "regexp"
+
+// Abbreviate converts a phrase to its acronym.
+func Abbreviate(words string) string {
+    re := regexp.MustCompile("[A-Z]+['a-z]*|['a-z]+")
+    matches := re.FindAllString(words, -1)
+    acronym := ""
+    for _, word := range matches {
+        acronym += string(word[0])
+    }
+    return acronym
+}
+
+// exercises/practice/acronym/acronym_test.go
+package acronym
+
+import "testing"
+
+var testCases = []struct {
+    description string
+    input       string
+    expected    string
+}{
+    {
+        description: "basic",
+        input:       "Portable Network Graphics",
+        expected:    "PNG",
+    },
+    {
+        description: "lowercase words",
+        input:       "Ruby on Rails",
+        expected:    "ROR",
+    },
+    {
+        description: "punctuation",
+        input:       "First In, First Out",
+        expected:    "FIFO",
+    },
+    {
+        description: "all caps word",
+        input:       "GNU Image Manipulation Program",
+        expected:    "GIMP",
+    },
+    {
+        description: "punctuation without whitespace",
+        input:       "Complementary metal-oxide semiconductor",
+        expected:    "CMOS",
+    },
+    {
+        description: "very long abbreviation",
+        input:       "Rolling On The Floor Laughing So Hard That My Dogs Came Over And Licked Me",
+        expected:    "ROTFLSHTMDCOALM",
+    },
+    {
+        description: "consecutive delimiters",
+        input:       "Something - I made up from thin air",
+        expected:    "SIMUFTA",
+    },
+    {
+        description: "apostrophes",
+        input:       "Halley's Comet",
+        expected:    "HC",
+    },
+    {
+        description: "underscore emphasis",
+        input:       "The Road _Not_ Taken",
+        expected:    "TRNT",
+    },
+}
+
+func TestAbbreviate(t *testing.T) {
+    for _, tc := range testCases {
+        t.Run(tc.description, func(t *testing.T) {
+            actual := Abbreviate(tc.input)
+            if actual != tc.expected {
+                t.Errorf("Abbreviate(%q) = %q, want %q", tc.input, actual, tc.expected)
+            }
+        })
+    }
+}
+
+func BenchmarkAbbreviate(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        for _, tc := range testCases {
+            Abbreviate(tc.input)
+        }
+    }
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/acronym [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/acronym [exercism/acronym.test]
+./acronym.go:18:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/acronym/.meta/example.go
+package acronym
+
+import "regexp"
+
+// Abbreviate converts a phrase to its acronym.
+func Abbreviate(words string) string {
+    re := regexp.MustCompile("[A-Z]+['a-z]*|['a-z]+")
+    matches := re.FindAllString(words, -1)
+    acronym := ""
+    for _, word := range matches {
+        acronym += string(word[0])
+    }
+    return acronym
+}
+
+// exercises/practice/acronym/acronym_test.go
+package acronym
+
+import "testing"
+
+var testCases = []struct {
+    description string
+    input       string
+    expected    string
+}{
+    {
+        description: "basic",
+        input:       "Portable Network Graphics",
+        expected:    "PNG",
+    },
+    {
+        description: "lowercase words",
+        input:       "Ruby on Rails",
+        expected:    "ROR",
+    },
+    {
+        description: "punctuation",
+        input:       "First In, First Out",
+        expected:    "FIFO",
+    },
+    {
+        description: "all caps word",
+        input:       "GNU Image Manipulation Program",
+        expected:    "GIMP",
+    },
+    {
+        description: "punctuation without whitespace",
+        input:       "Complementary metal-oxide semiconductor",
+        expected:    "CMOS",
+    },
+    {
+        description: "very long abbreviation",
+        input:       "Rolling On The Floor Laughing So Hard That My Dogs Came Over And Licked Me",
+        expected:    "ROTFLSHTMDCOALM",
+    },
+    {
+        description: "consecutive delimiters",
+        input:       "Something - I made up from thin air",
+        expected:    "SIMUFTA",
+    },
+    {
+        description: "apostrophes",
+        input:       "Halley's Comet",
+        expected:    "HC",
+    },
+    {
+        description: "underscore emphasis",
+        input:       "The Road _Not_ Taken",
+        expected:    "TRNT",
+    },
+}
+
+func TestAbbreviate(t *testing.T) {
+    for _, tc := range testCases {
+        t.Run(tc.description, func(t *testing.T) {
+            actual := Abbreviate(tc.input)
+            if actual != tc.expected {
+                t.Errorf("Abbreviate(%q) = %q, want %q", tc.input, actual, tc.expected)
+            }
+        })
+    }
+}
+
+func BenchmarkAbbreviate(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        for _, tc := range testCases {
+            Abbreviate(tc.input)
+        }
+    }
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/acronym [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/acronym [exercism/acronym.test]
+./acronym.go:18:1: syntax error: non-declaration statement outside function body
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/acronym/.meta/example.go
+package acronym
+
+import "regexp"
+
+// Abbreviate converts a phrase to its acronym.
+func Abbreviate(words string) string {
+    re := regexp.MustCompile(`[A-Z]+['a-z]*|['a-z]+`)
+    matches := re.FindAllString(words, -1)
+    acronym := ""
+    for _, word := range matches {
+        acronym += string(word[0])
+    }
+    return acronym
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/acronym [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/acronym [exercism/acronym.test]
+./acronym_test.go:8:21: undefined: testCases
+./acronym_test.go:23:24: undefined: testCases
+
+
+=== ERROR ===
+Error processing sample (returncode=2): 
+
+=== FINAL STATUS: ERROR ===

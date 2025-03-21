@@ -1,0 +1,1 @@
+scale-generator,10,2

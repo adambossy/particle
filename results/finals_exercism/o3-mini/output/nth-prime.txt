@@ -1,0 +1,885 @@
+=== Initial Source Code ===
+Source file: exercises/practice/nth-prime/.meta/example.py
+from itertools import count
+from math import sqrt
+
+
+def prime(number):
+    if number < 1:
+        raise ValueError('there is no zeroth prime')
+
+    known = []
+    candidates = prime_candidates()
+
+    def is_prime(candidate):
+        sqrt_candidate = sqrt(candidate)
+        for item in known:
+            if item > sqrt_candidate:
+                return True
+            elif candidate % item == 0:
+                return False
+        return True
+
+    while len(known) < number:
+        next_one = next(candidates)
+        if is_prime(next_one):
+            known.append(next_one)
+
+    return known[number - 1]
+
+
+def prime_candidates():
+    yield 2
+    yield 3
+    for number in count(6, 6):
+        yield number - 1
+        yield number + 1
+
+
+=== Source Interface ===
+def prime(number):
+    pass
+
+
+=== Target Interface ===
+package prime
+
+// Nth returns the nth prime number. An error must be returned if the nth prime number can't be calculated ('n' is equal or less than zero)
+func Nth(n int) (int, error) {
+	panic("Please implement the Nth function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/nth-prime/canonical-data.json
+# File last updated on 2023-07-19
+
+import unittest
+
+from nth_prime import (
+    prime,
+)
+
+
+def prime_range(n):
+    """Returns a list of the first n primes"""
+    return [prime(i) for i in range(1, n + 1)]
+
+
+class NthPrimeTest(unittest.TestCase):
+    def test_first_prime(self):
+        self.assertEqual(prime(1), 2)
+
+    def test_second_prime(self):
+        self.assertEqual(prime(2), 3)
+
+    def test_sixth_prime(self):
+        self.assertEqual(prime(6), 13)
+
+    def test_big_prime(self):
+        self.assertEqual(prime(10001), 104743)
+
+    def test_there_is_no_zeroth_prime(self):
+        with self.assertRaises(ValueError) as err:
+            prime(0)
+        self.assertEqual(type(err.exception), ValueError)
+        self.assertEqual(err.exception.args[0], "there is no zeroth prime")
+
+    # Additional tests for this track
+
+    def test_first_twenty_primes(self):
+        self.assertEqual(
+            prime_range(20),
+            [
+                2,
+                3,
+                5,
+                7,
+                11,
+                13,
+                17,
+                19,
+                23,
+                29,
+                31,
+                37,
+                41,
+                43,
+                47,
+                53,
+                59,
+                61,
+                67,
+                71,
+            ],
+        )
+
+
+=== Target Test Code ===
+package prime
+
+import "testing"
+
+func TestNth(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := Nth(tc.input)
+			switch {
+			case tc.err != "":
+				if err == nil {
+					t.Fatalf("Nth(%d) expected error: %q, got: %d", tc.input, tc.err, actual)
+				}
+			case err != nil:
+				t.Fatalf("Nth(%d) returned error: %v, want: %d", tc.input, err, tc.expected)
+			case actual != tc.expected:
+				t.Fatalf("Nth(%d) = %d, want: %d", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkNth(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping benchmark in short mode.")
+	}
+	for i := 0; i < b.N; i++ {
+		Nth(10001)
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/nth-prime/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that produces prime candidate numbers.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Initial Test Results ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (nth_prime.go) and prime (nth_prime_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/nth-prime
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/nth-prime/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that produces candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (nth_prime.go) and prime (nth_prime_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/nth-prime
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/nth-prime/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that produces candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (nth_prime.go) and prime (nth_prime_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/nth-prime
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/nth-prime/.meta/example.go
+package prime
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that generates candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/nth-prime [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/nth-prime [exercism/nth-prime.test]
+./nth_prime_test.go:6:21: undefined: tests
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/nth-prime/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that generates candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (nth_prime.go) and prime (nth_prime_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/nth-prime
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/nth-prime/.meta/example.go
+package prime
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that generates candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/nth-prime [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/nth-prime [exercism/nth-prime.test]
+./nth_prime_test.go:6:21: undefined: tests
+
+
+=== Retry Attempt 6 ===
+// exercises/practice/nth-prime/.meta/example.go
+package meta
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that generates candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+found packages meta (nth_prime.go) and prime (nth_prime_test.go) in /private/var/folders/gy/0zbg6hg95tq8_gy1dnr3tknm0000gn/T/tmpt_h86ptc/sandbox/exercises/practice/nth-prime
+
+
+=== Retry Attempt 7 ===
+// exercises/practice/nth-prime/.meta/example.go
+package prime
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that generates candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 7) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/nth-prime [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/nth-prime [exercism/nth-prime.test]
+./nth_prime_test.go:6:21: undefined: tests
+
+
+=== Retry Attempt 8 ===
+// exercises/practice/nth-prime/.meta/example.go
+package prime
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that generates candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 8) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/nth-prime [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/nth-prime [exercism/nth-prime.test]
+./nth_prime_test.go:6:21: undefined: tests
+
+
+=== Retry Attempt 9 ===
+// exercises/practice/nth-prime/.meta/example.go
+package prime
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that generates candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 9) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/nth-prime [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/nth-prime [exercism/nth-prime.test]
+./nth_prime_test.go:6:21: undefined: tests
+
+
+=== Retry Attempt 10 ===
+// exercises/practice/nth-prime/.meta/example.go
+package prime
+
+import (
+	"errors"
+	"math"
+)
+
+// Nth returns the nth prime number. An error is returned if n is less than 1.
+func Nth(n int) (int, error) {
+	if n < 1 {
+		return 0, errors.New("there is no zeroth prime")
+	}
+
+	known := make([]int, 0, n)
+	candidates := primeCandidates()
+
+	isPrime := func(candidate int) bool {
+		sqrtCandidate := math.Sqrt(float64(candidate))
+		for _, item := range known {
+			if float64(item) > sqrtCandidate {
+				return true
+			} else if candidate%item == 0 {
+				return false
+			}
+		}
+		return true
+	}
+
+	for len(known) < n {
+		nextOne := <-candidates
+		if isPrime(nextOne) {
+			known = append(known, nextOne)
+		}
+	}
+
+	return known[n-1], nil
+}
+
+// primeCandidates returns a channel that generates candidate numbers for primes.
+// It yields 2, 3, and then numbers in the pattern (6k - 1) and (6k + 1) for k >= 1.
+func primeCandidates() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		ch <- 2
+		ch <- 3
+		for number := 6; ; number += 6 {
+			ch <- number - 1
+			ch <- number + 1
+		}
+	}()
+	return ch
+}
+
+
+=== Test Results (Attempt 10) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/nth-prime [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/nth-prime [exercism/nth-prime.test]
+./nth_prime_test.go:6:21: undefined: tests
+
+
+=== FINAL STATUS: FAILED ===

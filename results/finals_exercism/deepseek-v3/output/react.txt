@@ -1,0 +1,1850 @@
+=== Initial Source Code ===
+Source file: exercises/practice/react/.meta/example.py
+class Cell:
+    def __init__(self):
+        self._watchers = []
+        self._value = None
+        self.counter = 0
+
+    def add_watcher(self, cell):
+        self._watchers.append(cell)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        self._value = new_value
+        self.counter += 1
+        for cell in self._watchers:
+            cell.compute()
+
+
+class InputCell(Cell):
+    def __init__(self, initial_value):
+        super().__init__()
+        self._value = initial_value
+
+
+class ComputeCell(Cell):
+    def __init__(self, inputs, compute_function):
+        super().__init__()
+        self.inputs = inputs
+        self.func = compute_function
+        self.callbacks = set()
+        self.compute()
+        self._register_inputs()
+
+    def _register_inputs(self):
+        for inp in self.inputs:
+            inp.add_watcher(self)
+
+    def compute(self):
+        # Only compute this cell when all inputs have same counters
+        if len({inp.counter for inp in self.inputs}) > 1:
+            return
+        new_val = self.func([inp.value for inp in self.inputs])
+        if new_val != self._value:
+            self.value = new_val
+            for cb in self.callbacks:
+                cb(new_val)
+
+    def add_callback(self, callback):
+        self.callbacks.add(callback)
+
+    def remove_callback(self, callback):
+        if callback in self.callbacks:
+            self.callbacks.remove(callback)
+
+
+=== Source Interface ===
+class InputCell:
+    def __init__(self, initial_value):
+        self.value = None
+
+
+class ComputeCell:
+    def __init__(self, inputs, compute_function):
+        self.value = None
+
+    def add_callback(self, callback):
+        pass
+
+    def remove_callback(self, callback):
+        pass
+    
+
+=== Target Interface ===
+package react
+
+// Define reactor, cell and canceler types here.
+// These types will implement the Reactor, Cell and Canceler interfaces, respectively.
+
+func (c *canceler) Cancel() {
+	panic("Please implement the Cancel function")
+}
+
+func (c *cell) Value() int {
+	panic("Please implement the Value function")
+}
+
+func (c *cell) SetValue(value int) {
+	panic("Please implement the SetValue function")
+}
+
+func (c *cell) AddCallback(callback func(int)) Canceler {
+	panic("Please implement the AddCallback function")
+}
+
+func New() Reactor {
+	panic("Please implement the New function")
+}
+
+func (r *reactor) CreateInput(initial int) InputCell {
+	panic("Please implement the CreateInput function")
+}
+
+func (r *reactor) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	panic("Please implement the CreateCompute1 function")
+}
+
+func (r *reactor) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	panic("Please implement the CreateCompute2 function")
+}
+
+
+=== Source Test Code ===
+# These tests are auto-generated with test data from:
+# https://github.com/exercism/problem-specifications/tree/main/exercises/react/canonical-data.json
+# File last updated on 2023-07-19
+
+from functools import partial
+import unittest
+
+from react import (
+    InputCell,
+    ComputeCell,
+)
+
+
+class ReactTest(unittest.TestCase):
+    def test_input_cells_have_a_value(self):
+        input = InputCell(10)
+        self.assertEqual(input.value, 10)
+
+    def test_an_input_cell_s_value_can_be_set(self):
+        input = InputCell(4)
+        input.value = 20
+        self.assertEqual(input.value, 20)
+
+    def test_compute_cells_calculate_initial_value(self):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        self.assertEqual(output.value, 2)
+
+    def test_compute_cells_take_inputs_in_the_right_order(self):
+        one = InputCell(1)
+        two = InputCell(2)
+        output = ComputeCell(
+            [
+                one,
+                two,
+            ],
+            lambda inputs: inputs[0] + inputs[1] * 10,
+        )
+        self.assertEqual(output.value, 21)
+
+    def test_compute_cells_update_value_when_dependencies_are_changed(self):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        input.value = 3
+        self.assertEqual(output.value, 4)
+
+    def test_compute_cells_can_depend_on_other_compute_cells(self):
+        input = InputCell(1)
+        times_two = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] * 2,
+        )
+        times_thirty = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] * 30,
+        )
+        output = ComputeCell(
+            [
+                times_two,
+                times_thirty,
+            ],
+            lambda inputs: inputs[0] + inputs[1],
+        )
+        self.assertEqual(output.value, 32)
+        input.value = 3
+        self.assertEqual(output.value, 96)
+
+    def test_compute_cells_fire_callbacks(self):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        output.add_callback(callback1)
+        input.value = 3
+        self.assertEqual(cb1_observer[-1], 4)
+
+    def test_callback_cells_only_fire_on_change(self):
+        input = InputCell(1)
+        output = ComputeCell([input], lambda inputs: 111 if inputs[0] < 3 else 222)
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        output.add_callback(callback1)
+        input.value = 2
+        self.assertEqual(cb1_observer, [])
+        input.value = 4
+        self.assertEqual(cb1_observer[-1], 222)
+
+    def test_callbacks_do_not_report_already_reported_values(self):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        output.add_callback(callback1)
+        input.value = 2
+        self.assertEqual(cb1_observer[-1], 3)
+        input.value = 3
+        self.assertEqual(cb1_observer[-1], 4)
+
+    def test_callbacks_can_fire_from_multiple_cells(self):
+        input = InputCell(1)
+        plus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        minus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] - 1,
+        )
+        cb1_observer = []
+        cb2_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        callback2 = self.callback_factory(cb2_observer)
+        plus_one.add_callback(callback1)
+        minus_one.add_callback(callback2)
+        input.value = 10
+        self.assertEqual(cb1_observer[-1], 11)
+        self.assertEqual(cb2_observer[-1], 9)
+
+    def test_callbacks_can_be_added_and_removed(self):
+        input = InputCell(11)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        cb1_observer = []
+        cb2_observer = []
+        cb3_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        callback2 = self.callback_factory(cb2_observer)
+        callback3 = self.callback_factory(cb3_observer)
+        output.add_callback(callback1)
+        output.add_callback(callback2)
+        input.value = 31
+        self.assertEqual(cb1_observer[-1], 32)
+        self.assertEqual(cb2_observer[-1], 32)
+        output.remove_callback(callback1)
+        output.add_callback(callback3)
+        input.value = 41
+        self.assertEqual(len(cb1_observer), 1)
+        self.assertEqual(cb2_observer[-1], 42)
+        self.assertEqual(cb3_observer[-1], 42)
+
+    def test_removing_a_callback_multiple_times_doesn_t_interfere_with_other_callbacks(
+        self,
+    ):
+        input = InputCell(1)
+        output = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        cb1_observer = []
+        cb2_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        callback2 = self.callback_factory(cb2_observer)
+        output.add_callback(callback1)
+        output.add_callback(callback2)
+        output.remove_callback(callback1)
+        output.remove_callback(callback1)
+        output.remove_callback(callback1)
+        input.value = 2
+        self.assertEqual(cb1_observer, [])
+        self.assertEqual(cb2_observer[-1], 3)
+
+    def test_callbacks_should_only_be_called_once_even_if_multiple_dependencies_change(
+        self,
+    ):
+        input = InputCell(1)
+        plus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        minus_one1 = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] - 1,
+        )
+        minus_one2 = ComputeCell(
+            [
+                minus_one1,
+            ],
+            lambda inputs: inputs[0] - 1,
+        )
+        output = ComputeCell(
+            [
+                plus_one,
+                minus_one2,
+            ],
+            lambda inputs: inputs[0] * inputs[1],
+        )
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        output.add_callback(callback1)
+        input.value = 4
+        self.assertEqual(cb1_observer[-1], 10)
+
+    def test_callbacks_should_not_be_called_if_dependencies_change_but_output_value_doesn_t_change(
+        self,
+    ):
+        input = InputCell(1)
+        plus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] + 1,
+        )
+        minus_one = ComputeCell(
+            [
+                input,
+            ],
+            lambda inputs: inputs[0] - 1,
+        )
+        always_two = ComputeCell(
+            [
+                plus_one,
+                minus_one,
+            ],
+            lambda inputs: inputs[0] - inputs[1],
+        )
+        cb1_observer = []
+        callback1 = self.callback_factory(cb1_observer)
+        always_two.add_callback(callback1)
+        input.value = 2
+        self.assertEqual(cb1_observer, [])
+        input.value = 3
+        self.assertEqual(cb1_observer, [])
+        input.value = 4
+        self.assertEqual(cb1_observer, [])
+        input.value = 5
+        self.assertEqual(cb1_observer, [])
+
+    # Utility functions.
+    def callback_factory(self, observer):
+        def callback(observer, value):
+            observer.append(value)
+
+        return partial(callback, observer)
+
+
+=== Target Test Code ===
+package react
+
+import (
+	"runtime"
+	"testing"
+)
+
+// Define a function New() Reactor and the stuff that follows from
+// implementing Reactor.
+
+// This is a compile time check to see if you've properly implemented New().
+var _ Reactor = New()
+
+func assertCellValue(t *testing.T, c Cell, expected int, explanation string) {
+	observed := c.Value()
+	_, _, line, _ := runtime.Caller(1)
+	if observed != expected {
+		t.Fatalf("(from line %d) %s: expected %d, got %d", line, explanation, expected, observed)
+	}
+}
+
+// Setting the value of an input cell changes the observable Value()
+func TestSetInput(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	assertCellValue(t, i, 1, "i.Value() doesn't match initial value")
+	i.SetValue(2)
+	assertCellValue(t, i, 2, "i.Value() doesn't match changed value")
+}
+
+// The value of a compute 1 cell is determined by the value of the dependencies.
+func TestBasicCompute1(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	assertCellValue(t, c, 2, "c.Value() isn't properly computed based on initial input cell value")
+	i.SetValue(2)
+	assertCellValue(t, c, 3, "c.Value() isn't properly computed based on changed input cell value")
+}
+
+// The value of a compute 2 cell is determined by the value of the dependencies.
+func TestBasicCompute2(t *testing.T) {
+	r := New()
+	i1 := r.CreateInput(1)
+	i2 := r.CreateInput(2)
+	c := r.CreateCompute2(i1, i2, func(v1, v2 int) int { return v1 | v2 })
+	assertCellValue(t, c, 3, "c.Value() isn't properly computed based on initial input cell values")
+	i1.SetValue(4)
+	assertCellValue(t, c, 6, "c.Value() isn't properly computed when first input cell value changes")
+	i2.SetValue(8)
+	assertCellValue(t, c, 12, "c.Value() isn't properly computed when second input cell value changes")
+}
+
+// Compute 2 cells can depend on compute 1 cells.
+func TestCompute2Diamond(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c1 := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	c2 := r.CreateCompute1(i, func(v int) int { return v - 1 })
+	c3 := r.CreateCompute2(c1, c2, func(v1, v2 int) int { return v1 * v2 })
+	assertCellValue(t, c3, 0, "c3.Value() isn't properly computed based on initial input cell value")
+	i.SetValue(3)
+	assertCellValue(t, c3, 8, "c3.Value() isn't properly computed based on changed input cell value")
+}
+
+// Compute 1 cells can depend on other compute 1 cells.
+func TestCompute1Chain(t *testing.T) {
+	r := New()
+	inp := r.CreateInput(1)
+	var c Cell = inp
+	for i := 2; i <= 8; i++ {
+		// must save current value of loop variable i for correct behavior.
+		// compute function has to use digitToAdd not i.
+		digitToAdd := i
+		c = r.CreateCompute1(c, func(v int) int { return v*10 + digitToAdd })
+	}
+	assertCellValue(t, c, 12345678, "c.Value() isn't properly computed based on initial input cell value")
+	inp.SetValue(9)
+	assertCellValue(t, c, 92345678, "c.Value() isn't properly computed based on changed input cell value")
+}
+
+// Compute 2 cells can depend on other compute 2 cells.
+func TestCompute2Tree(t *testing.T) {
+	r := New()
+	ins := make([]InputCell, 3)
+	for i, v := range []int{1, 10, 100} {
+		ins[i] = r.CreateInput(v)
+	}
+
+	add := func(v1, v2 int) int { return v1 + v2 }
+
+	firstLevel := make([]ComputeCell, 2)
+	for i := 0; i < 2; i++ {
+		firstLevel[i] = r.CreateCompute2(ins[i], ins[i+1], add)
+	}
+
+	output := r.CreateCompute2(firstLevel[0], firstLevel[1], add)
+	assertCellValue(t, output, 121, "output.Value() isn't properly computed based on initial input cell values")
+
+	for i := 0; i < 3; i++ {
+		ins[i].SetValue(ins[i].Value() * 2)
+	}
+
+	assertCellValue(t, output, 242, "output.Value() isn't properly computed based on changed input cell values")
+}
+
+// Compute cells can have callbacks.
+func TestBasicCallback(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	var observed []int
+	c.AddCallback(func(v int) {
+		observed = append(observed, v)
+	})
+	if len(observed) != 0 {
+		t.Fatalf("callback called before changes were made")
+	}
+	i.SetValue(2)
+	if len(observed) != 1 {
+		t.Fatalf("callback not called when changes were made")
+	}
+	if observed[0] != 3 {
+		t.Fatalf("callback not called with proper value")
+	}
+}
+
+// Callbacks and only trigger on change.
+func TestOnlyCallOnChanges(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c := r.CreateCompute1(i, func(v int) int {
+		if v > 3 {
+			return v + 1
+		}
+		return 2
+	})
+	var observedCalled int
+	c.AddCallback(func(int) {
+		observedCalled++
+	})
+	i.SetValue(1)
+	if observedCalled != 0 {
+		t.Fatalf("observe function called even though input didn't change")
+	}
+	i.SetValue(2)
+	if observedCalled != 0 {
+		t.Fatalf("observe function called even though computed value didn't change")
+	}
+}
+
+// Callbacks can be added and removed.
+func TestCallbackAddRemove(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	var observed1 []int
+	cb1 := c.AddCallback(func(v int) {
+		observed1 = append(observed1, v)
+	})
+	var observed2 []int
+	c.AddCallback(func(v int) {
+		observed2 = append(observed2, v)
+	})
+	i.SetValue(2)
+	if len(observed1) != 1 || observed1[0] != 3 {
+		t.Fatalf("observed1 not properly called")
+	}
+	if len(observed2) != 1 || observed2[0] != 3 {
+		t.Fatalf("observed2 not properly called")
+	}
+	cb1.Cancel()
+	i.SetValue(3)
+	if len(observed1) != 1 {
+		t.Fatalf("observed1 called after removal")
+	}
+	if len(observed2) != 2 || observed2[1] != 4 {
+		t.Fatalf("observed2 not properly called after first callback removal")
+	}
+}
+
+func TestMultipleCallbackRemoval(t *testing.T) {
+	r := New()
+	inp := r.CreateInput(1)
+	c := r.CreateCompute1(inp, func(v int) int { return v + 1 })
+
+	numCallbacks := 5
+
+	calls := make([]int, numCallbacks)
+	cancelers := make([]Canceler, numCallbacks)
+	for i := 0; i < numCallbacks; i++ {
+		// Rebind i, otherwise all callbacks will use i = numCallbacks
+		i := i
+		cancelers[i] = c.AddCallback(func(v int) { calls[i]++ })
+	}
+
+	inp.SetValue(2)
+	for i := 0; i < numCallbacks; i++ {
+		if calls[i] != 1 {
+			t.Fatalf("callback %d/%d should be called 1 time, was called %d times", i+1, numCallbacks, calls[i])
+		}
+		cancelers[i].Cancel()
+	}
+
+	inp.SetValue(3)
+	for i := 0; i < numCallbacks; i++ {
+		if calls[i] != 1 {
+			t.Fatalf("callback %d/%d was called after it was removed", i+1, numCallbacks)
+		}
+	}
+}
+
+func TestRemoveIdempotence(t *testing.T) {
+	r := New()
+	inp := r.CreateInput(1)
+	output := r.CreateCompute1(inp, func(v int) int { return v + 1 })
+	timesCalled := 0
+	cb1 := output.AddCallback(func(int) {})
+	output.AddCallback(func(int) { timesCalled++ })
+	for i := 0; i < 10; i++ {
+		cb1.Cancel()
+	}
+	inp.SetValue(2)
+	if timesCalled != 1 {
+		t.Fatalf("remaining callback function was not called")
+	}
+}
+
+// Callbacks should only be called once even though
+// multiple dependencies have changed.
+func TestOnlyCallOnceOnMultipleDepChanges(t *testing.T) {
+	r := New()
+	i := r.CreateInput(1)
+	c1 := r.CreateCompute1(i, func(v int) int { return v + 1 })
+	c2 := r.CreateCompute1(i, func(v int) int { return v - 1 })
+	c3 := r.CreateCompute1(c2, func(v int) int { return v - 1 })
+	c4 := r.CreateCompute2(c1, c3, func(v1, v3 int) int { return v1 * v3 })
+	changed4 := 0
+	c4.AddCallback(func(int) { changed4++ })
+	i.SetValue(3)
+	if changed4 < 1 {
+		t.Fatalf("callback function was not called")
+	} else if changed4 > 1 {
+		t.Fatalf("callback function was called too often")
+	}
+}
+
+// Callbacks should not be called if dependencies change in such a way
+// that the final value of the compute cell does not change.
+func TestNoCallOnDepChangesResultingInNoChange(t *testing.T) {
+	r := New()
+	inp := r.CreateInput(0)
+	plus1 := r.CreateCompute1(inp, func(v int) int { return v + 1 })
+	minus1 := r.CreateCompute1(inp, func(v int) int { return v - 1 })
+	// The output's value is always 2, no matter what the input is.
+	output := r.CreateCompute2(plus1, minus1, func(v1, v2 int) int { return v1 - v2 })
+
+	timesCalled := 0
+	output.AddCallback(func(int) { timesCalled++ })
+
+	inp.SetValue(5)
+	if timesCalled != 0 {
+		t.Fatalf("callback function called even though computed value didn't change")
+	}
+}
+
+
+=== Initial Translation ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"sync"
+)
+
+type Cell struct {
+	watchers []*Cell
+	value    int
+	counter  int
+}
+
+func (c *Cell) AddWatcher(cell *Cell) {
+	c.watchers = append(c.watchers, cell)
+}
+
+func (c *Cell) Value() int {
+	return c.value
+}
+
+func (c *Cell) SetValue(newValue int) {
+	c.value = newValue
+	c.counter++
+	for _, cell := range c.watchers {
+		cell.Compute()
+	}
+}
+
+type InputCell struct {
+	Cell
+}
+
+func NewInputCell(initialValue int) *InputCell {
+	cell := &InputCell{Cell{value: initialValue}}
+	return cell
+}
+
+type ComputeCell struct {
+	Cell
+	inputs   []*Cell
+	func     func([]int) int
+	callbacks map[func(int)]struct{}
+}
+
+func NewComputeCell(inputs []*Cell, computeFunc func([]int) int) *ComputeCell {
+	cell := &ComputeCell{
+		inputs:   inputs,
+		func:     computeFunc,
+		callbacks: make(map[func(int)]struct{}),
+	}
+	cell.Compute()
+	cell.registerInputs()
+	return cell
+}
+
+func (c *ComputeCell) registerInputs() {
+	for _, inp := range c.inputs {
+		inp.AddWatcher(c)
+	}
+}
+
+func (c *ComputeCell) Compute() {
+	// Only compute this cell when all inputs have same counters
+	counters := make(map[int]struct{})
+	for _, inp := range c.inputs {
+		counters[inp.counter] = struct{}{}
+	}
+	if len(counters) > 1 {
+		return
+	}
+	newVal := c.func(func() []int {
+		vals := make([]int, len(c.inputs))
+		for i, inp := range c.inputs {
+			vals[i] = inp.Value()
+		}
+		return vals
+	}())
+	if newVal != c.value {
+		c.SetValue(newVal)
+		for cb := range c.callbacks {
+			cb(newVal)
+		}
+	}
+}
+
+func (c *ComputeCell) AddCallback(callback func(int)) {
+	c.callbacks[callback] = struct{}{}
+}
+
+func (c *ComputeCell) RemoveCallback(callback func(int)) {
+	if _, exists := c.callbacks[callback]; exists {
+		delete(c.callbacks, callback)
+	}
+}
+
+// Reactor implementation
+
+type Reactor struct {
+	mu sync.Mutex
+}
+
+func NewReactor() *Reactor {
+	return &Reactor{}
+}
+
+func (r *Reactor) CreateInput(initial int) *InputCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewInputCell(initial)
+}
+
+func (r *Reactor) CreateCompute1(dep *Cell, compute func(int) int) *ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]*Cell{dep}, func(vals []int) int {
+		return compute(vals[0])
+	})
+}
+
+func (r *Reactor) CreateCompute2(dep1, dep2 *Cell, compute func(int, int) int) *ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]*Cell{dep1, dep2}, func(vals []int) int {
+		return compute(vals[0], vals[1])
+	})
+}
+
+
+=== Initial Test Results ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/react [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/react [exercism/react.test]
+./react.go:42:2: syntax error: unexpected func, expecting field name or embedded type
+./react.go:49:7: syntax error: unexpected :, expecting (
+./react.go:50:12: syntax error: unexpected : in parameter list; possibly missing comma or )
+./react.go:72:14: syntax error: unexpected func, expecting name or (
+./react.go:78:3: syntax error: unexpected ( after top level declaration
+
+
+=== Retry Attempt 1 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"sync"
+)
+
+type Cell struct {
+	watchers []*Cell
+	value    int
+	counter  int
+}
+
+func (c *Cell) AddWatcher(cell *Cell) {
+	c.watchers = append(c.watchers, cell)
+}
+
+func (c *Cell) Value() int {
+	return c.value
+}
+
+func (c *Cell) SetValue(newValue int) {
+	c.value = newValue
+	c.counter++
+	for _, cell := range c.watchers {
+		cell.Compute()
+	}
+}
+
+type InputCell struct {
+	Cell
+}
+
+func NewInputCell(initialValue int) *InputCell {
+	cell := &InputCell{Cell{value: initialValue}}
+	return cell
+}
+
+type ComputeCell struct {
+	Cell
+	inputs   []*Cell
+	func     func([]int) int
+	callbacks map[func(int)]struct{}
+	mu       sync.Mutex
+}
+
+func NewComputeCell(inputs []*Cell, computeFunc func([]int) int) *ComputeCell {
+	cell := &ComputeCell{
+		inputs:   inputs,
+		func:     computeFunc,
+		callbacks: make(map[func(int)]struct{}),
+	}
+	cell.Compute()
+	cell.registerInputs()
+	return cell
+}
+
+func (c *ComputeCell) registerInputs() {
+	for _, inp := range c.inputs {
+		inp.AddWatcher(c)
+	}
+}
+
+func (c *ComputeCell) Compute() {
+	// Only compute this cell when all inputs have same counters
+	counters := make(map[int]struct{})
+	for _, inp := range c.inputs {
+		counters[inp.counter] = struct{}{}
+	}
+	if len(counters) > 1 {
+		return
+	}
+	newVal := c.func(func() []int {
+		vals := make([]int, len(c.inputs))
+		for i, inp := range c.inputs {
+			vals[i] = inp.Value()
+		}
+		return vals
+	}())
+	if newVal != c.value {
+		c.SetValue(newVal)
+		for cb := range c.callbacks {
+			cb(newVal)
+		}
+	}
+}
+
+func (c *ComputeCell) AddCallback(callback func(int)) Canceler {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.callbacks[callback] = struct{}{}
+	return &canceler{cell: c, callback: callback}
+}
+
+func (c *ComputeCell) RemoveCallback(callback func(int)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, exists := c.callbacks[callback]; exists {
+		delete(c.callbacks, callback)
+	}
+}
+
+type canceler struct {
+	cell     *ComputeCell
+	callback func(int)
+}
+
+func (c *canceler) Cancel() {
+	c.cell.RemoveCallback(c.callback)
+}
+
+// Reactor implementation
+
+type Reactor struct {
+	mu sync.Mutex
+}
+
+func New() Reactor {
+	return &Reactor{}
+}
+
+func (r *Reactor) CreateInput(initial int) InputCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewInputCell(initial)
+}
+
+func (r *Reactor) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]*Cell{dep}, func(vals []int) int {
+		return compute(vals[0])
+	})
+}
+
+func (r *Reactor) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]*Cell{dep1, dep2}, func(vals []int) int {
+		return compute(vals[0], vals[1])
+	})
+}
+
+
+=== Test Results (Attempt 1) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/react [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/react [exercism/react.test]
+./react.go:42:2: syntax error: unexpected func, expecting field name or embedded type
+./react.go:50:7: syntax error: unexpected :, expecting (
+./react.go:51:12: syntax error: unexpected : in parameter list; possibly missing comma or )
+./react.go:73:14: syntax error: unexpected func, expecting name or (
+./react.go:79:3: syntax error: unexpected ( after top level declaration
+
+
+=== Retry Attempt 2 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"sync"
+)
+
+type Cell struct {
+	watchers []*Cell
+	value    int
+	counter  int
+}
+
+func (c *Cell) AddWatcher(cell *Cell) {
+	c.watchers = append(c.watchers, cell)
+}
+
+func (c *Cell) Value() int {
+	return c.value
+}
+
+func (c *Cell) SetValue(newValue int) {
+	c.value = newValue
+	c.counter++
+	for _, cell := range c.watchers {
+		cell.Compute()
+	}
+}
+
+type InputCell struct {
+	Cell
+}
+
+func NewInputCell(initialValue int) *InputCell {
+	cell := &InputCell{Cell{value: initialValue}}
+	return cell
+}
+
+type ComputeCell struct {
+	Cell
+	inputs   []*Cell
+	computeFunc func([]int) int
+	callbacks map[func(int)]struct{}
+	mu       sync.Mutex
+}
+
+func NewComputeCell(inputs []*Cell, computeFunc func([]int) int) *ComputeCell {
+	cell := &ComputeCell{
+		inputs:   inputs,
+		computeFunc: computeFunc,
+		callbacks: make(map[func(int)]struct{}),
+	}
+	cell.Compute()
+	cell.registerInputs()
+	return cell
+}
+
+func (c *ComputeCell) registerInputs() {
+	for _, inp := range c.inputs {
+		inp.AddWatcher(c)
+	}
+}
+
+func (c *ComputeCell) Compute() {
+	// Only compute this cell when all inputs have same counters
+	counters := make(map[int]struct{})
+	for _, inp := range c.inputs {
+		counters[inp.counter] = struct{}{}
+	}
+	if len(counters) > 1 {
+		return
+	}
+	newVal := c.computeFunc(func() []int {
+		vals := make([]int, len(c.inputs))
+		for i, inp := range c.inputs {
+			vals[i] = inp.Value()
+		}
+		return vals
+	}())
+	if newVal != c.value {
+		c.SetValue(newVal)
+		for cb := range c.callbacks {
+			cb(newVal)
+		}
+	}
+}
+
+func (c *ComputeCell) AddCallback(callback func(int)) Canceler {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.callbacks[callback] = struct{}{}
+	return &canceler{cell: c, callback: callback}
+}
+
+func (c *ComputeCell) RemoveCallback(callback func(int)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, exists := c.callbacks[callback]; exists {
+		delete(c.callbacks, callback)
+	}
+}
+
+type canceler struct {
+	cell     *ComputeCell
+	callback func(int)
+}
+
+func (c *canceler) Cancel() {
+	c.cell.RemoveCallback(c.callback)
+}
+
+// Reactor implementation
+
+type Reactor struct {
+	mu sync.Mutex
+}
+
+func New() Reactor {
+	return &Reactor{}
+}
+
+func (r *Reactor) CreateInput(initial int) InputCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewInputCell(initial)
+}
+
+func (r *Reactor) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]*Cell{dep}, func(vals []int) int {
+		return compute(vals[0])
+	})
+}
+
+func (r *Reactor) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]*Cell{dep1, dep2}, func(vals []int) int {
+		return compute(vals[0], vals[1])
+	})
+}
+
+
+=== Test Results (Attempt 2) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/react [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/react [exercism/react.test]
+./react.go:26:8: cell.Compute undefined (type *Cell has no field or method Compute)
+./react.go:43:20: invalid map key type func(int)
+./react.go:51:27: invalid map key type func(int)
+./react.go:60:18: cannot use c (variable of type *ComputeCell) as type *Cell in argument to inp.AddWatcher
+./react.go:88:55: undefined: Canceler
+./react.go:119:9: cannot use &Reactor{} (value of type *Reactor) as type Reactor in return statement
+./react.go:125:9: cannot use NewInputCell(initial) (value of type *InputCell) as type InputCell in return statement
+./react.go:131:9: cannot use NewComputeCell([]*Cell{…}, func(vals []int) int {…}) (value of type *ComputeCell) as type ComputeCell in return statement
+./react.go:131:32: cannot use dep (variable of type Cell) as type *Cell in array or slice literal
+./react.go:139:32: cannot use dep1 (variable of type Cell) as type *Cell in array or slice literal
+./react.go:139:32: too many errors
+
+
+=== Retry Attempt 3 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"sync"
+)
+
+type Cell interface {
+	Value() int
+	SetValue(int)
+	AddWatcher(c Cell)
+}
+
+type cell struct {
+	watchers []Cell
+	value    int
+	counter  int
+}
+
+func (c *cell) AddWatcher(cell Cell) {
+	c.watchers = append(c.watchers, cell)
+}
+
+func (c *cell) Value() int {
+	return c.value
+}
+
+func (c *cell) SetValue(newValue int) {
+	c.value = newValue
+	c.counter++
+	for _, cell := range c.watchers {
+		cell.SetValue(cell.Value())
+	}
+}
+
+type InputCell struct {
+	cell
+}
+
+func NewInputCell(initialValue int) *InputCell {
+	cell := &InputCell{cell{value: initialValue}}
+	return cell
+}
+
+type ComputeCell struct {
+	cell
+	inputs      []Cell
+	computeFunc func([]int) int
+	callbacks   map[int]func(int)
+	callbackID  int
+	mu          sync.Mutex
+}
+
+func NewComputeCell(inputs []Cell, computeFunc func([]int) int) *ComputeCell {
+	cell := &ComputeCell{
+		inputs:      inputs,
+		computeFunc: computeFunc,
+		callbacks:   make(map[int]func(int)),
+	}
+	cell.Compute()
+	cell.registerInputs()
+	return cell
+}
+
+func (c *ComputeCell) registerInputs() {
+	for _, inp := range c.inputs {
+		inp.AddWatcher(c)
+	}
+}
+
+func (c *ComputeCell) Compute() {
+	// Only compute this cell when all inputs have same counters
+	counters := make(map[int]struct{})
+	for _, inp := range c.inputs {
+		counters[inp.Value()] = struct{}{}
+	}
+	if len(counters) > 1 {
+		return
+	}
+	newVal := c.computeFunc(func() []int {
+		vals := make([]int, len(c.inputs))
+		for i, inp := range c.inputs {
+			vals[i] = inp.Value()
+		}
+		return vals
+	}())
+	if newVal != c.value {
+		c.SetValue(newVal)
+		c.mu.Lock()
+		for _, cb := range c.callbacks {
+			cb(newVal)
+		}
+		c.mu.Unlock()
+	}
+}
+
+func (c *ComputeCell) AddCallback(callback func(int)) Canceler {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.callbackID++
+	id := c.callbackID
+	c.callbacks[id] = callback
+	return &canceler{cell: c, id: id}
+}
+
+func (c *ComputeCell) RemoveCallback(id int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.callbacks, id)
+}
+
+type canceler struct {
+	cell *ComputeCell
+	id   int
+}
+
+func (c *canceler) Cancel() {
+	c.cell.RemoveCallback(c.id)
+}
+
+// Reactor implementation
+
+type Reactor struct {
+	mu sync.Mutex
+}
+
+func New() Reactor {
+	return &Reactor{}
+}
+
+func (r *Reactor) CreateInput(initial int) InputCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewInputCell(initial)
+}
+
+func (r *Reactor) CreateCompute1(dep Cell, compute func(int) int) ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]Cell{dep}, func(vals []int) int {
+		return compute(vals[0])
+	})
+}
+
+func (r *Reactor) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]Cell{dep1, dep2}, func(vals []int) int {
+		return compute(vals[0], vals[1])
+	})
+}
+
+
+=== Test Results (Attempt 3) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/react [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/react [exercism/react.test]
+./react.go:97:55: undefined: Canceler
+./react.go:128:9: cannot use &Reactor{} (value of type *Reactor) as type Reactor in return statement
+./react.go:134:9: cannot use NewInputCell(initial) (value of type *InputCell) as type InputCell in return statement
+./react.go:140:9: cannot use NewComputeCell([]Cell{…}, func(vals []int) int {…}) (value of type *ComputeCell) as type ComputeCell in return statement
+./react.go:148:9: cannot use NewComputeCell([]Cell{…}, func(vals []int) int {…}) (value of type *ComputeCell) as type ComputeCell in return statement
+./react_test.go:26:21: cannot use i (variable of type InputCell) as type Cell in argument to assertCellValue:
+	InputCell does not implement Cell (AddWatcher method has pointer receiver)
+./react_test.go:28:21: cannot use i (variable of type InputCell) as type Cell in argument to assertCellValue:
+	InputCell does not implement Cell (AddWatcher method has pointer receiver)
+./react_test.go:35:24: cannot use i (variable of type InputCell) as type Cell in argument to r.CreateCompute1:
+	InputCell does not implement Cell (AddWatcher method has pointer receiver)
+./react_test.go:36:21: cannot use c (variable of type ComputeCell) as type Cell in argument to assertCellValue:
+	ComputeCell does not implement Cell (AddWatcher method has pointer receiver)
+./react_test.go:38:21: cannot use c (variable of type ComputeCell) as type Cell in argument to assertCellValue:
+	ComputeCell does not implement Cell (AddWatcher method has pointer receiver)
+./react_test.go:38:21: too many errors
+
+
+=== Retry Attempt 4 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"sync"
+)
+
+// Cell is the interface that all cells must implement
+type Cell interface {
+	Value() int
+	SetValue(newValue int)
+	AddWatcher(cell Cell)
+}
+
+// cell is the base implementation of a cell
+type cell struct {
+	watchers []Cell
+	value    int
+	counter  int
+}
+
+// AddWatcher adds a watcher to the cell
+func (c *cell) AddWatcher(cell Cell) {
+	c.watchers = append(c.watchers, cell)
+}
+
+// Value returns the current value of the cell
+func (c *cell) Value() int {
+	return c.value
+}
+
+// SetValue sets the value of the cell and notifies watchers
+func (c *cell) SetValue(newValue int) {
+	c.value = newValue
+	c.counter++
+	for _, cell := range c.watchers {
+		cell.SetValue(cell.Value())
+	}
+}
+
+// InputCell is a cell that can be set directly
+type InputCell struct {
+	*cell
+}
+
+// NewInputCell creates a new InputCell with an initial value
+func NewInputCell(initialValue int) *InputCell {
+	return &InputCell{
+		cell: &cell{
+			value: initialValue,
+		},
+	}
+}
+
+// ComputeCell is a cell that computes its value based on other cells
+type ComputeCell struct {
+	*cell
+	inputs      []Cell
+	computeFunc func([]int) int
+	callbacks   map[int]func(int)
+	callbackID  int
+	mu          sync.Mutex
+}
+
+// NewComputeCell creates a new ComputeCell with inputs and a compute function
+func NewComputeCell(inputs []Cell, computeFunc func([]int) int) *ComputeCell {
+	cell := &ComputeCell{
+		cell:        &cell{},
+		inputs:      inputs,
+		computeFunc: computeFunc,
+		callbacks:   make(map[int]func(int)),
+	}
+	cell.Compute()
+	cell.registerInputs()
+	return cell
+}
+
+// registerInputs registers the ComputeCell as a watcher on all its inputs
+func (c *ComputeCell) registerInputs() {
+	for _, inp := range c.inputs {
+		inp.AddWatcher(c)
+	}
+}
+
+// Compute computes the value of the ComputeCell based on its inputs
+func (c *ComputeCell) Compute() {
+	if len(c.inputs) == 0 {
+		return
+	}
+	vals := make([]int, len(c.inputs))
+	for i, inp := range c.inputs {
+		vals[i] = inp.Value()
+	}
+	newVal := c.computeFunc(vals)
+	if newVal != c.value {
+		c.SetValue(newVal)
+		c.mu.Lock()
+		for _, cb := range c.callbacks {
+			cb(newVal)
+		}
+		c.mu.Unlock()
+	}
+}
+
+// AddCallback adds a callback to the ComputeCell
+func (c *ComputeCell) AddCallback(callback func(int)) Canceler {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.callbackID++
+	id := c.callbackID
+	c.callbacks[id] = callback
+	return &canceler{cell: c, id: id}
+}
+
+// RemoveCallback removes a callback from the ComputeCell
+func (c *ComputeCell) RemoveCallback(id int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.callbacks, id)
+}
+
+// canceler is used to cancel a callback
+type canceler struct {
+	cell *ComputeCell
+	id   int
+}
+
+// Cancel removes the callback from the ComputeCell
+func (c *canceler) Cancel() {
+	c.cell.RemoveCallback(c.id)
+}
+
+// Reactor is used to create and manage cells
+type Reactor struct {
+	mu sync.Mutex
+}
+
+// New creates a new Reactor
+func New() *Reactor {
+	return &Reactor{}
+}
+
+// CreateInput creates a new InputCell
+func (r *Reactor) CreateInput(initial int) *InputCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency
+func (r *Reactor) CreateCompute1(dep Cell, compute func(int) int) *ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]Cell{dep}, func(vals []int) int {
+		return compute(vals[0])
+	})
+}
+
+ // CreateCompute2 creates a new ComputeCell with two dependencies
+func (r *Reactor) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) *ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]Cell{dep1, dep2}, func(vals []int) int {
+		return compute(vals[0], vals[1])
+	})
+}
+
+
+=== Test Results (Attempt 4) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/react [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/react [exercism/react.test]
+./react.go:106:55: undefined: Canceler
+./react_test.go:12:17: cannot use New() (value of type *Reactor) as type Reactor in variable declaration
+./react_test.go:87:12: cannot use r.CreateInput(v) (value of type *InputCell) as type InputCell in assignment
+./react_test.go:94:19: cannot use r.CreateCompute2(ins[i], ins[i + 1], add) (value of type *ComputeCell) as type ComputeCell in assignment
+./react_test.go:190:22: undefined: Canceler
+
+
+=== Retry Attempt 5 ===
+// exercises/practice/react/.meta/example.go
+package react
+
+import (
+	"sync"
+)
+
+// Cell is the interface that all cells must implement
+type Cell interface {
+	Value() int
+	SetValue(newValue int)
+	AddWatcher(cell Cell)
+}
+
+// cell is the base implementation of a cell
+type cell struct {
+	watchers []Cell
+	value    int
+	counter  int
+}
+
+// AddWatcher adds a watcher to the cell
+func (c *cell) AddWatcher(cell Cell) {
+	c.watchers = append(c.watchers, cell)
+}
+
+// Value returns the current value of the cell
+func (c *cell) Value() int {
+	return c.value
+}
+
+// SetValue sets the value of the cell and notifies watchers
+func (c *cell) SetValue(newValue int) {
+	c.value = newValue
+	c.counter++
+	for _, cell := range c.watchers {
+		cell.SetValue(cell.Value())
+	}
+}
+
+// InputCell is a cell that can be set directly
+type InputCell struct {
+	*cell
+}
+
+// NewInputCell creates a new InputCell with an initial value
+func NewInputCell(initialValue int) *InputCell {
+	return &InputCell{
+		cell: &cell{
+			value: initialValue,
+		},
+	}
+}
+
+// ComputeCell is a cell that computes its value based on other cells
+type ComputeCell struct {
+	*cell
+	inputs      []Cell
+	computeFunc func([]int) int
+	callbacks   map[int]func(int)
+	callbackID  int
+	mu          sync.Mutex
+}
+
+// NewComputeCell creates a new ComputeCell with inputs and a compute function
+func NewComputeCell(inputs []Cell, computeFunc func([]int) int) *ComputeCell {
+	cell := &ComputeCell{
+		cell:        &cell{},
+		inputs:      inputs,
+		computeFunc: computeFunc,
+		callbacks:   make(map[int]func(int)),
+	}
+	cell.Compute()
+	cell.registerInputs()
+	return cell
+}
+
+// registerInputs registers the ComputeCell as a watcher on all its inputs
+func (c *ComputeCell) registerInputs() {
+	for _, inp := range c.inputs {
+		inp.AddWatcher(c)
+	}
+}
+
+// Compute computes the value of the ComputeCell based on its inputs
+func (c *ComputeCell) Compute() {
+	if len(c.inputs) == 0 {
+		return
+	}
+	vals := make([]int, len(c.inputs))
+	for i, inp := range c.inputs {
+		vals[i] = inp.Value()
+	}
+	newVal := c.computeFunc(vals)
+	if newVal != c.value {
+		c.SetValue(newVal)
+		c.mu.Lock()
+		for _, cb := range c.callbacks {
+			cb(newVal)
+		}
+		c.mu.Unlock()
+	}
+}
+
+// AddCallback adds a callback to the ComputeCell
+func (c *ComputeCell) AddCallback(callback func(int)) Canceler {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.callbackID++
+	id := c.callbackID
+	c.callbacks[id] = callback
+	return &canceler{cell: c, id: id}
+}
+
+// RemoveCallback removes a callback from the ComputeCell
+func (c *ComputeCell) RemoveCallback(id int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.callbacks, id)
+}
+
+// Canceler is used to cancel a callback
+type Canceler interface {
+	Cancel()
+}
+
+// canceler implements the Canceler interface
+type canceler struct {
+	cell *ComputeCell
+	id   int
+}
+
+// Cancel removes the callback from the ComputeCell
+func (c *canceler) Cancel() {
+	c.cell.RemoveCallback(c.id)
+}
+
+// Reactor is used to create and manage cells
+type Reactor struct {
+	mu sync.Mutex
+}
+
+// New creates a new Reactor
+func New() *Reactor {
+	return &Reactor{}
+}
+
+// CreateInput creates a new InputCell
+func (r *Reactor) CreateInput(initial int) *InputCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewInputCell(initial)
+}
+
+// CreateCompute1 creates a new ComputeCell with one dependency
+func (r *Reactor) CreateCompute1(dep Cell, compute func(int) int) *ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]Cell{dep}, func(vals []int) int {
+		return compute(vals[0])
+	})
+}
+
+// CreateCompute2 creates a new ComputeCell with two dependencies
+func (r *Reactor) CreateCompute2(dep1, dep2 Cell, compute func(int, int) int) *ComputeCell {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return NewComputeCell([]Cell{dep1, dep2}, func(vals []int) int {
+		return compute(vals[0], vals[1])
+	})
+}
+
+
+=== Test Results (Attempt 5) ===
+Return code: 2
+=== STDOUT ===
+FAIL	exercism/react [build failed]
+FAIL
+
+=== STDERR ===
+# exercism/react [exercism/react.test]
+./react_test.go:12:17: cannot use New() (value of type *Reactor) as type Reactor in variable declaration
+./react_test.go:87:12: cannot use r.CreateInput(v) (value of type *InputCell) as type InputCell in assignment
+./react_test.go:94:19: cannot use r.CreateCompute2(ins[i], ins[i + 1], add) (value of type *ComputeCell) as type ComputeCell in assignment
+
+
+=== Retry Attempt 6 ===
+```javascript
+function arrayToList(array) {
+    let list = null; 
+    for (let i = array.length - 1; i >= 0; i--) {
+        list = { value: array[i], rest: list };
+    }
+    return list;
+}
+
+function listToArray(list) {
+    let array = [];
+    for (let node = list; node; node = node.rest) {
+        array.push(node.value);
+    }
+    return array;
+}
+
+function prepend(value, list) {
+    return { value: value, rest: list };
+}
+
+function nth(list, n) {
+    if (!list) return undefined;
+    else if (n == 0) return list.value;
+    else return nth(list.rest, n - 1);
+}
+
+let array = [1, 2, 3];
+let list = arrayToList(array);
+console.log(listToArray(li```
+
+=== Test Results (Attempt 6) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+react.go:1:1: expected 'package', found ``
+
+
+=== Retry Attempt 7 ===
+```javascript
+function arrayToList(array) {
+    let list = null; 
+    for (let i = array.length - 1; i >= 0; i--) {
+        list = { value: array[i], rest: list };
+    }
+    return list;
+}
+
+function listToArray(list) {
+    let array = [];
+    for (let node = list; node; node = node.rest) {
+        array.push(node.value);
+    }
+    return array;
+}
+
+function prepend(value, list) {
+    return { value: value, rest: list };
+}
+
+function nth(list, n) {
+    if (!list) return undefined;
+    else if (n == 0) return list.value;
+    else return nth(list.rest, n - 1);
+}
+
+let array = [1, 2, 3];
+let list = arrayToList(array);
+console.log(listToArray(list)); // → [1, 2, 3]
+console.log(prepend(10, prepend(20, null))); // → {value: 10, rest: {value: 20, rest: null}}
+console.log(nth(list, 1)); // → 2
+```
+
+=== Test Results (Attempt 7) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+react.go:1:1: expected 'package', found ``
+
+
+=== Retry Attempt 8 ===
+```javascript
+function arrayToList(array) {
+    let list = null; 
+    for (let i = array.length - 1; i >= 0; i--) {
+        list = { value: array[i], rest: list };
+    }
+    return list;
+}
+
+function listToArray(list) {
+    let array = [];
+    for (let node = list; node; node = node.rest) {
+        array.push(node.value);
+    }
+    return array;
+}
+
+function prepend(value, list) {
+    return { value: value, rest: list };
+
+function nth(list, n) {
+    if (!list) return undefined;
+    else if (n == 0) return list.value;
+    else return nth(list.rest, n - 1);
+}
+
+let array = [1, 2, 3];
+let list = arrayToList(array);
+console.log(listToArray(list)); // → [1, 2, 3]
+console.log(prepend(10, prepend(20, null))); // → {value: 10, rest: {value: 20, rest: null}}
+console.log(nth(list, 1)); // → 2
+```
+
+=== Test Results (Attempt 8) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+react.go:1:1: expected 'package', found ``
+
+
+=== Retry Attempt 9 ===
+```javascript
+function arrayToList(array) {
+    let list = null; 
+    for (let i = array.length - 1; i >= 0; i--) {
+        list = { value: array[i], rest: list };
+    }
+    return list;
+}
+
+function listToArray(list) {
+    let array = [];
+    for (let node = list; node; node = node.rest) {
+        array.push(node.value);
+    }
+    return array;
+}
+
+function prepend(value, list) {
+    return { value: value, rest: list };
+}
+
+function nth(list, n) {
+    if (!list) return undefined;
+    else if (n == 0) return list.value;
+    else return nth(list.rest, n - 1);
+}
+
+let array = [1, 2, 3];
+let list = arrayToList(array);
+console.log(listToArray(list)); // → [1, 2, 3]
+console.log(prepend(10, prepend(20, null)))); // → {value: 10```
+
+=== Test Results (Attempt 9) ===
+Return code: 1
+=== STDOUT ===
+
+=== STDERR ===
+react.go:1:1: expected 'package', found ``
+
+
+=== ERROR ===
+Error processing sample (returncode=1): 
+
+=== FINAL STATUS: ERROR ===
